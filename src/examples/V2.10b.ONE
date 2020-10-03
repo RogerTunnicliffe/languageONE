@@ -1,0 +1,299 @@
+%include 'include/BEGIN.PROGRAM'
+
+;	Refer to VERSION.HISTORY for...well...version history
+
+;	DEVELOPED THE QUICKSORT ALGORYTHM IN assembler prior to the creation
+;	of _Arrays.LIB
+
+;	BEGIN.SYNONYMS **************************************
+;		$.	:	WORDS.  
+;		@.	:	INTEGERS.  
+;		#.	:	NUMBERS.  
+;		f.	:	FILES. 
+;		xT.	:	XTABLES. 
+;	END.SYNONYMS ****************************************
+
+;=======================================================================
+;		PROGRAM DATA
+;=======================================================================
+
+;-----------------------------------------------------------------------
+;		MACROS
+;-----------------------------------------------------------------------
+	%imacro insert_Array 2
+	 	ALIGN 8
+	 	%1	resq %2
+	 	%1.len equ $-%1
+	 %endmacro
+	 
+	%imacro _Arrays.Get 3
+		$extract %3
+		pop rax
+		mov rax,[rax]
+		mov r15,qword[%2+(rax*8)]
+		mov qword[%1],r15			
+	%endmacro
+	
+	%imacro _Arrays.Put 3
+		$extract %3
+		pop rax
+		mov rax,[rax]		
+		$extract %1
+		pop rbx
+		mov rbx,[rbx]
+		mov qword[%2+(rax*8)],rbx		
+	%endmacro
+	
+	%imacro _Arrays.Swap 3
+		$extract %3
+		pop rax
+		mov rax,[rax]	
+		mov r15,qword[%2+(rax*8)]
+		$extract %1
+		pop rax
+		mov rax,[rax]			
+		mov qword[%2+(rax*8)],r15
+	%endmacro
+
+	%imacro _Arrays.Sort 1
+		push 0
+		push %1.len/8-1
+		mov r_Table,%1
+		Call _QSort
+		pop rax
+		pop rax
+	%endmacro
+	
+;-----------------------------------------------------------------------
+;		CONSTANTS
+;-----------------------------------------------------------------------
+
+;-----------------------------------------------------------------------
+;		DICTIONARY
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.DICTIONARY'
+%include 'include/END.DICTIONARY'
+
+;-----------------------------------------------------------------------
+;		MATRIX
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.MATRIX'
+
+	insertnumber StartSeconds,		0,'99999999999999999999999999'
+	insertnumber EndSeconds,		0,'99999999999999999999999999'
+	
+	insertnumber I,					0,'999999'
+	insertnumber J,					0,'999999'
+
+	insertnumber seconds,			0,'99999999999999999'
+	insertnumber milliseconds,		0,'.999999'
+	
+%include 'include/END.MATRIX'
+
+;-----------------------------------------------------------------------
+;		FILES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.FILES'
+%include 'include/END.FILES'
+
+;-----------------------------------------------------------------------
+;		TABLES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.TABLES'	
+%include 'include/END.TABLES'
+	 
+	insert_Array _RandomNo,1000000
+	
+	tv:
+		sec 	resq 1
+		msec 	resq 1
+	tz   		resq 2
+	
+;=======================================================================
+;		PROGRAM INSTRUCTIONS
+;		Mainline  
+;=======================================================================
+%include 'include/BEGIN.INSTRUCTIONS'
+	
+	$Call Initialise
+
+	begin.assembler		
+		mov rax,96
+		mov rdi,tv
+		mov rsi,tz
+		syscall
+		push qword[sec]
+		pop  qword[seconds]
+		push qword[msec]
+		pop qword[milliseconds]	
+	end.assembler	
+	display "start=",seconds,milliseconds,LF
+	
+	_Arrays.Sort _RandomNo
+
+	begin.assembler		
+		mov rax,96
+		mov rdi,tv
+		mov rsi,tz
+		syscall
+		push qword[sec]
+		pop  qword[seconds]
+		push qword[msec]
+		pop qword[milliseconds]	
+	end.assembler		
+	display "stop= ",seconds,milliseconds,LF
+	
+	$Call DisplayThem
+	
+%include 'include/END.INSTRUCTIONS'
+%include 'include/END.PROGRAM'      
+
+BEGIN.SUB Initialise
+
+	display.line "Preparing the _Arrays - Please wait"
+	repeat.for I,0,999999
+		numbers.random 2,J
+		_Arrays.Put (J,_RandomNo,I)
+	end.repeat
+	display.line "Sorting now"
+		
+END.SUB Initialise
+
+;-----------------------------------------------------------------------
+;		Display Them
+;-----------------------------------------------------------------------
+BEGIN.SUB DisplayThem
+
+	repeat.for I,100,109
+		_Arrays.Get (J,_RandomNo,I)	
+		display.line J
+	end.repeat
+	
+END.SUB Finalise
+
+;-----------------------------------------------------------------------
+;		_QSort
+;-----------------------------------------------------------------------
+
+begin.assembler
+
+	%define @left r10
+	%define @right r11
+	%define @pivotValue r12
+	%define @prevLeft r13
+
+_QSort:
+
+	mov @left,qword[rsp+16]												; get the Left Index
+	mov @right,qword[rsp+8]												; get the Right Index
+
+;	if  left >= right
+	cmp @left,@right													; Exit when Left is not < Right
+		jnl .Exit
+
+;	pivotValue = RandomNo[ [ left + right / 2 ] ]						; CALCULATE pivotValue
+	mov rax,@left														; grab the left			
+	add rax,@right														; add the right
+	mov r15,2															; and divide by 2
+	cqo
+	div r15
+	imul rax,8															; Multiply by the quadword size		
+	mov @pivotValue,qword[r_Table+rax]									; and copy it to pivotValue
+	
+;	prevLeftIdx = [moveThem]
+	push @left															; preserve the Left index
+	push @right															; preserve the Right index
+	call _moveThem														; do the moves
+	pop @right															; restore the Right index
+	pop @left															; restore the Left index
+	mov @prevLeft,rax													; and save the returned value
+	
+;	-------------------------------------
+;	Recursive Call - (left, prevLeft - 1)
+;	-------------------------------------
+	push @left															; preserve the Left index
+	push @right															; preserve the Right index
+	push @left															; push the st parameter (left)
+	mov rax,@prevLeft													; get the previous left
+	dec rax																; minus 1
+	push rax															; push the 2nd parameter
+	Call _QSort															; Call yourself
+	pop rax																; junk this
+	pop rax																; junk this
+	pop @right															; restore the Right Index
+	pop @left															; restore the Left Index
+	
+;	----------------------------------
+;	Recursive Call - (prevLeft, right)	
+;	----------------------------------
+	push @left															; preserve the Left index
+	push @right															; preserve the Right index
+	push @prevLeft														; push the 1st parameter (previous Left)
+	push @right															; push the 2nd parameter (right)
+	Call _QSort															; Call yourself
+	pop rax																; junk this
+	pop rax																; junk this
+	pop @right															; restore the Right Index
+	pop @left															; restore the Left Index
+	
+	.Exit:
+_QSort_EXIT:
+	ret
+
+;-----------------------------------------------------------------------
+;		_moveThem
+;-----------------------------------------------------------------------
+_moveThem:
+
+;	repeat.while (left <= right)
+	cmp @left,@right													; Compare Left to Right Index
+		jg .Exit														; exit if Left > Right
+
+;	repeat.while (RandomNo[left] < pivotValue)
+;		left 	= left + 1
+;	end.repeat
+	.start1:
+		mov rax,@left													; grab the Left index
+		imul rax,8														; and multiply by 8
+		mov rbx,rax														; Store for the swap below
+		cmp qword[r_Table+rax],@pivotValue								; compare the table value to the pivotValue 
+			jnl .cont1													; Exit if not < than
+			inc @left													; next Left slot
+			jmp .start1													; and loop
+	.cont1:
+
+;	repeat.while (RandomNo[right]> pivotValue)
+;		right 	= right - 1
+;	end.repeat
+	.start2:
+		mov rax,@right													; grab the Right index
+		imul rax,8														; and multiply by 8
+		cmp qword[r_Table+rax],@pivotValue								; compare the table value to the pivotPoint
+			jng .cont2													; Exit if not > than
+			dec @right													; previpus Right slot 
+			jmp .start2													; and loop
+	.cont2:
+
+;	if left <= right - SWAP left and right data
+	cmp @left,@right													; Compare Left to Right Index
+		jg _moveThem													; jump to start if Left is > Right
+			
+		mov r14,qword[r_Table+rbx]										; LEFT value to r14
+		mov r15,qword[r_Table+rax]										; RIGHT value to r15								
+		mov qword[r_Table+rax],r14										; r14 to RIGHT value
+		mov qword[r_Table+rbx],r15										; r15 to LEFT value	
+		
+		inc @left														; Next Left
+		dec @right														; Previous Right
+		
+		jmp _moveThem													; Back to the Start
+		
+	.Exit:	
+		mov rax,@left													; Return the Left value
+
+_moveThem_EXIT:
+	ret
+	
+end.assembler
+
+

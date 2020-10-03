@@ -1,0 +1,1332 @@
+	%assign debug 0	
+	%include '../include/LMACROS.CPY'
+	%include '../include/IMACROS.CPY'
+	%include '../include/CONSTANTS.INC'
+	%line 5 NUMBERS.LIB
+
+;	=================================================
+;	GLOBAL ROUTINES/VARIABLES defined in this library
+;	=================================================
+;	Routines
+;	--------
+	global _NUMBERS
+	global _FROMALPHA
+	global _TOALPHA
+	global _COMPARE_NO
+
+;	===============================================
+;	EXTERNAL ROUTINES/VARIABLES used by the library
+;	===============================================
+;	Routines
+;	--------
+	extern _VALIDATE_SRC			; COMMON
+	extern _SYSERROR				; COMMON
+	
+;	------
+;	Fields
+;	------	
+	extern err01					; COMMON
+	extern err02					; COMMON
+	extern err03					; COMMON
+	extern err04					; COMMON
+	extern err05					; COMMON
+	extern err06					; COMMON
+	extern err12					; COMMON		
+	extern w_One					; COMMON
+
+;=======================================================================
+;			Call parameters for _NUMBERS
+;=======================================================================
+;-----------------------------------------------------------------------
+;				   	R8			R9	r12		 
+;			NUMBERS	add,		#1,	#2	<--
+;			NUMBERS subtract,	#1,	#2	<--
+;			NUMBERS multiply,	#1,	#2	<--
+;			NUMBERS divide,		#1,	#2	<--
+;			NUMBERS equals,		#1, #2	<--
+;		Alpha Conversions
+;			NUMBERS equals,		#1, xOperand  <--
+;			NUMBERS equals,		#1, {xOperand,Start,Bytes}  <--
+;			NUMBERS equals,		#1, xLiteral  <--
+;			NUMBERS equals,		#1, {xLiteral,Start,Bytes}  <--
+;
+;			+-------------------+
+;			|  				    |
+;			+-------------------+ r15 +-------------------+	
+;			| r_xSrcBytes	 	| 	  | r_nSrcPicLength	  |
+;			+-------------------+ r14 +-------------------+	
+;			| r_xSrcStart		|	  |	r_nSrcPicAddress  |
+;			+-------------------+ r13 +-------------------+	 	
+;			|  r_nSrcAddress    |	   		
+;			+-------------------+ r12 +-------------------+
+;			|  				    |	  |  				  |
+;			+-------------------+ r11 +-------------------+
+;			| 			        |	  |  				  |
+;			+-------------------+ r10 +-------------------+
+;			|  r_nDstAddress    |
+;			+-------------------+ r9  
+;			|  r_Function       |x 8
+;			+-------------------+ r8 
+;-----------------------------------------------------------------------
+;
+;	HOW SCALING WORKS for fixed point numbers
+;	-----------------------------------------
+;
+;	_VALIDATE will have calculated the scalling value
+;		Doing it this way (rather than just holding the no Of decimal places)
+;		because you cannot tell the difference between 
+;			0=Not yet calculated
+;			 =No Decimal Places
+;		
+;		.9		=	10
+;		.99		=	100
+;		.999	=	1000
+;
+;	Examples
+;	--------
+;		No1		=	123.456
+;		No2		=	34.56
+;		$add No1,No2
+;		Divide No1 ScaleFactor by No2 ScaleFactor
+;		Multiply No2 by result of scalling
+;
+;		No1		=	34.56
+;		No2		=	123.456
+;		$add No1,No2
+;		Divide No2 ScaleFactor by No1 ScaleFactor
+;		Perform rounding of No2
+;=======================================================================
+
+
+
+;=======================================================================
+;			DATA SEGMENT
+;=======================================================================
+;           Initialised - by program
+;-----------------------------------------------------------------------
+			section .data
+
+	INSERTNUMBER Result,0
+	INSERTNUMBER Operand,0
+			
+;-----------------------------------------------------------------------				
+;           UN Initialised - zero filled when loaded
+;-----------------------------------------------------------------------													  
+			section .bss
+
+;=======================================================================				
+;           CONSTANTS
+;=======================================================================	
+
+;=======================================================================
+;		MACROS for dealing with numbers
+;		Mainly in NUMBERS but also in DECISIONS
+;=======================================================================
+
+;		$copyNumber Src,Dst,PicOverrideAddress,PicOverrideLength
+%macro $copyNumber 2-4
+
+			mov  byte[%2-9],'9'											; Set it as numeric
+			push qword[%1]												; Get the Number
+			pop  qword[%2]
+			
+		%if %0 > 2	
+			mov  @NumScale(%2),0										; Zero the scale
+			mov  @fieldLength(%2),%4									; Get the Number (Picture Override) length
+			mov  rax,%3													; Get the override picture start
+		%else
+			push @NumScale(%1)											; Get the Scale value
+			pop  @NumScale(%2)
+			push @fieldLength(%1)										; Get the Number (Picture) length
+			pop  @fieldLength(%2)
+			mov  rax,%1													; Get src picture start
+			add  rax,8
+		%endif
+		
+			mov  rbx,%2													; Get Dst picture start
+			add  rbx,8
+			cld															; Remember this you dick !!!!
+			$copyBytes rax,rbx,@fieldLength(%2)							; Copy the picture
+
+			$getScale %2												; Grab Destination Scale
+
+		%if %0 > 2
+			$Align %1,%2												; and Align
+		%endif
+					
+%endmacro
+
+%macro $getScale 1-3
+
+	;	Defined in _GETSCALE
+	;		s_NoAddress		dq 0
+	;		s_PicAddress	dq 0
+	;		s_PicLength		dq 0
+		
+			mov  qword[s_NoAddress],%1									; Get the parameters
+	%If %0 = 1															; If No override
+			mov  qword[s_PicAddress],%1									;	Get the Destination Picture
+			add  qword[s_PicAddress],8
+			mov  rax,%1													;	Get the Destination Length
+			sub  rax,8
+			push qword[rax]
+			pop  qword[s_PicLength]
+	%Else
+			mov  qword[s_PicAddress],%2
+			mov  qword[s_PicLength],%3
+	%EndIf
+ 
+	Call _GETSCALE
+
+%endmacro
+
+%macro $Align 2
+
+	;	Defined in _ALIGN
+	;		a_No1Address	dq 0 - Result
+	;		a_No2Address	dq 0 - Operand
+
+			mov qword[a_No1Address],%1
+			mov qword[a_No2Address],%2
+
+			Call _ALIGN
+			
+%endmacro
+
+%macro $Round 2
+
+	;	Defined in _ROUND
+	;		O_No1Address	dq 0
+	;		O_No2Address	dq 0
+
+			mov qword[O_SrcAddress],%1
+			mov qword[O_DstAddress],%2
+
+			Call _ROUND
+			
+%endmacro
+
+;=======================================================================
+;			CODE SEGMENT
+;=======================================================================				
+			section .text
+				
+_NUMBERS:	
+
+		;	------------------------------------------------------------
+		;	Special code here to copy a number to an alpha field
+		;	This is directed here from the WORDS module cuz it sits
+		;	better in the languageone syntax. Unwealding to put it in
+		;	WORDS cuz all the supporting routines are in NUMBERS
+	.00:	cmp r_Function,0													; WORDS will call this with zero in r8
+				jne .01													; If not just continue
+	;		cmp @fieldIndicator(r_SrcAddress),'9'								; This can only happen for a numeric source
+	;			jne .01													; If not just continue
+	;		$toAlpha r_SrcAddress,r_DstAddress,r15							; make the call to 'toAlpha'
+
+			Call _TOALPHA
+			jmp _NUMBERS_EXIT											; and exit
+		;	------------------------------------------------------------	
+			
+	.01:	cmp @fieldIndicator(r_nDstAddress),'9'									; If NON numeric destination
+				je .02													;	then error
+ 	
+				xor rax,rax
+				mov r14,err03
+				Call _SYSERROR	
+
+	.02:	cmp @fieldIndicator(r_nSrcAddress), 'X'									; If alpha source
+				je .04													;	then jump over following check
+				
+	.03:	cmp byte[r_nDstAddress+8],' '										; If destination has no picture
+				jne .06													;	then error
+	
+				xor rax,rax
+				mov r14,err06
+				Call _SYSERROR	
+
+	.04:	cmp r8,$equals												; WORDS can only be converted to NUMBERS
+				je .05													; with the $equals function
+ 
+				xor rax,rax
+				mov r14,err04
+				Call _SYSERROR	
+
+		;	------------------------------------------------------------				
+	.05:	xor rax,rax
+			Call _FROMALPHA
+			jmp _NUMBERS_EXIT
+		;	------------------------------------------------------------
+						
+	.06:
+	
+;-----------------------------------------------------------------------				
+;			INITIAL
+;-----------------------------------------------------------------------	
+	.init:	Call _INITIAL
+;-----------------------------------------------------------------------				
+;			EQUALS
+;-----------------------------------------------------------------------	
+	._equal:cmp r8,$equals
+				jne ._add
+			
+			Call __EQUALS
+			jmp .Exit
+;-----------------------------------------------------------------------				
+;			ADD           
+;-----------------------------------------------------------------------	
+	._add:	cmp r8,$add
+				jne ._sub
+				
+			Call __ADD
+			jmp .Exit
+;-----------------------------------------------------------------------
+; 			SUBTRACT          
+;-----------------------------------------------------------------------	
+	._sub:	cmp r8,$subtract
+				jne ._mul
+				
+			Call __SUBTRACT
+			jmp .Exit
+;-----------------------------------------------------------------------				
+; 			MULTIPLY          
+;-----------------------------------------------------------------------	
+	._mul:	cmp r8,$multiply
+				jne ._div
+				
+			Call __MULTIPLY
+			jmp .Exit
+;-----------------------------------------------------------------------				
+;			DIVIDE           
+;-----------------------------------------------------------------------	
+	._div:	Call __DIVIDE
+
+	.Exit:	$Round Result,r_nDstAddress
+
+_NUMBERS_EXIT:	
+			ret
+
+;-----------------------------------------------------------------------				
+;			Initial         
+;-----------------------------------------------------------------------
+_INITIAL:
+
+;	Because the Scaling Factor cannot be setup at time of assembly, all
+;	Numeric Functions will first test to see if the scaling factor has
+;	been previously setup and if not, will set it up. 
+
+;	In the case of literals, because the picture will be a separate field
+;	from the number, r13 and r14 will have been	passed by the NUMBERS macro.
+;	as would a normal override.
+;   R13 will contain the picture address and R14 will contain the picture
+;	length. The internal field OPERAND will be scaled directly rather
+;	than scaling r12 and copying it to OPERAND
+
+		;	Setup RESULT
+		;	============
+			$getScale r_nDstAddress
+			$copyNumber r_nDstAddress,Result
+
+		;	Setup OPERAND
+		;	=============
+			cmp r_nSrcPicAddress,0										; If NOT literal
+				je .Field												;	then go to Field
+
+		;	Setup Operand - from a LITERAL
+		;	------------------------------	
+			$getScale r_nSrcAddress,r_nSrcPicAddress,r_nSrcPicLength
+			$copyNumber r_nSrcAddress,Operand,r_nSrcPicAddress,r_nSrcPicLength
+			jmp .Align													; goto Align
+
+		;	Setup Operand - FIELD
+		;	---------------------		
+	.Field:	$getScale r_nSrcAddress
+			$copyNumber r_nSrcAddress,Operand
+			
+		;	And Align
+	.Align:	nop
+			nop
+			$Align Result,Operand										; Align Nos			
+
+_INITIAL_EXIT:
+			ret
+
+;-----------------------------------------------------------------------				
+;			SCALE
+;			Because the Scaling Factor cannot be setup at time of assembly, all
+;			Numeric Functions will first test to see if the scaling factor has
+;			been previously setup and if not, will set it up.
+;			In addition - the _FROMEDITED and _TOEDITED will need to do
+;			some scaling and so will also call this
+;			 
+;-----------------------------------------------------------------------
+
+_GETSCALE:
+
+	section .data
+		s_NoAddress		dq 0		
+		s_PicAddress	dq 0
+		s_PicLength		dq 0
+		
+	section .text	
+
+			mov r15,qword[s_NoAddress]									; Use R15 for Number
+			
+			mov rax,qword[s_PicAddress]
+			mov rbx,qword[s_PicLength]
+
+		;	--------------------------
+		;	Scalling for Decimal Point
+		;	--------------------------
+	.1If:	cmp @NumScale(r15),0xffffffffffffffff						; If a Numeric Literal
+				jne .1Else												; 	then zero it
+				mov @NumScale(r15),0	
+	.1Else:	cmp @NumScale(r15),0										; If scaling factor exists
+				jne _GETSCALE_EXIT										; 	then exit													; Else
+			mov @NumScale(r15),1										; 	setup default (1)
+	.1EndIf:
+	
+		;	------------------
+		;	Get End Of Picture
+		;	------------------
+			mov RSI,qword[s_PicAddress]									; Get Picture address
+			add RSI,qword[s_PicLength]									; plus length
+			mov RCX,qword[s_PicLength]									; Set counter to picture length
+								
+		;	Search for decimal place
+			;LOOP=======================================================
+	.loop1:	dec RSI														; Decriment RSI	
+			cmp byte[RSI],'-'											; If is a sign then jump back (rcx is unchanged)
+				je .loop1
+			cmp byte[RSI],','											; If is a comma then jump back (rcx is unchanged)
+				je .loop1
+				
+			cmp byte[RSI],'.'											; exit loop if decimal place
+				je .Eloop1
+			loopne .loop1												; rcx IS changed
+	.Eloop1:;END LOOP===================================================
+
+		;	No decimal places found
+			cmp RCX,qword[s_PicLength]									; 1234. has been found
+				je _GETSCALE_EXIT										;	then exit
+			cmp RCX,0													; 1234 has been found
+				je _GETSCALE_EXIT										;	then exit
+
+		;	setup default (10) for 1 decimal place
+			mov @NumScale(r15),10										
+			
+		;	Calculate loop counter
+			mov rax,qword[s_PicLength]									
+			sub rax,rcx
+			sub rax,1
+			mov rcx,rax
+				
+		;	Only 1 decimal place		
+			cmp rcx,0
+				je _GETSCALE_EXIT
+							
+		;	so now	rcx = 1 (2 decimal places) is 10*10 
+		;			rcx = 2 (3 decimal places) is 10*10*10
+		;			rcx = 3 (4 decimal places) is 10*10*10*10 
+			mov rax,10													; setup for muliplies
+			mov rbx,10													; setup for multiplies	
+	.loop2:	mul rbx														; Multiply
+			loop .loop2													; and loop
+
+		;	Then scale
+	.scale:	mov @NumScale(r15),rax										; store the scalling factor	
+						
+_GETSCALE_EXIT:
+			ret
+
+;-----------------------------------------------------------------------				
+;			ALIGN Numbers           
+;-----------------------------------------------------------------------
+_ALIGN:
+
+;	[MULTIPLICATION]
+;	 Values will be left the same while the RESULT scale
+;	 must be set to the product R9 and r12 scales.
+;	 1.1  * 1.1  = 1.21
+;	 1.23 * 1.23 = 1.5129
+
+;	[EQUALS/ADDITION/SUBTRACTION] 
+;	 1.23  + 2.345	: Result must be aligned --> 1.230 + 2.345 
+;	 1.234 + 2.34	: Operand must be aligned --> 1.234 + 2.340
+
+;	[DIVISION] will run thru this routine cuz it does the aligning on 
+;			   RESULT/OPERAND [Internal]
+;	 Values will be left the same while the RESULT scale
+;	 will be set by the DIVIDE routine as it is unpredictable
+;	 22 / 7 = 3.142857....;	 
+
+	section .data
+		a_No1Address	dq 0		
+		a_No2Address	dq 0
+		a_Select		dq 0
+		
+	section .text	
+			push r14													; Donot trash this
+
+			mov r14,qword[a_No1Address]
+			mov r15,qword[a_No2Address]
+
+	.1If:	cmp r8,$multiply
+				jne .ASDE
+
+			mov rax,@NumScale(r14)										; Get the 1st number scales
+			mul @NumScale(r15)											; mul by the 2nd
+			mov @NumScale(r14),rax										; then store the result
+			jmp _ALIGN_EXIT			
+	.1EndIf:
+			
+	.ASDE:;	Add/Subtract/Divide/Equals
+		; 	Get the result (biggest) no scale
+			mov rax,@NumScale(r14)										; Compare the number scales
+	.2If:	cmp rax,@NumScale(r15)
+				je .2EndIf												; Exit if equal
+				jb .2Else												; Jump if operand is bigger
+	
+		;	1st No (Result field) > 2nd													
+			cqo
+			idiv @NumScale(r15)											; Divide by the smallest Scale value
+			mov rbx,rax													; and save the result
+
+			mov rax,qword[r15]											; Grab the smallest value
+			xor rdx,rdx													; and multiply by the previous result to align
+			mul rbx														
+			mov qword[r15],rax											; and save it
+			
+			push @NumScale(r14)	; So equalise number scale
+			pop  @NumScale(r15) ; So Equalise number scale
+			mov qword[a_Select],1
+			jmp .2EndIf
+	.2Else:		
+		;	2nd No > 1st (Result field)
+			mov rax,@NumScale(r15)										; Grab the largets Num Scale
+			xor rdx,rdx													; Clear rdx
+			idiv @NumScale(r14)											; Divide by the smallest Scale value
+			mov rbx,rax													; and save the result
+
+			mov rax,qword[r14]											; Grab the smallest value
+			xor rdx,rdx													; and multiply by the previous result to align
+			mul rbx														
+			mov qword[r14],rax											; and save it
+			push @NumScale(r15)	; So equalise number scale
+			pop  @NumScale(r14) ; So Equalise number scale
+			mov qword[a_Select],2												
+	.2EndIf:
+
+_ALIGN_EXIT:pop r14
+			ret
+			
+;-----------------------------------------------------------------------				
+;			ROUND           
+;-----------------------------------------------------------------------
+_ROUND:
+
+	section .data
+			O_SrcAddress	dq 0		
+			O_DstAddress	dq 0
+		
+	section .text
+
+			mov r14,qword[O_SrcAddress]									; Grab the source address
+			mov r15,qword[O_DstAddress]									; Grab the destination address
+		
+		;	Rounding for Multiplication is specialised and done
+		;	in __MULTIPLY	
+	;		cmp r8,$multiply
+	;			je _ROUND_EXIT
+
+;	Rounding is done when the internal Source field is larger than the
+;	destination field.
+;	Rounding of.5 is always UP
+;
+;		123.123456 rounded to 4 decimal places
+;		add     50 and truncate
+;
+
+		;	Do we need to round
+			mov rax,@NumScale(r14)										; Do we need to round
+	.1If:	cmp rax,@NumScale(r15)
+				ja .1EndIf
+				push qword[r14]											; If not then just move
+				pop  qword[r15] 										; to destination
+				jna _ROUND_EXIT											; and exit
+	.1EndIf:
+				
+		;	Add/Subtract/Divide/Equals
+		;	--------------------------
+		; 	All these have adjusted Result to the correct scale so...
+		;	  1.23
+		;   + 1.234
+		;	  =====
+		;	  1.464			so we take the size of the RESULT, 1000 and divide
+		;		 50			by the size of the passed result (r9), 100 giving
+		;	  1.51			10. .All will then multiply this by 5 giving 50
+		;					and add that onto result before truncating
+		
+	.ASDE:	mov rax,@NumScale(r14)										; Grab Result scale					
+		;	xor rdx,rdx													
+			cqo															; Prepare to divide (sign extend)
+			idiv @NumScale(r15)											; Divide result scale by r9 scale	
+			push rax													; Store for later
+			
+			mov rbx,10													; Divide by 10 so we are applying											
+			cqo															;   the 5 to the right position
+			idiv rbx													; Do the divide									
+			mov rbx,5													; Then multiply by 5
+			mul rbx														;
+			mov rbx,rax													; Store the result			
+			mov rax,qword[r14]											; Grab the result value
+			
+		;	Positive or Negative
+	.2If:	cmp rax,0
+				jl .2Else
+			add rax,rbx													; Add the .5
+			jmp .2EndIf
+	.2Else:	
+			sub rax,rbx													; Subtract the .5
+	.2EndIf:
+			
+		;	And Scale the Result
+			pop rbx														; Grab the correct scaling value
+			cqo															; Must sign extend rax into rdx
+			idiv rbx													; and convert result back to destination
+			mov qword[r15],rax											; and store it
+
+_ROUND_EXIT:
+			ret
+
+;-----------------------------------------------------------------------				
+;			EQUALS          
+;-----------------------------------------------------------------------
+__EQUALS:
+			mov rax,qword[Operand]
+			mov qword[Result],rax
+			
+__EQUALS_EXIT:
+			ret
+			
+;-----------------------------------------------------------------------				
+;			ADD           
+;-----------------------------------------------------------------------
+__ADD:
+	
+			mov rax,qword[Result]
+			add rax,qword[Operand]
+				jo .err
+				
+			mov qword[Result],rax		
+			jmp __ADD_EXIT
+			
+	.err:	xor rax,rax
+			mov r14,err02
+			Call _SYSERROR
+
+__ADD_EXIT:
+			ret
+
+;-----------------------------------------------------------------------				
+;			SUBTRACT           
+;-----------------------------------------------------------------------
+__SUBTRACT:
+
+			mov rax,qword[Result]
+			sub rax,qword[Operand]
+				jo .err
+				
+			mov qword[Result],rax			
+			jmp __SUBTRACT_EXIT
+			
+	.err:	xor rax,rax
+			mov r14,err02
+			Call _SYSERROR
+
+__SUBTRACT_EXIT:
+			ret
+			
+;-----------------------------------------------------------------------				
+;			MULTIPLY           
+;-----------------------------------------------------------------------
+__MULTIPLY:
+		;	The Multiply routine works on +ve values
+		;	So they are converted 1st and restored at the end 
+		;	Thus to detect an unwanted sign. ie.a +ve no that is greater
+		;	than the +ve/-ve divide
+
+		;	Get resultant sign and make sure Result/Operand are +ve
+			mov rax,0x8000000000000000									; Set up the highest order bit
+			mov r14,qword[Result]										; Grab the Result field
+			and r14,rax													; If the highest order stays on
+	.1If:	cmp r14,0													; then it is a negative number
+				je .1EndIf
+			neg qword[Result]
+	.1EndIf:
+			
+			mov r15,qword[Operand]										; Grab the Operand field
+			and r15,rax													; If the highest order stays on
+	.2If:	cmp r15,0													; then the number is negative
+				je .2EndIf
+			neg qword[Operand]
+	.2EndIf:		
+			xor r15,r14													; To discover if the answer is +ve or -ve
+		;	------------------------------------------------------------
+		;	MULTIPLY		
+			mov rax,qword[Result]										; Grab the Result field
+			mul qword[Operand]											; and multiply it by the Operand
+		;	and jump if carry into rdx
+			cmp rdx,0													; check rdx for carry
+				ja .err
+		;	------------------------------------------------------------			
+		;	Setup the sign and test size
+	.CheckSign:	
+	.3If:	cmp r15,0													; Test the sign flag 
+				jl .3Else												; and jump in -ve
+				cmp rax,0												; Test the Result
+					jl .err												; and error if -ve (indicates an overflow)
+				jmp .3EndIf												; OK - continue
+	.3Else:																;	ELSE
+			neg rax														; negate the result
+			cmp rax,0													; Test the result
+				jg .err													; and error if +ve (indicates an overflow)
+	.3EndIf:
+			mov qword[Result],rax										; Move into Result	
+			jmp __MULTIPLY_EXIT
+				
+		;	Display error and halt	
+	.err:	xor rax,rax
+			mov r14,err02
+			Call _SYSERROR
+
+__MULTIPLY_EXIT:
+			ret
+			
+;-----------------------------------------------------------------------				
+;			DIVIDE           
+;-----------------------------------------------------------------------
+__DIVIDE:	
+		;	This is standard long division. If you forget this code
+		;	just grab a pencil/paper and do a long division
+
+			mov rax,@NumScale(Result)									; Grab the Scale						    
+			mov r15,10													; We want a result that is
+			imul r15													; one more decimal place
+			mov @NumScale(Result),rax									; than the dividend
+
+			mov rax,qword[Result]										; Grab the dividend
+			imul r15													; and adjust for rescale
+	;		cmp rdx,0
+	;			ja .err
+				jo .err
+	
+		;	Scale to Decimal places
+			$ScaleToPlaces @NumScale(Result)
+			
+		;	Setup for divide	
+		;	mov rax,qword[Result]										; Grab the dividend
+			mov qword[Result],0											; and prepare for the divide			
+	.loop:	cqo
+			idiv qword[Operand]											; and divide
+			
+			dec rcx														; No of decimal places less 1
+			cmp rcx,0													; If zero then we are done
+				jl __DIVIDE_EXIT
+				
+			mov r14,rdx													; Store remainder
+			
+		;	Mutiply the previous result by ten to push it to the left
+			push rax													; Store the quotient						
+			mov rax,qword[Result]										; Multiply the current result by 10
+			mul r15
+			mov qword[Result],rax
+		;	Then add the current result
+			pop rax														
+			add qword[Result],rax										; and add to it	
+
+		;	Then grab the remainder and add a zero (Mult by 10)
+			mov rax,r14													; Grab the remainder
+			mul r15														; Multiply by 10
+			jmp .loop													; and loop 
+
+		;	Display error and halt	
+	.err:	xor rax,rax
+			mov r14,err02
+			Call _SYSERROR
+												
+__DIVIDE_EXIT:			
+			ret	
+
+
+
+;-----------------------------------------------------------------------				
+;           FROMALPHA - convert ALPHA to binary
+;			This is an internal call (IMACROS.ASM). It is called when 
+;			you:-
+;			1] Accept a numeric field
+;			2] Read a numeric field from a file
+;
+;-----------------------------------------------------------------------
+;			+-------------------+
+;			|  				    |
+;			+-------------------+ r15 +-------------------+	
+;			|  r_nSrcBytes      | 	  |	 r_nSrcLength 	  |
+;			+-------------------+ r14 +-------------------+	
+;			|  r_nSrcStart		|	  |	 r_nSrcStart	  |
+;			+-------------------+ r13 +-------------------+	 	
+;			|  r_nSrcAddress    |	   		
+;			+-------------------+ r12 +-------------------+
+;			|  				    |	  |  				  |
+;			+-------------------+ r11 +-------------------+
+;			|  			        |	  | 				  |
+;			+-------------------+ r10 +-------------------+
+;			|  r_nDstAddress    |
+;			+-------------------+ r9  
+;			|  r_Function       |
+;			+-------------------+ r8 
+;			$fromAlpha w_Number(r9),w_Alpha(r12)
+;				R9 may or may not have a picture
+;				NUMBERS $equals,#1, w_AlphaField/'123'		<--
+;				NUMBERS $equals,#1,{w_AlphaField/'123',1,5}	<--
+;-----------------------------------------------------------------------
+
+_FROMALPHA:
+
+	section .data
+		fa_signed			db 0
+		fa_CharCount		dq 0
+		fa_dpFound			dq 0
+		fa_dpCount			dq 0
+		
+	section .text	
+			mov byte[fa_signed],' '										; Initialisation
+			mov qword[fa_CharCount],0
+			mov qword[fa_dpFound],c_FALSE
+			mov qword[fa_dpCount],0			
+				
+	.setup:	mov RSI,r_nSrcAddress										; GET THE ADDRESS OF THE SOURCE (ASCII) [End Of]	
+			add RSI,r_nSrcStart											; add the start position		
+			add RSI,r_nSrcLength										; add the length of the alpha
+			sub RSI,2													;	less 2	
+							
+			mov rcx,r_nSrcLength										; add set the counter
+			mov qword[r_nDstAddress],0									; zero destination
+			mov r15,1													; Set base number
+
+	.loop:	;LOOP========================================================
+					
+		;	Sign ---------------
+	.1If:	cmp byte[RSI], '-'											; Have we found a sign			
+				jne .1EndIf												;	No - then continue
+			mov al,byte[RSI]											; save sign
+			mov byte[fa_signed],al
+			jmp .next													; and jump to next character
+	.1EndIf:
+
+		;	Decimal Place-------
+	.2If:	cmp byte[RSI], '.'											; Have we found a decimal place
+				jne .2EndIf												;	No - then continue
+			mov qword[fa_dpFound],c_TRUE								;	Set the Found Decimal Place to True 
+			jmp .next													;	and jump to next character
+	.2EndIf:
+
+		;	Comma-------
+	.3If:	cmp byte[RSI], ','											; Have we found a comma
+				je .next												;	We are going to ignore comma's from input
+	.3EndIf:															;	They can be formated on output   
+		
+		;	Numeric ------------
+			cmp byte[RSI],0x30											; test for number
+				jb .next												;	No - jump to next character
+			cmp byte[RSI],0x39											; test for number
+				ja .next												;	No - jump to next character
+			
+		;	Decimal Place count ----
+	.4If:	cmp qword[fa_dpFound],c_TRUE								; If a sign has NOT already been found
+				je .4EndIf												;	jump
+			inc qword[fa_dpCount]										;	count the decimal places
+	.4EndIf:
+			
+		;	And process	--------	
+			xor rax,rax													; zero rax
+			mov  al,byte[RSI]											; Get a digit
+			xor rax,0x30												; convert from ascii
+			mul r15														; multiply by the base
+				jo .overflow											;	jump if overflow
+			add qword[r_nDstAddress],rax								; add to the destination
+			
+			mov	rax,r15													; multiply the base by 10
+			imul rax,10
+			mov r15,rax
+			
+	.next:	dec RSI
+			dec RDI
+			loop .loop ;END LOOP====================================================
+
+		;	If we have not found a decimal place then dp_Count must be set to zero
+	.5If:	cmp qword[fa_dpFound],c_TRUE
+				je .5EndIf
+			mov qword[fa_dpCount],0
+	.5EndIf:
+	
+		;	Setup the picture if required
+	.6If:	cmp byte[r_nDstAddress+8],' '	
+				jne .6EndIf
+			Call _buildPICTURE
+	.6EndIf:	
+							
+		;	THIS BELOW IS DIFFERENT ENOUGH (ie. The Destination Scale if Fixed) SO THAT SIMPLY
+		;	CALLING ALIGN WILL NOT WORK. ALIGN WORKS ON TWO FIELDS (Result,Operand) AND MAY 
+		;	MODIFY ONE OR THE OTHER BEFORE A CALCULATION IS PERFORMED. HERE DESTINATION IS 
+		;	FIXED SO WE DETERMINE IF WE ARE SCALING THE INPUT TO SUIT THE DESTINATION OR 
+		;	ROUNDING THE INPUT TO FIT THE DESTINATION.
+		
+		;	Resize the input to match the destination scale
+		;		entered 123		(1)		Destination PIC=999		(1)		- Do Nothing
+		;		entered 1.23	(100)	Destination PIC=999		(1)		- round			
+		;		entered 12.345	(1000)	Destination PIC=99.99	(100)	- round 
+		;		entered 123		(1)		Destination PIC=9.9		(10)	- mul by (dst scale / entered scale)			
+		;		entered 99.99	(100)	Destination PIC=99.999	(1000)	- mul by (dst scale / entered scale)	
+
+			$getScale r_nDstAddress										; DESTINATION scale	
+			push qword[r_nDstAddress]									; Use Operand temporarily
+			pop  qword[Operand]											; to complete ALIGN/ROUND
+			$PlacesToScale Operand,qword[fa_dpCount]					; SOURCE Scale
+
+			mov rax,qword[Operand-17]									; grab the entered scale
+			cmp rax,@NumScale(r_nDstAddress)							; Entered > Destination
+				je .signIf												;	Equal then check sign
+				ja .round												;	then round
+		
+			mov rax,@NumScale(r_nDstAddress)							; grab destination scale
+		;	xor rdx,rdx													; Clear rdx			
+			cqo
+			idiv qword[Operand-17]										; divide by entered scale
+			mov rbx,rax  												; save it in rbx
+			mov rax,qword[r_nDstAddress]								; grab the number
+			mul rbx														; Multiply it
+			mov qword[r_nDstAddress],rax								; save it
+			jmp .signIf													; and exit
+	
+	.round:;Greater than
+			mov qword[O_SrcAddress],Operand								; Grab the "Rounding" Address
+			mov qword[O_DstAddress],r_nDstAddress						; Grab the "Rounded" Address
+			Call _ROUND													; Result is in RAX
+			mov qword[r_nDstAddress],rax								; save it
+			
+		;	Positive/Negative or Overflow 		
+	.signIf:cmp byte[fa_signed],'-'
+				jne .signElse
+			neg qword[r_nDstAddress]
+			cmp qword[r_nDstAddress],0
+				jg .error
+			jmp _FROMALPHA_EXIT
+	.signElse:
+			cmp qword[r_nDstAddress],0	
+				jl .error
+			jmp _FROMALPHA_EXIT
+	.signEnd:
+
+		;	ERRORS
+	.error:	xor rax,rax
+			mov r14,err05
+			Call _SYSERROR					
+	
+	.overflow:
+			xor rax,rax
+			mov r14,err02
+			Call _SYSERROR
+				
+_FROMALPHA_EXIT:						
+			ret
+
+;-----------------------------------------------------------------------	
+;			_FROMALPHA Helper. Build Picture from input
+;		***	_FROMALPHA builds the input numbner right to left
+;			Unfortuneatly building the picture is best done left to right
+;			I originally had the code imbedded in _FROMALPHA but it was
+;			problematic. So, sadly we need to duplicate the loop running
+;			left to right.	
+;-----------------------------------------------------------------------	
+_buildPICTURE:
+
+		;	Source/Dstination
+			LEA RSI,[r_nSrcAddress+r_nSrcStart-1]						; GET THE ADDRESS OF THE SOURCE (ASCII)		
+			LEA RDI,[r_nDstAddress+8]									; GET THE ADDRESS OF THE DESTINATION PICTURE		
+											
+			mov rcx,r_nSrcLength										; and set the counter
+			
+			mov qword[fa_dpFound],c_FALSE								; set the Decimal place flag
+			mov qword[fa_CharCount],0									; zero character count					
+		
+		;	Sign
+	.loop:	cmp byte[RSI],'-'											; _FROMALPHA loop will already have set the sign flag
+				je .next		
+			
+		;	Decimal Place	
+	.1If:	cmp byte[RSI],'.'											; Decimal Place
+				jne .1EndIf	
+			cmp qword[fa_dpFound],c_TRUE								; If a sign has NOT already been found
+				je .next
+			mov qword[fa_dpFound],c_TRUE
+			mov byte[RDI],'.'											; move in the decimal place 
+			inc RDI
+			inc qword[fa_CharCount]										; Counting total valid characters	
+			jmp .next													; check out the next byte
+	.1EndIf:
+			
+		;	Numeric ------------
+			cmp byte[RSI],0x30											; test for number
+				jb .next												;	No - then loop
+			cmp byte[RSI],0x39											; test for number
+				ja .next												;	No - then loop
+
+			mov byte[RDI],'9'											; Move in a nine
+			inc RDI
+			inc qword[fa_CharCount]										; Counting total valid characters			
+											
+	.next:	inc RSI	
+			loop .loop
+
+		;	Finalise
+	.2If:	cmp byte[fa_signed],'-'
+				jne .2EndIf
+			mov byte[RDI],'-'
+			inc qword[fa_CharCount]
+	.2EndIf:
+
+		;	V2.02 - If the source has no valid numerals a picture will not have been built
+		;	Default it to '9'
+	.3If:	cmp qword[fa_CharCount],0
+				ja .3EndIf
+			LEA RDI,[r_nDstAddress+8]									; Destination Picture		
+			mov byte[RDI],'9'											; Single digit
+			mov qword[fa_CharCount],1									; Length of 1
+	.3EndIf:
+		;	V2.02 - If the source has no valid numerals a picture will not have been built
+		;	Default it to '9'
+				
+			push qword[fa_CharCount]									; Set the field length
+			pop @fieldLength(r_nDstAddress)
+			mov @NumScale(r_nDstAddress),0								; Force _FROMALPHA to calculate the scale
+				
+_buildPICTURE_EXIT:
+			ret
+			
+;-----------------------------------------------------------------------				
+;	TOALPHA - convert binary to Alphanumeric
+;		This is an internal call (IMACROS.ASM). It is called when you:-
+;			1] Display a numeric field
+;			2] Move a numeric field to an alphanumeric field
+;			3] In the advent of a literal picture r_SrcPicAddress and
+;				r_SrcPicLength will be passed
+;-----------------------------------------------------------------------
+;			+-----------------------+
+;			|  Set Length ?			|
+;			+-----------------------+ r15 +---------------------+	
+;			|  		            	| 	  |						|
+;			+-----------------------+ r14 +---------------------+	
+;			|  r_DstStart			|	  |						|
+;			+-----------------------+ r13 +---------------------+	 	
+;			|  r_DstAddress     	|	   	  	
+;			+-----------------------+ r12 +---------------------+
+;			|  			        	|	  |  r_SrcPicLength		|
+;			+-----------------------+ r11 +---------------------+
+;			|  			        	|	  |  r_SrcPicAddress  	|
+;			+-----------------------+ r10 +---------------------+
+;			|  r_SrcAddress     	|
+;			+-----------------------+ r9  
+;			|  r_Function       	|
+;			+-----------------------+ r8 
+;			$toAlpha w_Number(r9),w_Alpha(r12),SetLength(r15)
+;-----------------------------------------------------------------------
+
+_TOALPHA:
+
+	section .data
+		ta_SetLength		dq 0
+		
+	section .text
+			mov qword[ta_SetLength],r15									; Save Set Length indicator
+
+	.1If:	cmp r_SrcPicAddress,0												; Is there is NO picture override
+			jne .1Or												
+			$getScale r_SrcAddress											; 	Ensure the Scale has been set
+			$copyNumber r_SrcAddress,Result									; 	copy the input to Result
+			mov r_SrcPicAddress,r_SrcAddress								;	copy the picture address
+			add r_SrcPicAddress,8
+			mov r_SrcPicLength,qword[r_SrcAddress-8]							;	copy the picture length
+			jmp .1EndIf			
+	.1Or:	cmp @NumScale(r_SrcAddress),0xffffffffffffffff							; If NOT a Numeric Literal
+			jne .1Else			 											; then jump ELSE
+		;	This works cuz the literal and the pic will always match
+			$getScale r_SrcAddress,r_SrcPicAddress,r_SrcPicLength				; 	Ensure the Scale has been set
+			$copyNumber r_SrcAddress,Result,r_SrcPicAddress,r_SrcPicLength
+	.1Else:	
+		;	With an override on a field
+			$copyNumber r_SrcAddress,Operand								; Copy the field to Operand
+			mov qword[Result-17],0										; Setup the Result
+			mov qword[Result-8],r_SrcPicLength								; override picture length
+			mov qword[Result],0											; value of zero
+			cld															; Remember this you dick !!!!
+			$copyBytes r_SrcPicAddress,Result+8,r_SrcPicLength					; copy the picture
+			$getScale Result												; Get the Result scale
+			$Round Operand,Result											; Round the Operand to the Result
+	.1EndIf:
+
+;	---------------------------
+;	Source > Destination
+;	---------------------------
+	.2If:	cmp qword[ta_SetLength],c_TRUE									; Reseting destination length, must be an internal call
+			je .2EndIf														;	assume we know what we are doing
+	.2Else:																; ELSE
+		cmp r11,qword[r_DstAddress-8]										; If source < or = destination													
+			jna .2EndIf													;	jump
+			xor rax,rax													; ELSE
+			mov r14,err12													;	setup system error
+			Call _SYSERROR												;	and call it
+	.2EndIf:
+
+					
+		;	Picture info
+			LEA RSI,[r_SrcPicAddress+r_SrcPicLength-1]
+
+		;	Destination info
+			LEA RDI,[r_DstAddress+r_DstStart-2]
+			add RDI,r_SrcPicLength
+			
+			mov rcx, r_SrcPicLength											; set up the counter
+			mov rax, [Result]												; Move in the Didivend
+			mov rbx, 10													; move in the divisor								
+		
+;-----------------------------------------------------------------------
+;			START:SIGN processing
+;-----------------------------------------------------------------------
+			test rax,rax													; Test for negative
+				jns .pos													;	and next test if not
+																		; ELSE
+				not rax													;	compliment rax
+				inc rax													;	and add 1
+			
+				cmp byte [RSI], '-'											; test the editing picture for a TRAILING sign
+					jne .div												;	and goto divide if not
+																		; ELSE
+					mov byte [RDI], '-'										;	move in the trailing sign
+					dec RSI												;	and adjust the byte position
+					dec RDI												;	and adjust the byte position
+					dec rcx												;	and the counter
+					jmp .div												;	goto divide
+	
+	.pos:	cmp byte [RSI], '-'													; test the editing picture for a TRAILING sign
+				jne .div													;	and goto divide if not
+																		; ELSE
+				mov byte [RDI], '+'											;	move in the trailing sign
+				dec	RSI													;	and adjust the byte position
+				dec RDI													;	and adjust the byte position
+				dec rcx													;	and the counter
+;-----------------------------------------------------------------------
+;			END:SIGN processing
+;-----------------------------------------------------------------------						
+	.div:	cqo															; Clear high bits
+			idiv rbx													; divide by rbx (10)
+
+		;	Are we done 
+			$And rax,rdx,0												; If there's more to go (are they both zero)
+				je .EndNum												;	then jump to process the picture
+
+		  ; PROCESS NUMBER----------------------------------------------  																  	
+	.no1:	cmp byte[RSI], '9'											; If the picture is a '9' then jump and do it
+				je .OrIt
+			
+		  ; Test for a comma [editing picture]
+	.no2:	cmp byte[RSI], ','											; If the picture is a NOT a ',' 
+				jne .no3												;	then continue
+																		; Else
+				mov byte[RDI], ','										; 	Put in the comma
+				dec RSI													; 	Decriment the source
+				dec RDI													; 	Decriment the destination
+				dec rcx													; 	Decriment counter
+				jmp .OrIt												;	and goto the OR
+
+		  ; Test for a period [editing picture]
+	.no3:	cmp byte [RSI], '.'											; If the picture is NOT a decimal place.
+			jne .OrIt													;	it will be a hash and we want to display the no
+																		; ELSE
+				mov byte[RDI], '.'										;	Put in the comma
+				dec RSI													; 	Decriment the source
+				dec RDI													; 	Decriment the destination
+				dec rcx													; 	Decriment counter
+				jmp .OrIt												;	and goto OR
+
+		  ; PICTURE PROCESSING AFTER WE HAVE COMPLETED THE NUMBER-------
+		  ; Test for LEADING hashes/commas/periods after No is completed	  
+	.EndNum:cmp rcx,0													; Is it the end of the picture
+				je .Done												;	then goto done
+	
+			cmp byte[RSI], '9'											; If the picture has a nine
+				je .OrIt												;	goto display the zeroes
+
+			cmp byte[RSI], '#'											; if the picture is not a # 
+				jne .en1												;	next test
+																		; ELSE
+				mov dl, ' '												; else move a space to dl
+				jmp .DoIt												;	and display it
+
+	.en1:   cmp byte[RSI], '.'											; If the picture is not a period
+				jne .en2												;	next test
+																		; ELSE
+				mov dl, '.'												; 	ALWAYS move a period to dl
+				jmp .DoIt												;	and display it
+
+		;	Should always be a comma here - but just check for debug
+	.en2:	cmp byte[RSI], ','											; if the picture is not a comma 
+				jne .DoIt												;	and display it					
+				
+	.comma:	cmp byte[RSI-1], '#'										; If rsi-1 is a #
+				je .space												; 	jump to space
+																		; ELSE
+				mov dl, ','												; 	else move a comma to dl
+				jmp .DoIt												;	and display it
+				
+	.space:		mov dl, ' '							
+				jmp .DoIt												;	and display it				
+					
+;-----------------------------------------------------------------------
+;			END:EDITING Section
+;-----------------------------------------------------------------------				
+	;.OrIt:	or dl, 00110000b						; change to EDITED	
+	;.DoIt:	mov byte[RDI], dl						; Do the move
+	;		dec RSI									; Decriment the source
+	;		dec RDI									; Decriment the destination		
+	;		loop .div								; -1 fron rcx and loop
+	
+	;	In the event that the number is > picture, rcx will drop below zero
+	;	from above and therefore not loop. So check it ourselves
+	.OrIt:	cmp rcx,0													; If the 1st character is an editing
+				je .Done												; character then exit. It has already been written
+			or dl, 00110000b
+
+	.DoIt:	mov byte[RDI],dl											; Write the number
+			cmp rcx,0													; If its the last one 
+				je .Done												; then exit
+
+			dec RSI									
+			dec RDI
+			dec RCX
+			jmp .div
+			
+	.Done:
+
+;	By the time we are ready to exit. RDI will be set at the start of destination
+;	less 1, so we can now set the length of destination (saved from r15)
+	.3If:	cmp qword[ta_SetLength],c_FALSE								; Dont set the length if not requested
+				je .Exit
+;	.2Or:	cmp r_DstStart,1											; Dont set the length if {word,n}
+;				ja .Exit
+	.3EndIf:
+			mov @fieldLength(r_DstAddress),r_SrcPicLength
+	 
+	 .Exit:
+_TOALPHA_EXIT:
+			ret
+
+
+;-----------------------------------------------------------------------				
+;           Compare 2 numbers. Called from Decisions
+;-----------------------------------------------------------------------
+;			+-------------------+	  +-------------------+
+;			|     				|	  |  	  			  |
+;			+-------------------+ r15 +-------------------+	
+;			|  r_DstLength		|	  |	 r_DstPicLength	  |
+;			+-------------------+ r14 +-------------------+	
+;			|  r_DstStart		|	  |	 r_DstPicAddress  |
+;			+-------------------+ r13 +-------------------+	 	
+;			|  r_DstAddress     |	   	  	
+;			+-------------------+ r12 +-------------------+
+;			|  r_SrcLength      |	  |  r_SrcPicLength   |
+;			+-------------------+ r11 +-------------------+
+;			|  r_SrcStart       |	  |  r_SrcPicAddress  |
+;			+-------------------+ r10 +-------------------+
+;			|  r_SrcAddress     |
+;			+-------------------+ r9  
+;			|  r_Function       |
+;			+-------------------+ r8 
+;
+; Return R15:	-1 is Less Than
+;				 0 is Equal
+;				+1 is Greater Than
+;-----------------------------------------------------------------------
+_COMPARE_NO:
+
+;	NOTE:- I discovered in V1.18 testing that this routine does not handle 
+;			fixed point dataname with a picture over-ride. As an over-ride only 
+;			really makes sense when displaying I have decided that an over-ride
+;			on a fixed point dataname should not be allowed. I have not coded
+;			an enforcement of this rule as yet
+
+		;	SOURCE - copy to Operand
+			$getScale r9												; Ensure scale has been set
+	.1If:	cmp r10,0													; Is there is NO picture override
+				jne .1Else												
+			$copyNumber r_SrcAddress,Operand							; 	Ensure the Scale has been set
+			jmp .1EndIf						
+	.1Else:																; Else
+			$copyNumber r_SrcAddress,Operand,r10,r11					; Ensure the Scale has been set
+	.1EndIf:
+
+		;	DESTINATION - copy to Result
+			$getScale r12												; Ensure scale has been set
+	.2If:	cmp r13,0													; Is there is NO picture override
+				jne .2Else												
+			$copyNumber r_DstAddress,Result								; 	Ensure the Scale has been set
+			jmp .2EndIf						
+	.2Else:																; Else
+			$copyNumber r_DstAddress,Result,r13,r14						; Ensure the Scale has been set
+	.2EndIf:
+
+		;	ALIGN the numbers
+			push r8														; Store function
+			xor r8,r8													; Force align thru its code
+			$Align Operand,Result										; Make the call
+			pop r8														; Restore function
+			
+		;	Now do the compare
+		; 	This code allows R15 to return the result to be tested in DECISIONS
+		;	-1 is LessThan
+		;	 0 is Equals
+		;	+1 is Greater Than
+			mov r15,-2
+			mov rax,qword[Operand]
+			cmp rax,qword[Result]
+				jg .gt													; Increment r15 3 times (+1)
+				je .eq													; Increment r15 2 times ( 0)
+				jl .lt													; Increment r15 1 time  (-1)
+
+	.gt:	inc r15
+	.eq:	inc r15
+	.lt:	inc r15		
+
+_COMPARE_NO_EXIT:
+			ret
+			
+;-----------------------------------------------------------------------				
+;           ISNUMERIC
+;-----------------------------------------------------------------------
+
+;			+-------------------+ 
+;			|  Source1          |
+;			+-------------------+ r9  
+;			|   		        |
+;			+-------------------+ r8  
+;USES:			
+;-----------------------------------------------------------------------
+;_ISNUMERIC:
+;
+;			mov RSI,r9								; Get address of source (ASCII)
+;			add RSI,[r10-8]							; add the length of the picture
+;			dec RSI									;	less 1
+;			mov rcx,[r10-8]							; add set the counter
+;		; to be finished
+;_ISNUMERIC_X:
+;			ret

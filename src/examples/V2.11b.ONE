@@ -1,0 +1,350 @@
+%include 'include/BEGIN.PROGRAM'
+
+;	Refer to VERSION.HISTORY for...well...version history
+
+;=======================================================================
+;		PROGRAM DATA
+;=======================================================================	      
+
+;-----------------------------------------------------------------------
+;		DICTIONARY
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.DICTIONARY'
+
+	insertword letters,				26,'abcdefghijklmnopqrstuvwxyz'
+	insertword key,					26,''
+
+%include 'include/END.DICTIONARY'
+
+;-----------------------------------------------------------------------
+;		MATRIX
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.MATRIX'
+
+	insertnumber StartSeconds,		0,'99999999999999999999999999'
+	insertnumber EndSeconds,		0,'99999999999999999999999999'
+	
+	insertnumber I,					0
+	insertnumber J,					0
+	insertnumber K,					0
+	
+	insertnumber seconds,			0,'99999999999999999'
+	insertnumber milliseconds,		0,'.999999'
+	
+%include 'include/END.MATRIX'
+
+;-----------------------------------------------------------------------
+;		FILES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.FILES'
+
+	%define c_recordLength 1024
+	BEGIN.RECORD c_recordLength,TestRecord
+		insertword TestKey,			0026,''
+		insertword TestFiller,		0998,''
+	END.RECORD TestRecord	
+	
+%include 'include/END.FILES'
+
+;-----------------------------------------------------------------------
+;		TABLES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.TABLES'	
+
+		%define c_No 1000000
+		%define TestTable_Size (c_recordLength * c_No)
+	inserttable TestTable,TestTable_Size
+
+%include 'include/END.TABLES'
+			
+;=======================================================================
+;		PROGRAM INSTRUCTIONS
+;		Mainline  
+;=======================================================================
+%include 'include/BEGIN.INSTRUCTIONS'
+
+	$Call Initialise
+	
+	date.timer seconds,milliseconds
+	display "start=",seconds,milliseconds,LF
+
+	%define @tableSize(x)		qword[x-8]
+	%define @recordAddress(x)	qword[x-17]
+	%define @tableStatus(x)		qword[x-91]
+	%define r_Table	r9
+%imacro SORT 2
+	mov r_Table,TestTable
+	$extract %1
+	pop r10
+	mov r10,[r10]
+	$extract %2
+	pop r11
+	mov r11,[r11]
+	Call _QUICKSORT
+%endmacro
+;	SORT 1,26			
+			
+	tables.sort (TestTable,1,26)
+
+	date.timer seconds,milliseconds
+	display "start=",seconds,milliseconds,LF
+	
+	$Call DisplayThem
+
+%include 'include/END.INSTRUCTIONS'
+%include 'include/END.PROGRAM'      
+
+BEGIN.SUB Initialise
+
+	tables.Bind TestTable,TestRecord,1000000
+
+	display.line "Preparing the Array - Please wait"
+	repeat.for I,1,c_No
+		repeat.for J,1,26
+			numbers.random 2,K
+			begin.assembler
+				mov rax,qword[K]
+				mov rbx,10
+				cqo
+				idiv rbx
+				mov qword[K],rdx
+			end.assembler
+			K = K + 1
+			{key,J} = {letters,K,1}
+		end.repeat
+		TestKey[I] = key
+	end.repeat
+	
+;	TestKey[01] = "10"
+;	TestKey[02] = "01"
+;	TestKey[03] = "06"
+;	TestKey[04] = "04"
+;	TestKey[05] = "08"
+;	TestKey[06] = "07"
+;	TestKey[07] = "02"
+;	TestKey[08] = "05"
+;	TestKey[09] = "09"
+;	TestKey[10] = "03"
+
+	display.line "Sorting now"
+
+END.SUB Initialise
+
+BEGIN.SUB DisplayThem
+	repeat.for I,1,10
+		display.line TestKey[I]
+	end.repeat
+END.SUB Finalise
+
+
+;-----------------------------------------------------------------------
+;      		(QUICK SORT)
+;-----------------------------------------------------------------------
+;	******** REPLACES SHELL SORT **********
+;-----------------------------------------------------------------------
+begin.assembler
+
+	%imacro $getAddress 2
+		mov %1,r_Table													; Start of Table to RSI/RDI
+		mov rax,%2														; Lower/Upper to RAX
+		mul r_recordLength												; Multiply by Record Length
+		add %1,rax														; add offset to RSI/RDI
+	%endmacro
+
+	%define r_recordLength	r8
+	%define r_startPos		r10				
+	%define r_noOfBytes		r11
+	%define r_Ubound		r15
+
+	%define @left 			r10
+	%define @right 			r11
+	%define @pivotValue		r12
+	%define @prevLeft 		r13
+	
+	[section .bss]
+		d_startPos			resq 1
+		d_noOfBytes			resq 1		
+		pivotValue			resb 128									; This gives tha max sortkey size
+		LeftAddress			resq 1
+		RightAddress		resq 1
+	[section .text]	
+
+_QUICKSORT:
+
+;	ERROR - You can only SORT/SEARCH a 1 dimensional table
+	.1If:	cmp qword[r_Table-65],0										; Are there more than 1 dimensions
+				je .1EndIf
+				xor rax,rax												; If not then 0 rax (Not Linux error)
+	;			mov r14,err10											; err10 to languageONE error
+				Call _SYSERROR											; and call it
+	.1EndIf:			
+
+;	DO THIS 1ST so r10,r11 are available Get start offset and No Of Bytes 
+	mov qword[d_noOfBytes],r_noOfBytes									; and save it
+	dec r_startPos														; decrement the offset by 1
+	mov qword[d_startPos],r_startPos									; and save it
+
+;	Get upper boundary
+	mov	rax,@tableSize(r_Table)											; Get table size
+	mov r_recordLength,@recordAddress(r_Table)							; Get Record Address
+	mov r_recordLength,@fieldLength(r_recordLength)						; Get record Length	
+	cqo																	; Clear rdx/sign extend
+	idiv r_recordLength													; Divide table size by record length
+	mov r_Ubound,rax													; and store upper boundary in r15
+	dec r_Ubound
+
+;	Call the recursive SORT
+	push 0																; Push the 1st Left
+	push r_Ubound														; Push the 1st Right
+	Call _QSort
+	pop rax
+	pop rax
+
+	.Exit:	
+_QUICKSORT_EXIT:
+			ret
+
+;-----------------------------------------------------------------------
+;	Recursive Sort
+;-----------------------------------------------------------------------
+_QSort:
+
+	mov @left,qword[rsp+16]												; get the Left Index
+	mov @right,qword[rsp+8]												; get the Right Index
+	
+;	if  left >= right													; Exit when Left is not < Right
+	cmp @left,@right
+		jnl .Exit
+
+;	pivotValue = RandomNo[ [ left + right / 2 ] ]						; CALCULATE pivotValue
+	mov rax,@left														; Grab the left
+	add rax,@right														; add the right
+	shr rax,1
+	$getAddress RSI,rax													; get the address of this slot
+	$copyBytes RSI,pivotValue,qword[d_noOfBytes]						; and copy it to pivotValue
+	
+	
+;	prevLeftIdx = [moveThem]
+	push @left															; preserve the Left index
+	push @right															; preserve the Right index
+	call _moveThem														; do the moves
+	pop @right															; restore the Right index
+	pop @left															; restore the Left index														
+	mov @prevLeft,rax													; and save the returned value
+	
+;	-------------------------------------
+;	Recursive Call - (left, prevLeft - 1)
+;	-------------------------------------
+	push @left															; preserve the Left index
+	push @right															; preserve the Right index
+	push @left															; push the 1st parameter (Left)
+	mov rax,@prevLeft													; get the previous left
+	dec rax																; minus 1
+	push rax															; push the 2nd parameter
+	Call _QSort															; Call yourself 	
+	pop rax																; Junk this
+	pop rax																; Junk this
+	pop @right															; restore the Right index
+	pop @left															; restore the Left index
+	
+;	----------------------------------
+;	Recursive Call - (prevLeft, right)	
+;	----------------------------------
+	push @left															; preserve the Left index
+	push @right															; preserve the Right index
+	push @prevLeft														; push the 1st parameter (previous left
+	push @right															; push the 2nd parameter (Right0
+	Call _QSort															; Call yourself
+	pop rax																; Junk this
+	pop rax																; Junk this
+	pop @right															; restore the Right index
+	pop @left															; restore the Left index
+	
+	.Exit:
+_QSort_EXIT:
+	ret
+	
+_moveThem:
+
+;	repeat.while (left <= right)
+	cmp @left,@right													; Compare Left to Right Index
+		jg .Exit														; exit if Left is > Right
+
+;	repeat.while (Key[left] < pivotValue)
+;			left 	= left + 1
+;	end.repeat
+	.start1:$getAddress RSI,@left										; Get the Start of the record 
+			add RSI,qword[d_startPos]									; add the requested starting position
+			mov qword[LeftAddress],RSI									; and save it
+			mov RDI,pivotValue											; Get the start of the pivotValue
+			mov rcx,qword[d_noOfBytes]									; Grab the length (LOOP Ctr)
+		Call _CMPSTR
+			jnl .cont1													; If result not < than exit While Loop											
+			inc @left													; get the next table slot
+			jmp .start1													; and repeat
+	.cont1:
+
+	cmp @left,@right													; Compare Left to Right Index
+		jg .Exit														; exit if Left is > Right
+		
+;	repeat.while (Key[right]> pivotValue)
+;		right 	= right - 1
+;	end.repeat
+	.start2:$getAddress RSI,@right										; Get the Start of the record 
+			add RSI,qword[d_startPos]									; add the requested starting position
+			mov qword[RightAddress],RSI									; and save it
+			mov RDI,pivotValue											; Get the start of the pivotValue 
+			mov rcx,qword[d_noOfBytes]									; Grab the length (LOOP Ctr)
+		Call _CMPSTR
+			jng .cont2													; If result not > than exit While Loop	
+			dec @right													; get the previous table slot
+			jmp .start2													; and repeat
+	.cont2:
+
+	cmp @left,@right													; Compare Left to Right Index
+		jg .Exit														; exit if Left is > Right
+		jl .DoTheMove
+	
+	;	No need to do the move if left = right
+		inc @left
+		jmp .Exit
+		
+
+;	if left <= right - SWAP left and right data
+.DoTheMove:
+	mov RSI,qword[LeftAddress]											; grab the Left address
+	mov RDI,qword[RightAddress]											; grab the Right address		
+	mov rcx,r_recordLength												; and grab the record length
+	.start3:cmp rcx,8													; Have we still got 8 bytes to move
+				jb .start4												; If not go and pick up the last few bytes
+			mov rax,qword[RSI]											; grab the left 8 bytes										
+			mov rbx,qword[RDI]											; grab the right 8 bytes
+			mov qword[RDI],rax											; put the right 8 bytes to the left
+			mov qword[RSI],rbx											; put the left 8 bytes to the right 
+			add RSI,8													; setup RSI for the next 8 bytes
+			add RDI,8													; setup RDI for the next 8 bytes													
+			sub rcx,8													; take 8 away from the counter
+			jmp .start3													; and loop around
+			
+	.start4:cmp rcx,0													; Have we still got anything to move
+				jna .cont4												; If not we are done			
+			mov ah,byte[RSI]											; grab the left byte											
+			mov al,byte[RDI]											; grab the right byte
+			mov byte[RDI],ah											; put the right byte to the left
+			mov byte[RSI],al											; put the left byte to the right
+			add RSI,1													; setup RSI for the next byte
+			add RDI,1													; setup RDI for the next bytes
+			sub rcx,1													; take 1 away from the counter
+			jmp .start4													; and loop around
+	.cont4:
+	
+	inc @left															; Next Left
+	dec @right															; Previous Right
+	jmp _moveThem														; Back to the Start
+		
+.Exit:	
+	mov rax,@left														; Return the Left value
+
+_moveThem_EXIT:
+	ret
+end.assembler

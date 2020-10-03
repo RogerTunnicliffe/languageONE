@@ -1,0 +1,784 @@
+%include 'include/BEGIN.PROGRAM'
+;
+;	This demonstration program shows a  multiuser data entry program. 
+;	It uses a distributed model using languageONE IPC and is accompanied
+;	by an I/O management program.
+
+;	Refer to VERSION.HISTORY for...well...version history
+
+;	BEGIN.SYNONYMS **************************************
+;		$.	:	WORDS.  
+;		@.	:	INTEGERS.  
+;		#.	:	NUMBERS.  
+;		f.	:	FILES.
+;		T.	: 	TABLES.
+;		xT.	:	XTABLES. 
+;	END.SYNONYMS ****************************************
+
+;	==========================================================================
+;	This program has been taken up into the languageONE system and is provided
+;	as the languageONE GUI make utility 'GUI-makeONE'
+;	==========================================================================
+
+;=======================================================================
+;		  PROGRAM DATA
+;=======================================================================	      
+
+;-----------------------------------------------------------------------
+;		DICTIONARY
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.DICTIONARY'
+
+	insertword w_ConnectError,		0024,'02: Cannot create socket'
+
+	insertword w_ReturnIPaddress,	0015,''
+	insertword w_ReturnPortNo,		0005,''
+	insertword w_Msg,				0384,''
+	insertword w_Exit,				0004,''
+	
+	insertword x_Null,				0001,0x00
+	
+	insertword w_UserInput,			0001,''
+	
+	insertword w_AcctNo,			0005,''
+	insertword w_AcctKey,			0006,''
+	insertword w_Date,				0008,''
+	insertword w_Time,				0006,''
+	insertword w_DateTime,			0014,''
+	
+%include 'include/END.DICTIONARY'
+
+;-----------------------------------------------------------------------
+;		MATRIX
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.MATRIX'
+
+  ; Common Counters
+	INSERTNUMBER I,					0,'999999'
+	INSERTNUMBER J,					0,'999999'
+	INSERTNUMBER K,					0,'999999'
+
+  ; This programs 
+	insertnumber n_coaMaxRecords,	0,'99999'
+	insertnumber n_coaLastRecordNo,	0,'99999999'
+	
+	insertnumber n_gjMaxRecords,	0,'99999'
+	insertnumber n_gjLastRecordNo,	0,'99999999'
+  	
+	insertnumber n_coaIdx,			0,'99999'	
+	insertnumber n_gjIdx,			0,'99999'
+	
+	insertnumber n_acctSrchIdx,		0,'99999'
+	insertnumber n_tranSrchIdx,		0,'99999'
+	
+	insertnumber n_AddMode,			0,'9'
+	
+%include 'include/END.MATRIX'
+
+;-----------------------------------------------------------------------
+;		FILES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.FILES'
+
+   %define c_concurTblNoOfRecs				  1024
+   %define c_coaRecordLength  	  				60
+   %define c_gjRecordLength  				   244  
+  
+   %define c_concurTblLength 16
+	begin.record c_concurTblLength,concurTblRecord
+	   insertword		concurTblPortNo,		05,''
+	   insertnumber		concurTblcoaIdx,		00,'99999'
+	   insertnumber		concurTblgjIdx,			00,'99999'	
+	   insertnumber		concurTblAddMode,		00,'9'
+	end.record concurTblRecord
+	
+	insertfile c_INDEXED,coaFile,'./coaFile.dat'
+	  begin.record c_coaRecordLength,coaRecord
+		insertword		coaAcctNo,				05,''
+		insertword		coaDescription,  		30,''
+		insertword 		coaFlag1,				02,''
+		insertword		coaFlag2,				01,''
+		insertword		coaFlag3,				01,''
+		insertword		coaFlag4,				01,''
+		insertword		coaBalanceIndicator,	02,''
+		insertword		coaControlAcctNo,		05,''
+		insertnumber	coaDepreciation,		00,'999'
+		insertnumber	coaUnitPrice,			00,'9999.9999'
+		insertword		coaCR,					01, 0x0A
+	  end.record coaRecord
+
+   %define c_coaIdxLength 12
+	begin.record c_coaIdxLength,coaIdxRecord
+	   insertword		coaIdxAcctNo,			05,''
+	   insertword		coaIdxLive,				01,''	   
+	   insertnumber		coaIdxLocked,			00,'9'	   
+	   insertnumber		coaIdxRecNo,			00,'99999'
+	end.record coaIdxRecord
+	  
+	insertfile c_INDEXED,gjFile,'./gjFile.dat'
+	  begin.record c_gjRecordLength,gjRecord
+	  	insertnumber	gjDate,					00,'99999999'
+	  	insertnumber	gjTime,					00,'999999'
+	  	insertword		gjDRAcctNo,				05,''
+	  	insertword		gjCRAcctNo,				05,''
+	  	insertword		gjDRCtrlAcctNo,			05,''
+	  	insertword		gjCRCtrlAcctNo,			05,''
+	  	insertword		gjDescription,		   128,''
+	  	insertnumber	gjValue,				00,'999999.99'
+	  	insertnumber	gjNoOfUnits,			00,'999999.9999'
+		insertword		gjReference,			10,''
+	  	insertnumber	gjINVTranType,			00,'9'
+	  	insertword		gjINVAcctNo,			05,''
+	  	insertnumber	gjINVParcelNo,			00,'999'
+	  	insertnumber	gjINVGrouping,			00,'999'
+	  	insertnumber	gjFrankedAmt,			00,'999999.99'
+	  	insertnumber	gjImputedCredit,		00,'999999.99'
+	  	insertnumber	gjSUnitPrice,			00,'999999.9999'
+	  	insertword		gjSReference,			10,''
+		insertword		gjCR,					01, 0x0A
+	  end.record gjRecord
+
+	 %define c_gjIdxLength 21
+	  begin.record c_gjIdxLength,gjIdxRecord
+	  	insertnumber	gjIdxDate,				00,'99999999'
+	  	insertnumber	gjIdxTime,				00,'999999'
+	 	insertword		gjIdxLive,				01,''	    	 	
+	 	insertnumber	gjIdxLocked,			00,'9'	    
+	  	insertnumber	gjIdxRecNo,				00,'99999'
+	  end.record gjIdxRecord	  
+
+%include 'include/END.FILES'
+
+;-----------------------------------------------------------------------
+;		TABLES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.TABLES'
+
+	insertXtable concurTbl	
+	insertXtable coaIdx
+	insertXtable gjIdx
+	
+%include 'include/END.TABLES'
+
+
+;=======================================================================
+;		PROGRAM INSTRUCTIONS
+;		Mainline  
+;=======================================================================
+%include 'include/BEGIN.INSTRUCTIONS'
+
+	$Call A_1_Initial
+	$Call B_1_Process
+	$Call Z_1_Finalise
+
+%include 'include/END.INSTRUCTIONS'
+%include 'include/END.PROGRAM'      
+
+;=======================================================================
+;		PROGRAM PROCEDURES
+;=======================================================================
+
+;=======================================================================
+;		INITIALISATION
+;=======================================================================
+BEGIN.SUB A_1_Initial
+
+;	--------------------
+;	Create the test file
+;	--------------------
+	$Call A_1_1_CreateFile
+	
+;	----------------------------------------
+;	Now Bind the tables and load the indexes
+;	----------------------------------------
+	xT.Bind concurTbl,concurTblRecord,c_concurTblNoOfRecs
+	$Call A_1_2_coaFile
+	$Call A_1_3_gjFile
+		
+END.SUB A_1_Initial
+
+;-----------------------------------------------------------------------
+;		Create TestFile
+;-----------------------------------------------------------------------
+BEGIN.SUB A_1_1_CreateFile
+	
+;	-----------------
+;	Get User Response
+;	-----------------
+	display ('Would you like to reacreate the test file [y/n] ')
+	acceptline (w_UserInput)
+	$.uppercase (w_UserInput)
+	
+	if  w_UserInput != 'Y'
+		exit.sub A_1_1_CreateFile
+	end.if
+	
+;	-----------------
+;	COA - Create File
+;	-----------------
+	[section .data]
+		insertword alphabet,26,'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+	[section .text]
+	f.open (coaFile,write+beginning)
+	K = 0
+	repeat.for I,10,1
+		coaAcctNo				= 'AAAA'
+		{coaAcctNo,5,1}			= {alphabet,I,1}
+		coaDescription			= "Description"
+		{coaDescription,13,5}	= 'AAAA'
+		{coaDescription,17,1}	= {alphabet,I,1}		
+		coaFlag1				= "A"
+		coaFlag2				= "2"
+		coaFlag3				= "3"
+		coaFlag4				= "4"
+		coaBalanceIndicator		= "CR"
+		coaControlAcctNo		= spaces(1)
+		coaDepreciation			= [I + 10]
+		coaUnitPrice			= [1.1 * I]
+		K = K + 1
+		f.write (coaFile,coaRecord,K)
+	end.repeat
+	f.close coaFile
+
+;	----------------
+;	GJ - Create File
+;	----------------
+	f.open (gjFile,write+beginning)
+	K = 0
+	repeat.for I,10,1
+		gjDate					= [20180700 + I]
+	  	gjTime					= [120000 + I]
+	  	gjDRAcctNo				= spaces(1)
+	  	gjCRAcctNo				= spaces(1)
+	  	gjDRCtrlAcctNo			= spaces(1)
+	  	gjCRCtrlAcctNo			= spaces(1)
+	  	gjDescription			= "Transaction description"
+	   {gjDescription,25}		= I
+	  	gjValue					= [100.00 + I]
+	  	gjNoOfUnits				= [23.5425 + I]
+		gjReference				= "OneRef"
+	  	gjINVTranType			= 1
+	  	gjINVAcctNo				= spaces(1)
+	  	gjINVParcelNo			= 1
+	  	gjINVGrouping			= 100
+	  	gjFrankedAmt			= [53.55 + I]
+	  	gjImputedCredit			= [27.35 + I]
+	  	gjSUnitPrice			= [10.3525 + I]
+	  	gjSReference			= "SRef"
+	  	K = K + 1
+	  	f.Write (gjFile,gjRecord,K)
+	end.repeat
+	f.Close gjFile	
+		
+END.SUB A_1_1_CreateFile
+
+;	---------------------------
+;	coaFile - Bind Table & Load
+;	---------------------------
+BEGIN.SUB A_1_2_coaFile
+
+	f.open (coaFile,$read+$end)
+
+	n_coaLastRecordNo = coaFile_SIZE / [c_coaRecordLength + 1 + 8]	
+;	n_coaMaxRecords = n_coaLastRecordNo * 1.3
+	n_coaMaxRecords = n_coaLastRecordNo * 2	
+	I = n_coaMaxRecords * [c_coaRecordLength + 1 + 8]
+
+	xT.bind (coaIdx,coaIdxRecord,I)
+	
+	I = 0
+	coaRecord_NO = 1
+	f.Start (coaFile,coaRecord)
+	repeat.while coaFile_STATUS = 0
+		I = I + 1
+		coaIdxAcctNo[I] = coaAcctNo
+		coaIdxLive[I]	= "1"
+		coaIdxLocked[I]	= 0				
+		coaIdxRecNo[I]	= coaRecord_NO
+		f.Next (coaFile,coaRecord)
+	end.repeat
+
+	f.close(coaFile)
+	xT.Sort (coaIdx,1,6)
+
+	f.open(coaFile,$readwrite)
+	
+END.SUB A_1_2_coaFile
+
+;	--------------------------
+;	gjFile - Bind Table & Load
+;	--------------------------
+BEGIN.SUB A_1_3_gjFile
+
+	f.open (gjFile,$read+$end)
+	
+	n_gjLastRecordNo = gjFile_SIZE / [c_gjRecordLength + 1 + 8]	
+	n_gjMaxRecords = n_gjLastRecordNo * 1.3
+	I = n_gjMaxRecords * [c_gjRecordLength + 1 + 8]
+	
+	xT.bind (gjIdx,gjIdxRecord,I)
+	
+	I = 0
+	gjRecord_NO = 1
+	f.Start (gjFile,gjRecord)
+	repeat.while gjFile_STATUS = 0
+		I = I + 1
+		gjIdxDate[I] 	= gjDate
+		gjIdxTime[I] 	= gjTime
+		gjIdxLive[I]	= "1"		
+		gjIdxLocked[I]	= 0		
+		gjIdxRecNo[I]	= gjRecord_NO
+		f.Next (gjFile,gjRecord)
+	end.repeat
+	
+	f.close(gjFile)	
+	xT.Sort (gjIdx,1,15)
+	
+	f.open(gjFile,$readwrite)
+	
+END.SUB A_1_3_gjFile
+
+;=======================================================================
+;	MESSAGE
+;=======================================================================
+BEGIN.SUB B_1_Process
+
+;	********************************************
+;	w_Msg =	xxxxxRecord
+;			x = IP Address "999.999.999.999"
+;			x = Port No "99999"
+;			x = File No where 1=coaFile,2=gjFile
+;			x = Validate,Read,Write,Start,Next,Delete
+;			x = Lock,Unlock,Blank(No Lock)
+;
+;	123456789012345678901234
+;	999.999.999.999nnnnn1RLRecord
+;	********************************************
+
+	display.line ('[000001]Starting File Server')
+	
+	repeat _01
+
+		www.RecvMsg "127.0.0.1","1024",w_Msg	
+		w_ReturnIPaddress	= {w_Msg,1,15}
+		w_ReturnPortNo		= {w_Msg,16,5}
+		$Call B_1_1_GetIndex
+		
+		$.uppercase w_Msg,w_Exit
+		if {w_Msg,1,4} = "EXIT"
+			exit.repeat _01
+		end.if
+
+		begin.test {w_Msg,21,1}
+			when = "1"
+				$Call B_1_2_coaFile
+			wend
+			when = "2"
+				$Call B_1_3_gjFile
+			wend
+		end.test
+
+		www.sendmsg w_ReturnIPaddress,w_ReturnPortNo,w_Msg
+
+	end.repeat _01		
+
+END.SUB B_1_Process
+
+;-----------------------------------------------------------------------
+;	Get Index
+;-----------------------------------------------------------------------
+BEGIN.SUB B_1_1_GetIndex
+
+;	So as this module can manage multiple calls the Index Tables subscripts
+;	are kept in the concurrent table keyed by the port no. Each call to this
+;	module will restore the correct index of the calling program
+
+	if concurTbl_UBOUND = 0										; If this is the first client 
+		@.eq concurTbl_STATUS,INVALIDKEY						; 	flag it as such
+	else														; else
+		xT.search (concurTbl,1,5,w_ReturnPortNo,I)				;	search the concurrent table
+	end.if														;	for a match
+		
+	if concurTbl_STATUS = INVALIDKEY							; If this the first call to this module	
+		if concurTbl_UBOUND = c_concurTblNoOfRecs				;	if we are not able to add another caller		
+			w_Msg = "9"											;		then report the error and exit		
+			display.line "[000001]Internal Table is full"
+			TERMINATE 000001				
+		else													; else add a new caller	
+			concurTbl_UBOUND	= concurTbl_UBOUND + 1			;	increase the no of table elements	
+			concurTblPortNo		= w_ReturnPortNo				;	store the port no
+			concurTblcoaIdx		= 0								;	set coaIdx to zero
+			concurTblgjIdx		= 0								;	set gjIdx to zero
+			concurTblAddMode	= c_FALSE						; 	Initialise Add Mode Flag
+			xT.rPut (concurTbl,concurTbl_UBOUND)				;	and write the record
+			xT.sort (concurTbl,1,5)								;	sort the table
+			xT.search (concurTbl,1,5,w_ReturnPortNo,I)			;	search the concurrent table after sort
+		end.if
+	end.if
+	
+	xT.rGet (concurTbl,I)										; get the relevant Concurrent record 
+	n_coaIdx	= concurTblcoaIdx								; set coaIdx
+	n_gjIdx		= concurTblgjIdx								; set gjIdx
+
+END.SUB B_1_1_GetIndex
+
+;-----------------------------------------------------------------------
+;	coaFile
+;-----------------------------------------------------------------------
+BEGIN.SUB B_1_2_coaFile
+
+;	********************************************
+;	w_Msg =	xxxxxRecord
+;			x = IP Address "999.999.999.999"
+;			x = Port No "99999"
+;			x = File No where 1=coaFile,2=gjFile
+;			x = Validate,Read,Write,Start,Next,Delete
+;			x = Lock,Unlock,Blank(No Lock)
+;
+;	123456789012345678901234
+;	999.999.999.999nnnnn1RLRecord
+;	********************************************
+	
+	begin.test {w_Msg,22,1}
+
+		when = "V"
+			$Call B_1_2_0_Validate
+		wend
+		
+		when = "R"
+			$Call B_1_2_1_Read		
+		wend
+		
+		when = "W"
+			$Call B_1_2_2_Write			
+		wend
+		
+		when = "S"
+			n_coaIdx = 0										; Set the current coqaIdx to zero
+			xT.search (concurTbl,1,5,w_ReturnPortNo,I)			; Find the concurrent record
+			concurTblcoaIdx[I] = n_coaIdx						; Store coaIdx
+			$Call B_1_2_3_Start_Next							; Call the Start/Next routine
+		wend
+		
+		when = "N"
+			$Call B_1_2_3_Start_Next
+		wend
+		
+		when = "D"
+			$Call B_1_2_4_Delete					
+		wend
+		
+		when = "X"
+			$Call B_1_2_5_Exit					
+		wend
+		
+
+		otherwise
+		;	The unlock function here assumes that you have always
+		;	read and locked the record first. This program does not
+		;	provide for a single "L" function (Although it easily could)
+			if {w_Msg,23,1} = "U"
+				coaIdxLocked[n_coaIdx] = 0
+				w_Msg = "0"
+			end.if
+			
+	end.test
+
+END.SUB B_1_2_coaFile
+
+;-------------------------------------------------------------------------------
+;	Chart of Accounts Validate
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_1_2_0_Validate
+
+;	********************************************
+;	w_Msg =	xxxxxRecord
+;			x = IP Address "999.999.999.999"
+;			x = Port No "99999"
+;			x = File No where 1=coaFile,2=gjFile
+;			x = Validate,Read,Write,Start,Next,Delete
+;			x = Lock,Unlock,Blank(No Lock)
+;
+;	123456789012345678901234
+;	999.999.999.999nnnnn1RLRecord
+;	********************************************
+
+	w_AcctNo		= {w_Msg,24,5}								; Grab the requested Account No
+	w_AcctKey		= w_AcctNo									; Grab the requested Account No
+	{w_AcctKey,6,1}	= "1"
+	xT.search (coaIdx,1,6,w_AcctKey,n_coaIdx)					; Search for it in the Index
+		
+	if coaIdx_STATUS = INVALIDKEY								; If it is not there
+		w_Msg = "2"												;	return invalid key
+	end.if
+	
+END.SUB B_1_2_0_Validate
+
+;-------------------------------------------------------------------------------
+;	Chart of Accounts Read
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_1_2_1_Read
+
+;	********************************************
+;	w_Msg =	xxxxxRecord
+;			x = IP Address "999.999.999.999"
+;			x = Port No "99999"
+;			x = File No where 1=coaFile,2=gjFile
+;			x = Validate,Read,Write,Start,Next,Delete
+;			x = Lock,Unlock,Blank(No Lock)
+;
+;	123456789012345678901234
+;	999.999.999.999nnnnn1RLRecord
+;	********************************************
+
+	w_AcctNo		= {w_Msg,24,5}								; Grab the requested Account No
+	w_AcctKey		= w_AcctNo									; Grab the requested Account No
+	{w_AcctKey,6,1}	= "1"
+	xT.search (coaIdx,1,6,w_AcctKey,n_coaIdx)					; Search for it in the Index
+
+;	----------
+;	New Record
+;	----------
+	if coaIdx_STATUS = INVALIDKEY								; If it is not there
+		if coaIdx_UBOUND = n_coaMaxRecords						;	If we have hit the upper boundary
+			w_Msg = "9"											;		return the error to the client
+			display.line "[000002]Internal Table is full"		;		display the fact
+			TERMINATE 000002									;		end exit
+		end.if
+																; else
+		$Call B_1_2_1_1_NewRecord								;	setup for a new record
+	    
+	else
+;	---------------
+;	Existing Record
+;	---------------
+    	if coaIdxLocked[n_coaIdx] = 1								;	if the record is locked
+			w_Msg = "1"												; 	
+		else
+			coaRecord_NO = coaIdxRecNo[n_coaIdx]					; Grab the record no from the Index
+			f.Read (coaFile,coaRecord)								; and read the file
+
+			if coaFile_STATUS != 0									; If we have an error
+				w_Msg = "9"											;	return the error to the client
+				display.line "[000003]coaFile File System Error"	;	display the fact
+				TERMINATE 000003									;	and exit	
+			else
+				if {w_Msg,23,1} = "L"
+					coaIdxLocked[n_coaIdx] = 1						; Lock it
+				end.if
+				w_Msg = "0"											; OKAY	
+				
+				xT.search (concurTbl,1,5,w_ReturnPortNo,I)			; Note that this cannot fail
+				concurTblcoaIdx[I] = n_coaIdx						; as B_1_1_GetIndex has sorted it out				
+			
+			end.if
+		end.if
+	end.if
+
+	$.RecordToString coaRecord,{w_Msg,2}
+			
+END.SUB B_1_2_1_Read
+
+;-------------------------------------------------------------------------------
+;	Chart of Accounts Key - New Record
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_1_2_1_1_NewRecord
+
+;	---------------------
+;	Initialise the record
+;	---------------------
+	$Call X_1_coaInitialise										; Initialise the coa record
+
+;	---------------------
+;	New slot in the Index
+;	---------------------
+	coaIdx_UBOUND			= coaIdx_UBOUND + 1					; Add a new slot to coaIdx
+	n_coaIdx				= coaIdx_UBOUND						; and set the idex to it
+				
+;	----------------------
+;	Build the Index record
+;	----------------------
+	coaIdxAcctNo			= w_AcctNo							; store the key
+	coaIdxLive				= "1"								; It's live
+	coaIdxLocked			= 1	   								; lock it
+	coaIdxRecNo				= n_coaIdx							; record no is same as index 
+	xT.rPut (coaIdx,n_coaIdx)									; Write an Index record
+	xT.Sort (coaIdx,1,6)										; Sort the Index
+	w_Msg 					= "0"								; OKAY 
+
+;	------------------------------------
+;	Now find the position after the sort
+;	------------------------------------
+	xT.search (coaIdx,1,6,w_AcctKey,n_coaIdx)
+
+;	-------------------------
+;	Store the Index subscript
+;	-------------------------
+	xT.search (concurTbl,1,5,w_ReturnPortNo,I)					; Note that this cannot fail
+	concurTblcoaIdx[I]	= n_coaIdx								; as B_1_1_GetIndex has sorted it out
+	concurTblAddMode[I]	= c_TRUE								; set add mode to true
+
+END.SUB B_1_2_1_1_NewRecord
+
+;-------------------------------------------------------------------------------
+;	Chart of Accounts - Write
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_1_2_2_Write
+
+;	********************************************
+;	w_Msg =	xxxxxRecord
+;			x = IP Address "999.999.999.999"
+;			x = Port No "99999"
+;			x = File No where 1=coaFile,2=gjFile
+;			x = Validate,Read,Write,Start,Next,Delete
+;			x = Lock,Unlock,Blank(No Lock)
+;
+;	123456789012345678901234
+;	999.999.999.999nnnnn1RLRecord
+;	********************************************
+
+	$.StringToRecord {w_Msg,24},coaRecord						; Load the coa Record
+	
+	xT.search (concurTbl,1,5,w_ReturnPortNo,I)					; Grab the most recent coaIdx
+	n_coaIdx 		= concurTblcoaIdx[I]						; and load it
+	
+	coaRecord_NO 	= coaIdxRecNo[n_coaIdx]						; Set up the record No
+	f.Write (coaFile,coaRecord)									; and Write the record
+	if coaFile_STATUS != 0										; If NOT all good
+		w_Msg = "9"												;	report the error
+		display.line "[000004]coaFile File System Error"		;	display it 
+		TERMINATE 000004										;	and exit
+	else
+	   	coaIdxLocked[n_coaIdx] = 0								; Unlock the record in the Index						
+		w_Msg = "0"												; and return OKAY
+		concurTblAddMode[I]	= c_FALSE							; set add mode to false
+	end.if
+	
+END.SUB B_1_2_2_Write
+
+;-------------------------------------------------------------------------------
+;	Chart of Accounts - Start
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_1_2_3_Start_Next
+
+;	w_Msg
+;		xxxxxRecord'
+;			x = IP Address "999.999.999.999"
+;			x = Port No "99999"
+;			x = File No where 1=coaFile,2=gjFile
+;			x = Validate,Read,Write,Start,Next,Delete
+;			x = Lock,Unlock,Blank(No Lock)
+;
+;		123456789012345678901234
+;		999.999.999.999nnnnn1RLRecord
+;
+
+	{w_Msg,1,1} = "7"													; Setup the loop
+	
+	repeat.if {w_Msg,1,1} = "7"											; Deleted Record ?
+
+		n_coaIdx 			= n_coaIdx + 1								; Increment the index
+		concurTblcoaIdx[I]	= n_coaIdx
+
+		if n_coaIdx > coaIdx_UBOUND										; Beyond the upper boundary then
+			w_Msg = "8"													;	set EOF
+		else
+			xT.rGet (coaIdx,n_coaIdx)									; Grab the record
+			if coaIdxLive = "0"											; If deleted record
+				w_Msg = "7"												;	deleted record
+			else														; else
+				coaRecord_NO = coaIdxRecNo								; 	Grab the record number
+				f.read(coaFile,coaRecord)								; 	Read the file
+				if coaIdxLocked[n_coaIdx] = 1							;	If it is locked	
+					w_Msg = "1"											; 		report it (but still return it
+				else													; 	else	
+					if {w_Msg,23,1} = "L"								;		if you are asked to lock it
+						coaIdxLocked[n_coaIdx] = 1						; 			then do so
+					end.if						
+					w_Msg = "0"											; 		report all okay
+				end.if
+				$.RecordToString coaRecord,{w_Msg,2}					; now fill the string
+			end.if
+		end.if
+		
+	end.repeat
+
+END.SUB B_1_2_3_Start_Next
+
+;-------------------------------------------------------------------------------
+;	Chart of Accounts - Delete
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_1_2_4_Delete
+
+;	This delete assumes that your application will always read and lock the
+;	record before deleting it. If that is not the case then you would need 
+;	lock checking here.
+
+	xT.search (concurTbl,1,5,w_ReturnPortNo,I)					; Get the Index from the Concurrent table
+	n_coaIdx 		= concurTblcoaIdx[I] 						; load that Index
+	
+	coaRecord_NO 	= coaIdxRecNo[n_coaIdx]						; get the record no	
+	f.Delete (coaFile,coaRecord)								; and delete the record
+	if coaFile_STATUS != 0										; If NOT okay
+		w_Msg = "9"												;	report the error
+		display.line "[000005]coaFile File System Error"		;	display it
+		TERMINATE 000005										;	and exit
+	else														; else
+		coaIdxLive[n_coaIdx] 	= "0"							;	set as deleted
+		w_Msg 					= "0"							;	and report all OKAY
+		concurTblAddMode[I]	 	= c_FALSE						; 	set add mode to false		
+	end.if
+		
+END.SUB B_1_2_4_Delete
+
+;-------------------------------------------------------------------------------
+;	Chart of Accounts - Exit
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_1_2_5_Exit
+
+;	If Exit is pressed on a New record, the record will not have been written
+;	but the Index needs to be deleted
+
+	xT.search (concurTbl,1,5,w_ReturnPortNo,I)					; Get the Index from the Concurrent table
+	n_coaIdx 					= concurTblcoaIdx[I] 				; load that Index
+	n_AddMode					= concurTblAddMode[I]				; Were we adding a new one
+
+	coaIdxLocked[n_coaIdx]		= c_FALSE						; unlock it
+	if n_AddMode = c_TRUE										; If its a new add
+		coaIdxLive[n_coaIdx]	= "0"							;	set as deleted
+		w_Msg 					= "0"							;	and report all OKAY
+		concurTblAddMode[I]		= c_FALSE							; set add mode to false		
+	end.if
+	
+END.SUB B_1_2_5_Exit
+
+;-----------------------------------------------------------------------
+;	gjFile
+;-----------------------------------------------------------------------
+BEGIN.SUB B_1_3_gjFile
+
+END.SUB B_1_3_gjFile
+
+;-----------------------------------------------------------------------
+;	Initialise a coa Record
+;-----------------------------------------------------------------------
+BEGIN.SUB X_1_coaInitialise
+
+	coaAcctNo				= w_AcctNo
+	coaDescription			= spaces(30)
+	coaFlag1				= "A"
+	coaFlag2				= "1"
+	coaFlag3				= "1"
+	coaFlag4				= "1"
+	coaBalanceIndicator		= "DR"
+	coaControlAcctNo		= spaces(1)
+	coaDepreciation			= 0
+	coaUnitPrice			= 0
+	
+END.SUB X_1_coaInitialise
+
+;=======================================================================
+;	FINALISATION
+;=======================================================================
+BEGIN.SUB Z_1_Finalise
+END.SUB Z_1_Finalise

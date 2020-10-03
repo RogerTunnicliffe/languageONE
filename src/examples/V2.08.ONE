@@ -1,0 +1,235 @@
+%include 'include/BEGIN.PROGRAM'
+
+;	BEGIN.SYNONYMS **************************************
+;		$.			:	WORDS.  
+;		@.			:	INTEGERS.  
+;		#.			:	NUMBERS.  
+;		f.			:	FILES. 
+;		T.			:	TABLES.
+;		xT.			:	XTABLES.
+;	END.SYNONYMS ****************************************
+
+;=======================================================================
+;		  PROGRAM DATA
+;=======================================================================	      
+
+;-----------------------------------------------------------------------
+;		DICTIONARY
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.DICTIONARY'
+%include 'include/END.DICTIONARY'
+
+;-----------------------------------------------------------------------
+;		MATRIX
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.MATRIX'
+
+  ; This programs 
+	INSERTNUMBER A,						0,'999999'
+	INSERTNUMBER B,						0,'999999'
+	INSERTNUMBER C,						0,'999999'
+	INSERTNUMBER D,						0,'999999'
+	INSERTNUMBER E,						0,'999999'
+	INSERTNUMBER F,						0,'999999'
+	INSERTNUMBER G,						0,'999999'
+	INSERTNUMBER H,						0,'999999'
+	INSERTNUMBER I,						0,'999999'
+	INSERTNUMBER J,						0,'999999'
+	INSERTNUMBER K,						0,'999999'
+	INSERTNUMBER L,						0,'999999'
+	INSERTNUMBER M,						0,'999999'
+	INSERTNUMBER N,						0,'999999'
+	INSERTNUMBER O,						0,'999999'
+	INSERTNUMBER P,						0,'999999'
+	INSERTNUMBER Q,						0,'999999'
+	INSERTNUMBER R,						0,'999999'
+	INSERTNUMBER S,						0,'999999'
+	INSERTNUMBER T,						0,'999999'
+	INSERTNUMBER U,						0,'999999'
+	INSERTNUMBER V,						0,'999999'
+	INSERTNUMBER W,						0,'999999'
+	INSERTNUMBER X,						0,'999999'
+	INSERTNUMBER Y,						0,'999999'
+	INSERTNUMBER Z,						0,'999999'	
+
+%include 'include/END.MATRIX'
+
+;-----------------------------------------------------------------------
+;		FILES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.FILES'
+%include 'include/END.FILES'
+	
+;-----------------------------------------------------------------------
+;		TABLES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.TABLES'
+%include 'include/END.TABLES'
+
+;=======================================================================
+;		PROGRAM INSTRUCTIONS
+;		Mainline  
+;=======================================================================
+%include 'include/BEGIN.INSTRUCTIONS'
+
+	$Call A_1_Initial									
+	$Call B_1_Process
+	$Call Z_1_Final
+
+%include 'include/END.INSTRUCTIONS'
+%include 'include/END.PROGRAM'      
+
+;=======================================================================
+;		PROGRAM PROCEDURES
+;=======================================================================
+
+;-------------------------------------------------------------------------------
+;		INITIALISATION
+;-------------------------------------------------------------------------------
+BEGIN.SUB A_1_Initial
+
+	A = 01 | B = 02 | C = 03 | D = 04 | E = 05
+	F = 06 | G = 07 | H = 08 | I = 09 | J = 10
+	K = 11 | L = 12 | M = 13 | N = 14 | O = 15
+	P = 16 | Q = 17 | R = 18 | S = 18 | T = 20
+	U = 21 | V = 22 | W = 23 | X = 24 | Y = 25
+	Z = 26
+	
+END.SUB A_1_Initial
+
+;-------------------------------------------------------------------------------
+;	Process
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_1_Process
+
+;	This program introduces no new features to languageONE but demonstrates how to 
+;	code a complex compound IF statement (one that you probably shouldn't code like
+;	the one that follows anyway)
+
+;	IF ((((A=B and C=D) or (E=F or G=H)) AND ((J=K or L=M) and (N=O or P=Q)))
+;	OR   ((R=S or  T=U) OR (V=W and X=Y))) 
+
+;	IF (((x1 or x2) AND (x3 and x4))
+;	OR   (x5 or x6)) 
+
+;	IF ((y1 AND y2)
+;	OR   y3) 
+
+;	IF  z1
+;	OR  y3 
+
+
+	if ThisIsTrue
+		display.line "This is True"
+	else
+		display.line "This is NOT True"
+	end.if
+	
+
+END.SUB C_1_Process
+
+;-------------------------------------------------------------------------------
+;	Functions
+;-------------------------------------------------------------------------------
+BEGIN.FUNCTION ThisIsTrue
+
+	.if z1
+	.or y3
+	.end
+		RETURN_CODE = c_TRUE
+	end.if
+	exit.function ThisIsTrue
+
+;	*****************
+;	*****************
+	BEGIN.FUNCTION z1
+		.if  y1
+		.and y2
+		.end
+			RETURN_CODE = c_TRUE
+		end.if	
+	END.FUNCTION z1
+	
+	BEGIN.FUNCTION y1
+		.if x1
+		.or x2
+		.end
+			RETURN_CODE = c_TRUE
+		end.if	
+	END.FUNCTION y1
+
+	BEGIN.FUNCTION x1
+		.if  A = B
+		.and C = D
+		.end
+			RETURN_CODE = c_TRUE
+		end.if
+	END.FUNCTION x1
+	
+	BEGIN.FUNCTION x2
+		.if E = F
+		.or G = H
+		.end
+			RETURN_CODE = c_TRUE
+		end.if	
+	END.FUNCTION x2
+		
+	BEGIN.FUNCTION y2
+		.if  x3
+		.and x4
+		.end
+			RETURN_CODE = c_TRUE
+		end.if	
+	END.FUNCTION y2
+
+	BEGIN.FUNCTION x3
+		.if J = K
+		.or L = M
+		.end
+			RETURN_CODE = c_TRUE
+		end.if	
+	END.FUNCTION x3
+	
+	BEGIN.FUNCTION x4
+		.if N = O
+		.or P = Q
+		.end
+			RETURN_CODE = c_TRUE
+		end.if	
+	END.FUNCTION x4
+		
+	BEGIN.FUNCTION y3
+		.if  x5
+		.or  x6
+		.end
+			RETURN_CODE = c_TRUE
+		end.if	
+	END.FUNCTION y3
+
+	BEGIN.FUNCTION x5
+		.if R = S
+		.or T = U
+		.end
+			RETURN_CODE = c_TRUE
+		end.if	
+	END.FUNCTION x5
+
+	BEGIN.FUNCTION x6
+		.if  V = W
+		.and X = Y
+		.end
+			RETURN_CODE = c_TRUE
+		end.if
+	END.FUNCTION x6
+
+END.FUNCTION ThisIsTrue
+
+
+;-------------------------------------------------------------------------------
+;	FINAL
+;-------------------------------------------------------------------------------
+BEGIN.SUB Z_1_Final
+END.SUB E_1_Final
+
+
+

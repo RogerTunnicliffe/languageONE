@@ -1,0 +1,651 @@
+	%assign debug 0
+	%include '../include/LMACROS.CPY'
+	%include '../include/IMACROS.CPY'
+;***%include '../include/CONSTANTS.INC' 	
+;***The XTABLES.bind interferes with the bind symbol in here
+	%line 6 WWW.LIB
+
+;	=================================================
+;	GLOBAL ROUTINES/VARIABLES defined in this library
+;	=================================================
+;	Routines
+;	--------	
+	global _WWW
+
+;	===============================================
+;	EXTERNAL ROUTINES/VARIABLES used by the library
+;	===============================================
+;	Routines
+;	--------
+	extern _SYSERROR				; COMMON
+
+;	------
+;	Fields
+;	------
+	extern RETURN_CODE				; COMMON
+	extern ERROR_CODE				; COMMON
+	extern StdOutHandle				; STDIO
+
+;-----------------------------------------------------------------------				
+;           DATA Section
+;-----------------------------------------------------------------------							
+[section .data]
+
+	mess1 				db '[000001]Starting HTML Server',0x0A
+
+	sockaddr:												; Bind Socket
+	  sin_family		dw 2 ; AF_INET
+	  sin_port			dw 0 ; Port Number
+	  sin_addr			dd 0 ; INADDR_ANY	
+	  filler			dq 0 ; ?
+
+	responseHandle		dq 0	
+	response:
+		db "HTTP/1.1 200 OK",0x0d,0x0a,0x0d,0x0a			; Header
+	  	times 65517 db 0									; buffer
+	noContent:
+		db "HTTP/1.1 204 OK",0x0d,0x0a,0x0d,0x0a			; Header
+
+	w_8Spaces times 8	db 0x20
+	reuse				dd 1
+
+	
+insertnumber n_fd,0,'9'	  	
+;-----------------------------------------------------------------------				
+;           UN Initialised - zero filled when loaded
+;-----------------------------------------------------------------------							
+[section .bss]
+	listen_socket 			resq 1								; Create Socket
+	accept_socket			resq 1								; Listen to socket
+	
+	sendmsg_socket			resq 1
+	recvmsg_socket			resq 1								; Create Socket
+
+	inBuffer 				resb 2048							; Read
+	inBuffer_len 			resq 1
+
+	n_ScreenName			resq 1								; Screen Name
+	n_Response				resq 1								; Response address	
+	n_GetAddress			resq 1								; Get callback address
+	n_PostAddress			resq 1								; Post callback address
+	n_FileLength			resq 1								; Length of file read
+
+;=======================================================================				
+;           ROUTINES ADDRESS's
+;=======================================================================
+;***Debug Printing
+
+	extern _DISPLAY
+	extern _VALIDATE_SRC
+	extern LF
+	extern w_One
+   %macro debugPrint 1
+		$pushAll r8,r9,r10,r11,r12,r13,r14,r15,rax,rbx,rcx,rdx,rsi,rdi
+		$SetupField %1
+		Call _DISPLAY
+		$SetupField LF
+		Call _DISPLAY
+		$popAll rdi,rsi,rdx,rcx,rbx,rax,r15,r14,r13,r12,r11,r10,r9,r8
+   %endmacro
+;***Debug Printing
+
+	[section .data]
+	callTable:	dq _OPEN
+				dq _PROCESS
+				dq _CLOSE
+				dq _SENDMSG
+				dq _RECVMSG
+;=======================================================================
+;			CODE SEGMENT
+;=======================================================================					
+	[section .text]
+;-----------------------------------------------------------------------
+;      		Control Section
+;-----------------------------------------------------------------------
+_WWW:
+
+			mov rbx,callTable												; Get address of jump table
+			mov rax,8														; multiply by 8  
+			mul r8															; Get Calling function
+			add rbx,rax														; add to table to get offset
+			mov rbx,[rbx]													; Load the routines address
+			Call rbx														; and call it
+	  	
+_WWW_EXIT:
+			ret
+
+;=======================================================================
+;			OPEN AND READY THE SOCKET
+;=======================================================================	
+_OPEN:
+;------------------------------------------------------------
+;			Startup Message
+;------------------------------------------------------------
+			mov rax,1										; sys_write (1) syscall
+			mov RDI,1										; stdout
+			mov RSI,mess1									; mess1 offset
+			mov rdx,29										; set length of move				
+			syscall				
+
+;------------------------------------------------------------
+;			Create Socket
+;------------------------------------------------------------
+			mov rax,41		; SYS_SOCKET
+			mov rdi,2		; AF_INET
+			mov rsi,1		; SOCK_STREAM
+			mov rdx,6		; PROTO_TCP
+			syscall
+			cmp rax,0										; Got a socket
+				jl .err										; NO then error
+
+			mov [listen_socket],rax							; save listen socket handle
+				
+;-------------------------------------------------------------------------------
+;			Bind to port No
+;-------------------------------------------------------------------------------
+;			When a socket is created with socket(2), it exists in a name space
+;			(address family) but has no address assigned to it. bind() assigns
+;			the address specified by addr to the socket referred to by the file
+;			descriptor sockfd. addrlen specifies the size, in bytes, of the
+;			address structure pointed to by addr. Traditionally, this operation
+;			is called “assigning a name to a socket”.
+;-------------------------------------------------------------------------------
+;			convert port to network byte order - big-endian
+			mov r_PortNo,[r_PortNo]
+			mov eax,r_PortNo
+			xchg ah,al
+			mov word[sin_port],ax
+	
+			mov rax,49										; SYS_BIND
+			mov rdi,[listen_socket]							; listen socket handle
+			mov rsi,sockaddr								; socket structure
+			mov rdx,16										; length of socket structure
+			syscall
+			cmp rax,0										; Got a bind
+				jl .err										; NO then error
+
+;-------------------------------------------------------------------------------
+;			Start listening
+;-------------------------------------------------------------------------------
+;			marks the socket refered to by the socket handle as a passive socket,
+;			that is, as a socket that will be used to accept incoming connection
+;			requests using accept.
+;-------------------------------------------------------------------------------
+			mov rax,50										; SYS_LISTEN
+			mov rdi,[listen_socket]							; listen socket handle
+			mov rsi,100000000								; backlog
+			syscall
+			cmp rax,0										; Got a listen
+				jl .err										; NO then error
+
+			jmp .Exit
+			
+		;	-----------------------------	
+	.err:	;	ERROR MESSAGE
+		;	-----------------------------
+			push rax
+			Call _CLOSE										; Try and close the socket
+			pop rax
+			Call _SYSERROR									; Call System Error (will terminate)
+		
+	.Exit:	  	
+_OPEN_EXIT:
+			ret
+			
+;=======================================================================
+;			THE PROCESS LOOP
+;=======================================================================	
+_PROCESS:
+
+		;	These passed in parameters will get clobbered during the callbacks 
+		;	so we must store them
+			mov [n_ScreenName],r_ScreenName
+			mov [n_Response],r_Response
+			mov [n_GetAddress],r_GetAddress
+			mov [n_PostAddress],r_PostAddress
+			
+;-------------------------------------------------------------------------------
+;			Accept
+;-------------------------------------------------------------------------------
+;			The accept() system call is used with connection-based socket types
+;			(SOCK_STREAM, SOCK_SEQPACKET).  It extracts the first connection
+;			request on the queue of pending connections for the listening socket,
+;			sockfd, creates a new connected socket, and returns a new file
+;			descriptor referring to that socket.  The newly created socket is not
+;			in the listening state.  The original socket sockfd is unaffected by
+;			this call.
+;-------------------------------------------------------------------------------
+	.pollingStart:
+			mov rax,43										; SYS_ACCEPT
+			mov rdi,[listen_socket]							; listem socket handle
+			xor rsi,rsi										; 0
+			xor rdx,rdx										; 0
+			syscall
+
+			mov [accept_socket],rax							; save accept socket handle 
+	
+;-------------------------------------------------------------------------------
+;			Read
+;-------------------------------------------------------------------------------
+			mov rax,0										; Function is READ
+			mov rdi,[accept_socket]							; Set File Handle	
+			mov rsi,inBuffer								; Address of record inBuffer
+			mov rdx,2048									; Record/Buffer length
+			syscall
+
+			mov [inBuffer_len],rax							; store length
+
+;-------------------------------------------------------------------------------
+;			Scan for end of file and mark with null
+;-------------------------------------------------------------------------------
+; 			GET / HTTP/1.1
+;			GET /screen1.html HTTP/1.1
+;			POST /screen1.html HTTP/1.1
+			
+			mov rcx,rax										; Grab buffer length
+			mov rdi,inBuffer								; Grab the buffer offset
+			add rdi,5										; go to 6th byte
+			mov al,' '										; setup al with space		
+			cld												; work forwards
+	repne	scasb											; and scan
+			dec rdi											; rdi will have flicked over
+			mov byte[rdi],0x00								; and add null terminator
+
+;*******************************************************************************
+;			Program Callback
+;*******************************************************************************
+	.If1:	cmp byte[inBuffer],'G'							; If its a GET
+				jne .EndIf1
+			.If1a:	cmp qword[n_GetAddress],0x00			; And we have a GET callback
+					je .EndIf1a
+					Call _LOAD_RESPONSE						; load up the response
+					call [n_GetAddress]						; do the call back
+			.EndIf1a:
+	.EndIf1:
+
+	.If2:	cmp byte[inBuffer],'P'							; If its a POST
+				jne .EndIf2
+			.If2b:	cmp qword[n_PostAddress],0x00			; And we have a POST callback
+					je .EndIf2b		
+					Call _LOAD_RESPONSE						; load up the response					
+					call [n_PostAddress]					; and do the call back					
+			.EndIf2b:
+	.EndIf2:
+
+		;	-----------------------
+		;	received an END request
+		;	-----------------------
+	.If3:	cmp qword[ERROR_CODE],99						; Did we receive a close request from 
+				jne .EndIf3									; the called back procedure
+	.Else3:
+		;	You need to respond as the webpage is waiting for you
+				mov rax,1									; sys_write (1) syscall
+				mov RDI,[accept_socket]						; file handle
+				mov RSI,response							; response
+				mov rdx,19									; set length of write	
+				syscall	
+				call _CLOSE									; then Call Close
+				jmp _PROCESS_EXIT							; and exit
+	.EndIf3:
+
+		;	--------------------------------------
+		;	Callback program is providing response
+		;	--------------------------------------
+	.If4:	cmp qword[RETURN_CODE],0						; Did we receive a "I'll handle it" from 
+				je .EndIf4									; the called back procedure
+	.Else4:
+
+		;	Load it up		
+			mov rsi,[n_Response]							; grab the source
+			lea rdi,[response+19]							; grab the destination
+
+			mov rax,[RETURN_CODE]							; Grab the length
+			add rax,19										; add 19 to it
+	;		add rax,4										; for CR/LF CR/LF
+			mov qword[n_FileLength],rax						; set length of write	
+		
+			mov rcx,[RETURN_CODE]							; Grab the length
+			cld												; Do the move
+		.l:	movsb
+			loop .l
+	;		mov dword[rdi],0x0d0a0d0a						; terminate it
+			jmp .write
+	.EndIf4:
+		
+;-------------------------------------------------------------------------------
+;			[NORMAL URL]-So Figure it out
+;-------------------------------------------------------------------------------
+		;	IS IT THE FIRST
+			mov rsi,inBuffer								; Address of record inBuffer
+			add rsi,5										; will already have address of inBuffer (above)		
+	.If5:	cmp byte[rsi],0x00
+				jne .Else5						
+			mov rdi,qword[n_ScreenName]						; external name
+			jmp .EndIf5										; and jump
+	.Else5:
+			mov rdi,inBuffer								; external name
+			add rdi,5
+			
+			mov qword[responseHandle],0						; initialise the responseHandle
+			mov rax,rdi										; grab the offset
+			inc rax											; plus 1
+			cmp byte[rax],0x00								; Do we have a file name
+				je .If6										; if not then jump
+			
+	.EndIf5:
+
+		;	-----------------------
+		;	Do the read - Open File
+		;	-----------------------
+			mov rax,2										; open
+			mov rsi,0										; readonly
+			syscall
+			mov [responseHandle],rax
+			
+;-------------------------------------------------------------------------------
+;			Response
+;-------------------------------------------------------------------------------
+	.If6:	cmp qword[responseHandle],0						; Is there a file to read
+			jg .Else6
+
+			mov rax,1										; sys_write (1) syscall
+			mov RDI,[accept_socket]							; file handle
+			mov RSI,noContent								; no Content
+			mov rdx,19										; set length of write	
+			syscall				
+			jmp .EndIf6
+
+	.Else6:
+
+			mov rax,0										; sys_read (0) syscall
+			mov RDI,[responseHandle]						; file handle
+			lea RSI,[response+19]							; buffer
+			mov rdx,65517									; set length 				
+			syscall	
+			
+			add rax,19										; Set length of output
+			mov qword[n_FileLength],rax						; and store read length
+					
+	.write:	mov rax,1										; sys_write (1) syscall
+			mov RDI,[accept_socket]							; file handle
+			mov RSI,response								; response
+			mov rdx,[n_FileLength]							; set length of write	
+			syscall
+					
+	.EndIf6:
+
+;-------------------------------------------------------------------------------
+;			Close
+;-------------------------------------------------------------------------------
+	.close:	mov rax,3										; Close
+			mov rdi,[responseHandle]						; Response file			
+			syscall
+
+			mov rax,3										; Close
+			mov rdi,[accept_socket]							; accept socket	
+			syscall
+	
+			jmp .pollingStart								; and loop
+	
+_PROCESS_EXIT:
+			ret
+
+;-----------------------------------------------------------------------
+;			Store response in buffer
+;			So that the Callback has something to work with
+;-----------------------------------------------------------------------
+_LOAD_RESPONSE:
+
+		;	Initialise Response
+			mov al,' '										; setup a space
+			mov rdi,[n_Response]							; grab the destination
+			mov rcx,[rdi-8]									; grab the length
+	.l1:	stosb
+			loop .l1
+
+		;	Load it up		
+			mov rsi,inBuffer								; grab the source
+			mov rdi,[n_Response]							; grab the destination
+			mov rcx,[inBuffer_len]							; Grab the length
+	.l2:	movsb
+	  .1If:	cmp byte[rdi-1],0x00							; Replace a null with a space
+				jne .1EndIf
+			mov byte[rdi-1],0x20	
+	  .1EndIf:					
+			loop .l2
+			
+_LOAD_RESPONSE_EXIT:
+			ret
+
+;=======================================================================
+;			CLOSE THE SOCKET
+;=======================================================================
+_CLOSE:
+			mov rax,3
+			mov rdi, [listen_socket]
+			syscall
+			
+_CLOSE_EXIT:
+			ret
+			
+;=======================================================================
+;			SEND MESSAGE
+;=======================================================================
+;			r9  = Address of IP Address
+;			r10 = Address of Port No
+;			r11 = Address of Message
+;			and cuz r11 gets messed up = r15
+_SENDMSG:
+
+			mov r15,r11
+			
+		;------------------------------------------------------------
+		;	Create Socket
+		;------------------------------------------------------------
+			mov rax,41					; SYS_SOCKET
+			mov rdi,2					; AF_INET
+			mov rsi,2					; SOCK_DGRAM
+			mov rdx,17					; IPPROTO_UDP
+			syscall
+			cmp rax,0
+				jl .err
+				
+			mov [sendmsg_socket],rax	
+
+		;------------------------------------------------------------
+		;	Connect
+		;------------------------------------------------------------
+			Call _MSG_IP_Address
+			Call _MSG_PortNo
+			
+			mov rax,42					; Connect
+			mov rdi,[sendmsg_socket]	; SocketFD
+			mov rsi,sockaddr			; Address
+			mov rdx,16					; Address Length
+			syscall
+			cmp rax,0
+				jl .err
+
+		;------------------------------------------------------------
+		;	Write
+		;------------------------------------------------------------
+			mov rax,1					; sys_write (1) syscall
+			mov RDI,[sendmsg_socket]	; Sock FD
+			mov RSI,r15					; Message
+			mov rdx,[r15-8]				; Message Length	
+			syscall
+			cmp rax,0
+				jl .err
+
+		;------------------------------------------------------------
+		;	Close
+		;------------------------------------------------------------
+			mov rax,3					; Close
+			mov rdi,[sendmsg_socket]	; Sock FD	
+			syscall
+			cmp rax,0			
+				jl .err
+
+			jmp .Exit
+
+		;	-----------------------------	
+	.err:	;	ERROR MESSAGE
+		;	-----------------------------
+			push rax
+			mov rax,3					; Close
+			mov rdi,[sendmsg_socket]	; Sock FD	
+			syscall
+			pop rax
+			Call _SYSERROR				; Call System Error (will terminate)
+		
+	.Exit:
+_SENDMSG_EXIT:
+			ret
+
+;=======================================================================
+;			RECV MESSAGE
+;=======================================================================
+;			r9  = Address of IP Address
+;			r10 = Address of Port No
+;			r11 = Address of Message
+;			and cuz r11 gets messed up = r15
+
+_RECVMSG:
+
+			mov r15,r11
+			
+		;------------------------------------------------------------
+		;	Create Socket
+		;------------------------------------------------------------
+			mov rax,41					; SYS_SOCKET
+			mov rdi,2					; AF_INET
+			mov rsi,2					; SOCK_DGRAM
+			mov rdx,17					; IPPROTO_UDP
+			syscall
+			cmp rax,0										
+				jl .err										
+
+			mov [recvmsg_socket],rax	
+
+		;-------------------------------------------------------------------------------
+		;	Bind to port No
+		;-------------------------------------------------------------------------------
+		;	Not sure why but cannot bind to the socket with a fixed IP
+			Call _MSG_IP_Address			
+			Call _MSG_PortNo
+			
+			mov rax,49					; SYS_BIND
+			mov rdi,[recvmsg_socket]	; socketFD
+			mov rsi,sockaddr			; socket structure
+			mov rdx,16					; length of socket structure
+			syscall
+			cmp rax,0										
+				jl .err										
+
+		;-------------------------------------------------------------------------------
+		;	Read
+		;-------------------------------------------------------------------------------
+			mov rax,0					; Function is READ
+			mov rdi,[recvmsg_socket]	; set file handle
+			mov rsi,r15					; Straight into the message 
+			mov rdx,qword[r15-8]		; Message length
+			syscall
+			cmp rax,0
+				jl .err
+			
+		;-------------------------------------------------------------------------------
+		;	Close
+		;---------------------------------------------------------------------------
+			mov rax,3					; Close
+			mov rdi, [recvmsg_socket]	; SocketFD
+			syscall
+			cmp rax,0
+				jl .err
+								
+			jmp .Exit			
+
+		;	-----------------------------	
+	.err:	;	ERROR MESSAGE
+		;	-----------------------------
+			push rax					; Save the error code
+			mov rax,3					; Close
+			mov rdi, [recvmsg_socket]	; SocketFD
+			syscall
+			pop rax						; Restore the error code
+			Call _SYSERROR				; Call System Error (will terminate)
+
+	.Exit:
+_RECVMSG_EXIT:
+			ret
+
+			
+	%define r_DecimalMultiplier	r12
+	%define r_Offset			rdi
+	%define r_Idx				r13
+	%define r_DestByte			rbx
+	
+;-----------------------------------------------------------------------
+;			Convert IP Address
+;-----------------------------------------------------------------------
+_MSG_IP_Address:
+
+			mov dword[sin_addr],0					; Initialise Address
+			
+			mov r_DestByte,3						; Destination field byte no
+			mov r_Offset,r9							; Offset of IP Address				' 
+			mov r_Idx,@fieldLength(r9)				; Length of IP Address		
+			mov r_DecimalMultiplier,1				; Decimal multiplyer
+
+	.loop:	dec r_Idx								; Set Index		
+			cmp r_Idx,0								; If its < 0 then
+				jl .Exit							;	we are done
+		
+			cmp byte[r_Offset+r_Idx],'.'			; Have we found a period
+				jne .DoIt							;	
+				dec r_DestByte						; 	Step back one on destination
+				mov r_DecimalMultiplier,1			;	Start the decimal multiplier at 1
+				jmp .loop							;	and loop back
+				
+	.DoIt:	mov al,byte[r_Offset+r_Idx]				; Grab the byte	
+			xor al,0x30								; Reduce it from ASCII
+			mul r_DecimalMultiplier					; Multiply it by the column value	
+			add byte[sin_addr+r_DestByte],al		; add it to the destination byte	
+			imul r_DecimalMultiplier,10				; next decimal column
+			jmp .loop								; and loop back
+		
+	.Exit:
+_MSG_IP_Address_EXIT:
+			ret
+
+;-----------------------------------------------------------------------
+;			Convert Port No
+;-----------------------------------------------------------------------
+_MSG_PortNo:
+
+			mov word[sin_port],0					; Initialise Port No
+			
+			mov r_Offset,r10						; Offset of Port No			' 
+			mov r_Idx,@fieldLength(r10)				; Length of Port No		
+			mov r_DecimalMultiplier,1				; Decimal multiplyer
+			xor rbx,rbx								; initialise result
+
+	.loop:	dec r_Idx								; Set Index		
+			cmp r_Idx,0								; If its < 0 then
+				jl .Exch							;	we are done
+			cmp byte[r_Offset+r_Idx],0x20			; If it a space
+				je .loop							;	ignore it
+					
+	.DoIt:	xor rax,rax								; Initialise
+			mov al,byte[r_Offset+r_Idx]				; Grab the byte	
+			xor al,0x30								; Reduce it from ASCII
+			mul r_DecimalMultiplier					; Multiply it by the column value	
+			add bx,ax								; add it to the destination byte	
+			imul r_DecimalMultiplier,10				; next decimal column
+			jmp .loop								; and loop back
+			
+	.Exch:	xchg bh,bl
+			mov word[sin_port],bx
+
+	.Exit:
+_MSG_PortNo_EXIT:
+			ret

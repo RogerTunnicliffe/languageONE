@@ -1,0 +1,454 @@
+%include 'include/BEGIN.PROGRAM'
+
+;	Refer to VERSION.HISTORY for...well...version history
+
+;	BEGIN.SYNONYMS **************************************
+;		$.	:	WORDS.  
+;		@.	:	INTEGERS.  
+;		#.	:	NUMBERS.  
+;		f.	:	FILES. 
+;		T.	:	TABLES.
+;		xT.	:	XTABLES.
+;	END.SYNONYMS ****************************************
+
+   %FP_DefaultPicture '9999.999999'
+
+;=======================================================================
+;		  PROGRAM DATA
+;=======================================================================	      
+
+;-----------------------------------------------------------------------
+;		DICTIONARY
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.DICTIONARY'	
+
+	insertword Char1,1,''
+	insertword Char2,12,''
+
+%include 'include/END.DICTIONARY'
+
+;-----------------------------------------------------------------------
+;		MATRIX
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.MATRIX'
+
+	INSERTNUMBER Int_I,				0,'999999'
+	INSERTNUMBER Int_J,				0,'999999'
+	INSERTNUMBER Int_K,				0,'999999'
+	INSERTNUMBER Int_L,				0,'999999'
+	INSERTNUMBER Int_M,				0,'999999'
+	INSERTNUMBER Int_N,				0,'999999'
+	INSERTNUMBER Int_O,				0,'999999'
+	INSERTNUMBER Int_P,				0,'999999'
+
+	INSERTNUMBER FP_I,			 	0,'9999.999999'
+	INSERTNUMBER FP_J,			 	0,'9999.999999'
+	INSERTNUMBER FP_K,			 	0,'9999.999999'
+	INSERTNUMBER FP_L,			 	0,'9999.999999'
+	INSERTNUMBER FP_M,			 	0,'9999.999999'
+	INSERTNUMBER FP_N,			 	0,'9999.999999'
+	INSERTNUMBER FP_O,			 	0,'9999.999999'
+	INSERTNUMBER FP_P,			 	0,'9999.999999'
+	
+%include 'include/END.MATRIX'
+
+;-----------------------------------------------------------------------
+;		FILES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.FILES'
+
+;	Record for TestTable
+	%define	c_RecordLength  09
+	%define c_NoOfRecords 	08
+
+	begin.record c_RecordLength,TestRecord
+		insertnumber TR_No,0,'9999.9999'
+	end.record TestRecord	
+
+%include 'include/END.FILES'
+
+;-----------------------------------------------------------------------
+;		TABLES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.TABLES'
+
+	INSERTTABLE TestTable,c_RecordLength*c_NoOfRecords
+		
+%include 'include/END.TABLES'
+
+;=======================================================================
+;		PROGRAM INSTRUCTIONS
+;		Mainline  
+;=======================================================================
+%include 'include/BEGIN.INSTRUCTIONS'
+
+	$Call A_1_Initial
+
+	if RETURN_CODE = 0
+		$Call B_1_Process
+		$Call Z_1_Finalise
+	end.if
+
+%include 'include/END.INSTRUCTIONS'
+%include 'include/END.PROGRAM'      
+
+;=======================================================================
+;		PROGRAM PROCEDURES
+;=======================================================================
+
+;-------------------------------------------------------------------------------
+;		INITIALISATION
+;-------------------------------------------------------------------------------
+BEGIN.SUB A_1_Initial
+END.SUB A_1_Initial
+
+;-------------------------------------------------------------------------------
+;	Process
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_1_Process
+
+	display.line '9999.999999=Working Field Picture'
+   %FP_DefaultPicture '9999.999999'
+	$Call B_1_1_Test
+
+	display.line '9999.999=Working Field Picture'
+   %FP_DefaultPicture '9999.999'
+	$Call B_1_2_Test
+
+	display.line '9999.999999=Working Field Picture'
+   %FP_DefaultPicture '9999.999999'
+	$Call B_1_3_Test
+
+	display.line '9999.999999=Working Field Picture'
+   %FP_DefaultPicture '9999.999999'
+	$Call B_1_4_Test
+
+	display.line '9999.999999=Working Field Picture'
+   %FP_DefaultPicture '9999.999999'
+	$Call B_1_5_Test
+
+END.SUB B_1_Process
+
+;-------------------------------------------------------------------------------
+;	Test 1
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_1_1_Test
+
+;	----------------
+;	TEST 1 - Integer
+;	----------------	
+	display c_CyanFG,'[LITERALS]:Ensure there are no introduced bugs with INTEGERS',LF
+
+	Int_I = 3 + [[[2 + 30] * 4] / [5 * [6 + 7]]]
+	display c_WhiteFG,' INFERRED Calculation. Result should be 4.92307692308 truncated to 4',LF
+	display c_LightGreenFG,'  Result is=',Int_I,LF
+ 
+	integers.calc Int_I = 4 + [[[15 + 30] * 4] / [[5 * 8] + 6]]
+	display c_WhiteFG,' EXPLICIT Calculation. Result should be 7.91304347826 truncated to 7',LF
+	display	c_LightGreenFG,'  Result is=',Int_I,LF
+
+	$Call GetUserInput
+
+;	--------------------
+;	TEST 1 - Fixed Point
+;	--------------------
+;	display c_CyanFG,'[LITERALS]:Testing Fixed Point Precedence',LF 
+
+	FP_I = 1 + [[[4.56 + 5.67] * 6.78] / [[1.23 + 2.34] * 3.45]]
+	display c_WhiteFG,' INFERRED Calculation. Result should be 6.63142126416 rounded to 6.631421',LF
+	display	c_LightGreenFG,'  Result is=',FP_I,LF
+
+	numbers.calc FP_I = 1 + [[[1.23 + 2.34] * 3.45] / [[4.56 + 5.67] * 6.78]]
+	display c_WhiteFG,' EXPLICIT Calculation. Result should be 1.177575065528 rounded to 1.177575',LF 
+	display	c_LightGreenFG,'  Result is=',FP_I,LF
+
+	$Call GetUserInput
+
+END.SUB B_1_1_Test
+
+;-------------------------------------------------------------------------------
+;	Test 2
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_1_2_Test
+
+;	----------------
+;	TEST 2 - Integer
+;	----------------
+	display c_CyanFG,'[MATRIX]:Ensure there are no introduced bugs with INTEGERS',LF
+
+	Int_J = 3 | Int_K = 2 | Int_L = 30 | Int_M = 4 | Int_N = 5 | Int_O = 6 | Int_P = 7
+	Int_I = Int_J + [[[Int_K + Int_L] * Int_M] / [[Int_N * Int_O] + Int_P]]
+	display c_WhiteFG,' INFERRED Calculation. Result should be 6.45945945946 truncated to 6',LF
+	display c_LightGreenFG,'  Result is=',Int_I,LF
+
+	Int_J = 4 | Int_K = 15 | Int_L = 30 | Int_M = 4 | Int_N = 5 | Int_O = 6 | Int_P = 7 
+	Integers.calc Int_I = Int_J + [[[Int_K + Int_L] * Int_M] / [[Int_N * Int_O] + Int_P]]
+	display c_WhiteFG,' EXPLICIT Calculation. Result should be 8.86486486486 truncated to 8',LF
+	display	c_LightGreenFG,'  Result is=',Int_I,LF
+
+	$Call GetUserInput
+
+;	--------------------
+;	TEST 2 - Fixed Point
+;	--------------------
+	display c_CyanFG,'[MATRIX]:Testing Fixed Point Precedence',LF 
+
+	FP_J = 1 | FP_K = 4.56 | FP_L = 5.67 | FP_M = 6.78 | FP_N = 1.23 | FP_O = 2.34 | FP_P = 3.45
+	FP_I = FP_J + [[[FP_K + FP_L] * FP_M] / [[FP_N + FP_O] * FP_P]]
+	display c_WhiteFG,' INFERRED Calculation. Result should be 6.63142126416 rounded to 6.631421',LF
+	display	c_LightGreenFG,'  Result is=',FP_I,LF
+
+	FP_J = 1 | FP_K = 3.45 | FP_L = 2.34 | FP_M = 1.23 | FP_N = 6.78 | FP_O = 5.67 | FP_P = 4.56
+	numbers.calc FP_I = FP_J + [[[FP_K + FP_L] * FP_M] / [[FP_N + FP_O] * FP_P]]
+	display c_WhiteFG,' EXPLICIT Calculation. Result should be 1.12544388079 rounded to 1.125444',LF 
+	display	c_LightGreenFG,'  Result is=',FP_I,LF
+
+	$Call GetUserInput
+
+END.SUB B_1_2_Test
+
+;-------------------------------------------------------------------------------
+;	Test 3
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_1_3_Test
+
+;	==
+;	IF
+;	==
+;	----------------
+;	TEST 3 - Integer
+;	----------------
+	display c_CyanFG,'[LITERALS:IF]:Ensure there are no introduced bugs with INTEGERS',LF
+	if [[1 + 3] * 3] = [[2 + 1] * 4]
+		display c_LightGreenFG,' [[1 + 3] * 3] = [[2 + 1] * 4] Correctly assessed',LF
+	end.if
+
+	display c_CyanFG,'[MATRIX:IF]:Ensure there are no introduced bugs with INTEGERS',LF
+	Int_I = 3 | Int_J = 7 | Int_K = 5 | Int_L = 3
+	if [[Int_I * Int_J] - 1] = [[Int_K * Int_L] + 5]
+		display c_LightGreenFG,' [[Int_I * Int_J] - 1] = [[Int_K * Int_L] + 5] Correctly assessed',LF
+	end.if
+
+	$Call GetUserInput
+
+;	--------------------
+;	TEST 3 - Fixed Point
+;	--------------------
+	display c_CyanFG,'[LITERALS:IF]:Testing Fixed Point Precedence',LF 
+	if [[1.23 + 2.34] * 2] = [[[4.57 - 1] / 2] * 4]
+		display c_LightGreenFG,' [[1.23 + 2.34] * 2] = [[[4.57 - 1] / 2] * 4] Correctly assessed',LF
+	end.if
+
+	display c_CyanFG,'[MATRIX:IF]:Testing Fixed Point Precedence',LF
+	FP_I = 1.23 | FP_J = 2.34 | FP_K = 4.57
+	Int_I = 2 | Int_J = 1 | Int_K = 4  
+	if [[FP_I + FP_J] * Int_I] = [[[FP_K - Int_J] / Int_I] * Int_K]
+		display c_LightGreenFG,' [[FP_I + FP_J] * Int_I] = [[[FP_K - Int_J] / Int_I] * Int_K] Correctly assessed',LF
+	end.if
+
+	$Call GetUserInput
+
+;	===
+;	_OR
+;	===
+;	----------------
+;	TEST 3 - Integer
+;	----------------
+	display c_CyanFG,'[LITERALS:_OR]:Ensure there are no introduced bugs with INTEGERS',LF
+   .if 1 = 2
+   .or [[1 + 3] * 3] = [[2 + 1] * 4]
+  .end
+		display c_LightGreenFG,' [[1 + 3] * 3] = [[2 + 1] * 4] Correctly assessed',LF
+	end.if
+
+	display c_CyanFG,'[MATRIX:_OR]:Ensure there are no introduced bugs with INTEGERS',LF
+	Int_I = 3 | Int_J = 7 | Int_K = 5 | Int_L = 3
+   .if 1 = 2
+   .or [[Int_I * Int_J] - 1] = [[Int_K * Int_L] + 5]
+  .end
+		display c_LightGreenFG,' [[Int_I * Int_J] - 1] = [[Int_K * Int_L] + 5] Correctly assessed',LF
+	end.if
+
+	$Call GetUserInput
+
+;	--------------------
+;	TEST 3 - Fixed Point
+;	--------------------
+	display c_CyanFG,'[LITERALS:_OR]:Testing Fixed Point Precedence',LF
+   .if 1 = 2  
+   .or [[1.23 + 2.34] * 2] = [[[4.57 - 1] / 2] * 4]
+  .end
+		display c_LightGreenFG,' [[1.23 + 2.34] * 2] = [[[4.57 - 1] / 2] * 4] Correctly assessed',LF
+	end.if
+
+	display c_CyanFG,'[MATRIX:_OR]:Testing Fixed Point Precedence',LF
+	FP_I = 1.23 | FP_J = 2.34 | FP_K = 4.57
+	Int_I = 2 | Int_J = 1 | Int_K = 4
+   .if 1 = 2  
+   .or [[FP_I + FP_J] * Int_I] = [[[FP_K - Int_J] / Int_I] * Int_K]
+  .end
+		display c_LightGreenFG,' [[FP_I + FP_J] * Int_I] = [[[FP_K - Int_J] / Int_I] * Int_K] Correctly assessed',LF
+	end.if
+
+	$Call GetUserInput
+
+;	====
+;	_AND
+;	====
+;	----------------
+;	TEST 3 - Integer
+;	----------------
+	display c_CyanFG,'[LITERALS:_AND]:Ensure there are no introduced bugs with INTEGERS',LF
+   .if 1 = 1
+  .and [[1 + 3] * 3] = [[2 + 1] * 4]
+  .end
+		display c_LightGreenFG,' [[1 + 3] * 3] = [[2 + 1] * 4] Correctly assessed',LF
+	end.if
+
+	display c_CyanFG,'[MATRIX:_AND]:Ensure there are no introduced bugs with INTEGERS',LF
+	Int_I = 3 | Int_J = 7 | Int_K = 5 | Int_L = 3
+   .if 1 = 1
+  .and [[Int_I * Int_J] - 1] = [[Int_K * Int_L] + 5]
+  .end
+		display c_LightGreenFG,' [[Int_I * Int_J] - 1] = [[Int_K * Int_L] + 5] Correctly assessed',LF
+	end.if
+
+	$Call GetUserInput
+
+;	--------------------
+;	TEST 3 - Fixed Point
+;	--------------------
+	display c_CyanFG,'[LITERALS:_AND]:Testing Fixed Point Precedence',LF
+   .if 1 = 1  
+  .and [[1.23 + 2.34] * 2] = [[[4.57 - 1] / 2] * 4]
+  .end
+		display c_LightGreenFG,' [[1.23 + 2.34] * 2] = [[[4.57 - 1] / 2] * 4] Correctly assessed',LF
+	end.if
+
+	display c_CyanFG,'[MATRIX:_AND]:Testing Fixed Point Precedence',LF
+	FP_I = 1.23 | FP_J = 2.34 | FP_K = 4.57
+	Int_I = 2 | Int_J = 1 | Int_K = 4
+   .if 1 = 1  
+  .and [[FP_I + FP_J] * Int_I] = [[[FP_K - Int_J] / Int_I] * Int_K]
+  .end
+		display c_LightGreenFG,' [[FP_I + FP_J] * Int_I] = [[[FP_K - Int_J] / Int_I] * Int_K] Correctly assessed',LF
+	end.if
+
+	$Call GetUserInput
+
+END.SUB B_1_3_Test
+
+;-------------------------------------------------------------------------------
+;	Test 4
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_1_4_Test
+
+;	----------------
+;	TEST 4 - Integer
+;	----------------
+	display c_CyanFG,'[LITERALS:TEST]:Ensure there are no introduced bugs with INTEGERS',LF
+	BEGIN.TEST [[1 + 3] * 3]
+		WHEN = 12
+			display c_LightGreenFG,' [[1 + 3] * 3] Correctly assessed',LF
+		wend
+	END.TEST
+
+	display c_CyanFG,'[MATRIX:TEST]:Ensure there are no introduced bugs with INTEGERS',LF
+	Int_I = 3 | Int_J = 7
+ 	BEGIN.TEST [[Int_I * Int_J] - 1] 
+		WHEN = 20 
+			display c_LightGreenFG,' [[Int_I * Int_J] - 1] = [[Int_K * Int_L] + 5] Correctly assessed',LF
+		wend
+	END.TEST
+
+	$Call GetUserInput
+
+;	--------------------
+;	TEST 4 - Fixed Point
+;	--------------------
+	display c_CyanFG,'[LITERALS:TEST]:Testing Fixed Point Precedence',LF
+	BEGIN.TEST [[1.23 + 2.34] * 3.45]
+		WHEN = 12.3165
+			display c_LightGreenFG,' [[1.23 + 2.34] * 3.45] Correctly assessed',LF
+		wend
+	END.TEST
+
+	display c_CyanFG,'[MATRIX:TEST]:Testing Fixed Point Precedence',LF
+	FP_I = 2.34 | FP_J = 3.45 | FP_K = 4.56
+	BEGIN.TEST [[FP_I + FP_J] * FP_K]
+		WHEN = 26.4024
+			display c_LightGreenFG,' [[FP_I + FP_J] * FP_K] Correctly assessed',LF
+		wend
+	END.TEST
+
+	$Call GetUserInput
+
+END.SUB B_1_4_Test
+
+;-------------------------------------------------------------------------------
+;	Test 5
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_1_5_Test
+
+;	Initialise variables
+	Int_I = 2 | Int_J = 4
+
+	display c_CyanFG,'[LITERALS:TABLES]:Testing Tables',LF
+	display c_LightGreenFG,' '
+	
+	tables.bind (TestTable,TestRecord,[Int_I + Int_J])	
+	display spaces([1 + 2 + Int_I])
+	
+	repeat.for Int_I,0,7
+		TR_No = [[Int_I + 1] * 1.23]
+		tables.rput (TestTable,[Int_I + 1])	
+	end.repeat
+
+	repeat.for Int_I,0,7
+		tables.rget (TestTable,[Int_I + 1])	 
+		display TR_No,' '
+	end.repeat
+	display.line
+	
+	$Call GetUserInput		
+
+
+	display c_CyanFG,'[MATRIX:TABLES]:Testing Tables',LF
+	display c_LightGreenFG,' '
+	
+	display spaces([1 + 2 + Int_I])
+
+	FP_I = 2.34
+	
+	repeat.for Int_I,0,7
+		TR_No = [[Int_I + 1] * FP_I]
+		tables.rput (TestTable,[Int_I + 1])	
+	end.repeat
+
+	repeat.for Int_I,0,7
+		tables.rget (TestTable,[Int_I + 1])	 
+		display TR_No,' '
+	end.repeat
+	display.line
+	
+	$Call GetUserInput		
+
+
+END.SUB B_1_5_Test
+
+;-------------------------------------------------------------------------------
+;	FINALISATION
+;-------------------------------------------------------------------------------
+BEGIN.SUB Z_1_Finalise
+END.SUB Z_1_Finalise
+
+;=======================================================================
+;		Routines that are common (can be Called from anywhere)
+;=======================================================================
+BEGIN.SUB GetUserInput
+	
+	display (spaces(5),c_LightBlueFG,'Press <ENTER> to continue ')
+	acceptline (Char1)
+	display c_WhiteFG,(LF)
+	
+END.SUB GetUserInput

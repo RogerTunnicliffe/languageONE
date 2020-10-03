@@ -1,0 +1,273 @@
+%include 'include/BEGIN.PROGRAM'
+
+;	Refer to VERSION.HISTORY for...well...version history
+
+;	BEGIN.SYNONYMS **************************************
+;		@.	:	INTEGERS.  
+;		#.	:	NUMBERS.  
+;	END.SYNONYMS ****************************************
+
+;=======================================================================
+;		  PROGRAM DATA
+;=======================================================================	      
+;-----------------------------------------------------------------------
+;		CONSTANTS
+;-----------------------------------------------------------------------
+
+
+;-----------------------------------------------------------------------
+;		DICTIONARY
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.DICTIONARY'
+
+	insertword w_TestDescription,	60,''
+	insertword w_Response,			01,''
+	
+%include 'include/END.DICTIONARY'
+
+;-----------------------------------------------------------------------
+;		MATRIX
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.MATRIX'
+
+	%define b_Integers		1
+	%define b_FixedPoint	2
+		%define b_Synonyms	1
+		%define b_Inferred	2	
+	
+	insertnumber	I,		00,'###,###,###,###,##9-'
+	insertnumber	J,		36,'######999'
+	insertnumber	K,		18,'######999'
+
+	insertnumber	X,		00,'###,###,###.9999'
+	insertnumber	Y,  1.2345,'###,###,###.9999'	
+	insertnumber	Z,  2.3456,'###,###,###.9999'	
+
+	
+%include 'include/END.MATRIX'
+
+;-----------------------------------------------------------------------
+;		FILES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.FILES'
+%include 'include/END.FILES'
+
+;-----------------------------------------------------------------------
+;		TABLES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.TABLES'		
+%include 'include/END.TABLES'
+
+;	languageONE was built initial on the back of NASM's preprocessor and its
+;	ability to provide macros -  (a single instruction that expands automati$Cally
+;	into a set of instructions)
+; 
+;	As such Macro's are native to languageONE and are passed through to NASM's 
+;	preprocessor. The macros defined here have been used to provide program code
+;	that will be more familiar to the average programmer.
+;	
+;	languageONE makes no attempt to pass variables to a subroutine on the stack.
+;	64bit convention states that registers should be used. In addition, all
+;	variables (words & numbers) are global in scope. There is no such thing as a
+;	local variable in languageONE. The general rule here is "if you dont want to
+;	access variables outside of a subroutine then dont access variables outside of
+;	a subroutine
+;
+;	The macros in this program are simple wrappers that provide the appearance
+;	of passing variables. In addition, its not such a bad way to avoid inadvertently
+;	overwritting something. 
+;
+;	They allow the code to go from 	
+;		n_Test = 1
+;		w_TestDescription = 'passinga string'
+;		$Call TestInteger
+;	to
+;		TestInteger (b_Synonyms,'passing a string')
+;
+;	Note that:- Macros can be coded anywhere in the program 'PRECEDING' their use.
+;				There location however, demands certain conventions.
+;
+;				A macro coded before the BEGIN.INSTRUCTIONS directive must be coded
+;				in native languageONE. ie. 'integers.eq A,B
+;
+;				A macro coded after the BEGIN.INSTRUCTIONS directive may make full
+;				use of the facilities made available by the languageONE translator
+;				ie. A = B
+;	
+;=======================================================================
+;		PROGRAM INSTRUCTIONS
+;		Mainline  
+;=======================================================================
+%include 'include/BEGIN.INSTRUCTIONS'
+
+;	--------------------------------------
+;	MACRO - integerDisplay & numberDisplay
+;	--------------------------------------
+	[section .data]
+		insertnumber	i_Row,0
+		insertword		w_Message,60,''
+		insertnumber	i_Value,0
+		insertnumber	n_Value,0,'###,###,###.9999'		
+	[section .text]
+	
+	%imacro integerDisplay 3
+		i_Row		= %1
+		w_Message	= %2
+		i_Value		= %3
+		$Call B_1_1_1_IntegerDisplay
+	%endmacro
+
+	%imacro numberDisplay 3
+		i_Row		= %1
+		w_Message	= %2
+		n_Value		= %3
+		$Call B_1_2_1_numberDisplay
+	%endmacro	
+
+;	------------------------------------
+;	MACRO - TestInteger & TestFixedPoint
+;	------------------------------------
+	[section .data]
+		insertnumber	n_Function,0
+		insertnumber	n_Test,0
+	[section .text]
+	
+	%imacro TestInteger 2
+		n_Test				= %1
+		w_TestDescription	= %2
+		$Call B_1_1_Integers
+	%endmacro	
+
+	%imacro TestFixedPoint 2
+		n_Test				= %1
+		w_TestDescription	= %2
+		$Call B_1_2_Numbers
+	%endmacro	
+
+;	====================================================================
+;	PROGRAM CODE
+;	====================================================================
+
+	$Call B_1_Process	
+	
+%include 'include/END.INSTRUCTIONS'
+%include 'include/END.PROGRAM'      
+
+;=======================================================================
+;		PROGRAM PROCEDURES
+;=======================================================================
+BEGIN.SUB A_1_Initial
+END.SUB A_1_Initial
+
+BEGIN.SUB B_1_Process
+
+	Display c_ClearScreen
+	
+	TestInteger (b_Synonyms,'This test proves the integer and new[.CALC] routines')
+	TestInteger (b_Inferred,'This test proves the new inferred function of the translator')	
+
+	TestFixedPoint (b_Synonyms,'This test proves the numbers and new[.CALC] routines')
+	TestFixedPoint (b_Inferred,'This test proves the new inferred function of the translator')	
+		
+END.SUB B_1_Process
+
+;------------------------------------------------------------------------
+;	Integers
+;------------------------------------------------------------------------
+BEGIN.SUB B_1_1_Integers
+
+	if n_Test = b_Synonyms
+		Cursor (01,01)	| Display c_CyanFG,"[SYNONYMS] ",w_TestDescription 		
+		Cursor (02,03)  | display 'J=',{J,'###'},' K=',{K,'###'}
+		@.eq I,0 		| integerDisplay (03,'integers.eq 0',I)
+		
+		@.add I,5		| integerDisplay (04,'integers.add I,5',I)
+		@.sub I,123456	| integerDisplay (05,'integers.sub I,123456',I)
+		@.mul I,J		| integerDisplay (06,'integers.mul I,J',I)	
+		@.div I,K		| integerDisplay (07,'integers.div I,K',I)
+
+		@.calc I = I * J + K / 3	
+		integerDisplay (08,'integers.calc I = I * J + K / 3',I)	
+		display.line
+	end.if
+	
+	if n_Test = b_Inferred
+		Cursor (11,01)	| Display c_CyanFG,"[INFERRED] ",w_TestDescription 		
+		Cursor (12,03)  | display 'J=',{J,'###'},' K=',{K,'###'}
+		
+		I = 0	 		| integerDisplay (13,'I = 0',I)		
+		I = I + 5		| integerDisplay (14,'I = I + 5',I)
+		I = I - 123456	| integerDisplay (15,'I = I - 123456',I)
+		I = I * J		| integerDisplay (16,'I = I / J',I)	
+		I = I / K		| integerDisplay (17,'I = I / K',I)
+
+		I = I * J + K / 3	
+		integerDisplay (18,'I = I * J + K / 3',I)	
+		display.line
+	end.if
+
+	Display "Press Enter to continue "
+	Acceptline w_Response
+	Display.line
+	
+END.SUB B_1_1_Integers
+
+
+BEGIN.SUB B_1_1_1_IntegerDisplay
+
+	Cursor (i_Row,03) | Display c_GreenFG,w_Message
+	Cursor (i_Row,50) | Display c_YellowFG,{i_Value,'#,###,###-'},LF) 
+	
+END.SUB B_1_1_1_IntegerDisplay
+
+;------------------------------------------------------------------------
+;	Numbers
+;------------------------------------------------------------------------
+BEGIN.SUB B_1_2_Numbers
+
+	if n_Test = b_Synonyms
+		Display c_ClearScreen
+		Cursor (01,01)	| Display c_CyanFG,"[SYNONYMS] ",w_TestDescription 		
+		Cursor (02,03)  | display 'Y=',Y,' Z=',Z
+		
+		#.eq X,0 		| numberDisplay (03,'numbers.eq 0',X)
+		#.add X,5.4321	| numberDisplay (04,'numbers.add X,5.4321',X)
+		#.sub X,1.2345	| numberDisplay (05,'numbers.sub X,1.2345',X)
+		#.mul X,Y		| numberDisplay (06,'numbers.mul X,Y',X)	
+		#.div X,Z		| numberDisplay (07,'numbers.div X,Z',X)
+
+		#.calc X = X * Y + Z / 3.21	
+		numberDisplay (08,'numers.calc X = X * Y + Z / 3.21',X)	
+		display.line
+	end.if
+
+	if n_Test = b_Inferred
+		Cursor (11,01)	| Display c_CyanFG,"[INFERRED] ",w_TestDescription 		
+		Cursor (12,03)  | display 'Y=',Y,' Z=',Z
+		
+		X = 0	 		| numberDisplay (13,'X = 0',X)
+		X = X + 5.4321	| numberDisplay (14,'X = X + 5.4321',X)
+		X = X - 1.2345	| numberDisplay (15,'X = X - 1.2345',X)
+		X = X * Y		| numberDisplay (16,'X = X + Y',X)	
+		X = X / Z		| numberDisplay (17,'X = X + Z',X)
+
+		X = X * Y + Z / 3.21	
+		numberDisplay (18,'X = X * Y + Z / 3.21',X)	
+		display.line
+	end.if
+	
+	Display "Press Enter to continue "
+	Acceptline w_Response
+	Display.line
+
+END.SUB B_1_2_Numbers
+
+BEGIN.SUB B_1_2_1_numberDisplay
+
+	Cursor (i_Row,03) | Display c_GreenFG,w_Message
+	Cursor (i_Row,50) | Display c_YellowFG,{n_Value,'#,###,###,###.9999-'},LF) 
+	
+END.SUB B_1_2_1_numberDisplay
+
+BEGIN.SUB Z_1_Finalise
+END.SUB Z_1_Finalise

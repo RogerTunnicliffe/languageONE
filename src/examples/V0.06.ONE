@@ -1,0 +1,506 @@
+%include 'include/BEGIN.PROGRAM'
+
+;	Refer to VERSION.HISTORY for...well...version history
+
+;	BEGIN.SYNONYMS **************************************
+;		$.	:	WORDS.  
+;		@.	:	INTEGERS.  
+;		f.	:	FILES. 
+;		t.	:	TABLES.
+;	END.SYNONYMS ****************************************
+
+;=======================================================================
+;		  PROGRAM DATA
+;=======================================================================
+;-----------------------------------------------------------------------
+;		CONSTANTS
+;-----------------------------------------------------------------------	    
+%define c_UpperBoundary 26*26*26
+%define c_RecordLength  03
+
+;-----------------------------------------------------------------------
+;		DICTIONARY
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.DICTIONARY' 
+
+	insertword	Alphabet,	26,	'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+	insertword	CurrentText,03, ' '		
+	insertword	TempText,	03, ' '
+	insertword	Response,	02, ' '
+	insertword	J_UpperText,03,	' '
+	insertword	K_LowerText,03, ' '	
+
+%include 'include/END.DICTIONARY'
+
+;-----------------------------------------------------------------------
+;		MATRIX
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.MATRIX'
+
+  ; Common Counters
+	insertnumber	I,		0,	'999999999'
+	insertnumber	J,		0,	'999999999'
+	insertnumber	K,		0,	'999999999'
+	insertnumber	L,		0,	'###,###,##9'
+	insertnumber	M,		0,	'999999999'
+	insertnumber	Row,	0,	'99'
+
+	insertnumber 	b_FALSE,0,	'9'
+	insertnumber	b_TRUE,	1,	'9'
+
+	insertnumber	w_StartTime,	0,'999999'
+	insertnumber	w_EndTime,		0,'999999'
+
+	insertnumber 	span,			0,'999999999'
+	insertnumber	gap,			0,'999999999'	
+	insertnumber	J_Upper,		0,'999999999'
+	insertnumber 	K_Lower,		0,'999999999'		
+	insertnumber 	Empty,			0,'9'
+
+					fspan			dq 17576.0
+					fdivisor	 	dq 01.3
+		
+%include 'include/END.MATRIX'
+
+;-----------------------------------------------------------------------
+;		FILES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.FILES'
+
+	insertfile c_LF,A99_File,'./A99_File.srt'
+	
+	begin.record c_RecordLength,A01_Record
+		insertword	A01_Text, 	03, ' '
+	end.record A01_Record
+
+%include 'include/END.FILES'
+
+;-----------------------------------------------------------------------
+;		tables
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.TABLES'	
+		inserttable A01_Table,c_RecordLength*c_UpperBoundary
+
+%include 'include/END.TABLES'
+
+;=======================================================================
+;		PROGRAM INSTRUCTIONS
+;		Mainline  
+;=======================================================================
+%include 'include/BEGIN.INSTRUCTIONS'
+
+;	Initial
+	$Call A_1_Initial
+	
+	$Call B_1_Bubble
+	$Call B_2_Insertion
+	$Call B_3_Shell
+	$Call B_4_Tables
+	
+	$Call B_5_Search
+	
+	$Call C_1_Finalise
+
+%include 'include/END.INSTRUCTIONS'
+%include 'include/END.PROGRAM'      
+
+;=======================================================================
+;		PROGRAM PROCEDURES
+;=======================================================================
+
+;-----------------------------------------------------------------------
+;		Program Initialization
+;-----------------------------------------------------------------------
+BEGIN.SUB A_1_Initial
+
+	display (c_ClearScreen,c_DefaultBG,c_CyanFG)
+
+;	Bind Table
+	t.bind (A01_Table,A01_Record,c_UpperBoundary)
+	
+END.SUB A_1_Initial
+
+;-----------------------------------------------------------------------
+;		BUBBLE:Perform the sort
+;-----------------------------------------------------------------------
+BEGIN.SUB B_1_Bubble
+
+;	Initial
+	$Call X_1_PopulateTable
+
+	Row = 1
+	display.at (Row,01,'BUBBLE:   -Sorting              (No Of Swaps)')
+	L = 0
+
+;	BUBBLE Sort
+	date.seconds (w_StartTime)
+	
+	repeat.for (I,c_UpperBoundary,2)									; Loop from last to 2nd
+		K_Lower = 0
+		
+		repeat.for (J_Upper,2,I)										; Loop from 1st to I
+			K_Lower = K_Lower + 1
+
+			t.rget (A01_Table,J_Upper)									; (J) Upper value 
+			J_UpperText = A01_Text 
+			
+			t.rget (A01_Table,K_Lower)									; (K) Lower value
+			K_LowerText = A01_Text
+						
+			if  K_LowerText > J_UpperText								; If lower value greater then higher then
+				$Call ?_X_1_1_display
+					
+				A01_Text = K_LowerText
+				t.rput (A01_Table,J_Upper)
+				
+				A01_Text = J_UpperText
+				t.rput (A01_Table,K_Lower)
+
+			end.if	
+		
+		end.repeat
+	end.repeat
+
+	date.seconds (w_EndTime)
+	w_EndTime = w_EndTime - w_StartTime 
+	display.at (Row,21,L)
+	cursor(Row,55) | display ("Elapsed seconds=",w_EndTime)
+				
+END.SUB B_1_Bubble
+
+;-----------------------------------------------------------------------
+;		INSERTION:Perform the sort
+;-----------------------------------------------------------------------
+BEGIN.SUB B_2_Insertion
+
+;	Initial
+	$Call X_1_PopulateTable
+	
+	Row = 2
+	display.at (Row,01,'INSERTION:-Sorting              (No Of Swaps)')
+	L = 0	
+
+;	INSERTION Sort
+	date.seconds (w_StartTime)
+	
+	repeat.for (I,1,c_UpperBoundary)									; Sort Outer Loop. From 1 to upperboundary 
+		
+		t.rget (A01_Table,I)												; Get the value
+		CurrentText = A01_Text
+
+	;	Setup Indexes
+		J_Upper = I 
+		K_Lower = I - 1
+
+		repeat.if (J_Upper,isGreaterThan,1)								; Shuffle everything up
+				
+			t.rget (A01_Table,K_Lower)									; Grab slot-1
+			if A01_Text > CurrentText									; If it greater than the current one
+				$Call ?_X_1_1_display
+				t.rput (A01_Table,J_Upper)								;	then write it to slot
+			else
+				exitRepeat = c_TRUE
+			end.If
+			
+			J_Upper = J_Upper - 1
+			K_Lower = K_Lower - 1
+		
+		end.repeat
+
+		$Call ?_X_1_1_display
+		$.copy (CurrentText,A01_Text)								; Now write the original back to
+		A01_Text = CurrentText
+		t.rput (A01_Table,J_Upper)									; to the table
+		
+	end.repeat
+
+	date.seconds (w_EndTime)
+	w_EndTime = w_EndTime - w_StartTime 	
+	display.at (Row,21,L)
+	cursor(Row,55) | display ("Elapsed seconds=",w_EndTime)
+			
+END.SUB B_2_Insertion
+
+;-----------------------------------------------------------------------
+;		SHELL:Perform the sort
+;-----------------------------------------------------------------------
+BEGIN.SUB B_3_Shell
+
+;	Initial
+	$Call X_1_PopulateTable
+	
+ 	Row = 3   
+	display.at (Row,01,'SHELL:-   -Sorting              (No Of Swaps)')
+	date.seconds (w_StartTime)
+
+	$Call ?_B_2_1_CalcSpan												; Use FPU to calculate the span							
+
+	repeat.while span > 1												; Outer Loop - repeat until span is 1
+		gap = span - 1
+		
+		
+		repeat.for J_Upper,span,c_UpperBoundary							; Middle loop - loop from span to upper boundary	
+			K_Lower = J_Upper | K_Lower = K_Lower - gap
+
+			t.rget(A01_Table,J_Upper)											
+			J_UpperText = A01_Text
+			Empty = J_Upper
+				
+			repeat.while K_Lower > 0									; Inner loop - now do the compare
+				t.rget(A01_Table,K_Lower)
+			
+				if A01_Text > J_UpperText								; So if the lower is greater then he higher
+					t.rput(A01_Table,Empty)								; 	move it to the empty slot
+					Empty = K_Lower
+					$Call ?_X_1_1_display				
+					K_Lower = K_Lower - gap
+				else													; ELSE
+					exitRepeat = c_TRUE									;	exit and move on (from the current span to the top)
+				end.if
+				
+			end.repeat
+			A01_Text = J_UpperText	
+			t.rput(A01_Table,Empty)
+		end.repeat
+		$Call ?_B_2_1_CalcSpan
+	end.repeat
+
+	date.seconds (w_EndTime)
+	w_EndTime = w_EndTime - w_StartTime	
+	display.at (Row,21,L)
+	cursor(Row,55) | display ("Elapsed seconds=",w_EndTime,LF)
+				
+END.SUB B_3_Shell
+
+;-----------------------------------------------------------------------
+;		tables:Perform the sort
+;-----------------------------------------------------------------------
+BEGIN.SUB B_4_Tables
+
+;	Initial
+	$Call X_1_PopulateTable
+
+	Row = 4
+	display.at (Row,01,'tables:-   Sorting ')
+
+	date.seconds (w_StartTime)
+	
+	t.sort (A01_Table,1,3)
+	
+	date.seconds (w_EndTime)
+	w_EndTime = w_EndTime - w_StartTime		
+	display.at (Row,31,'Sort Complete')
+	cursor(Row,55) | display ("Elapsed seconds=",w_EndTime)
+
+	display.line	
+
+	
+END.SUB B_4_Tables
+
+;-----------------------------------------------------------------------
+;		tables:Perform the sort
+;-----------------------------------------------------------------------
+BEGIN.SUB B_5_Search
+
+	Row = 5
+	display.at (Row,01,'tables:-   Searching ')
+
+	date.seconds (w_StartTime)
+	t.search (A01_Table,1,3,'AAA',I)
+	date.seconds (w_EndTime)	
+	w_EndTime = w_EndTime - w_StartTime		
+	display.at (Row,31,'Search Complete')
+	cursor(Row,55) | display ("Elapsed seconds=",w_EndTime),LF
+
+	begin.test A01_Table_STATUS
+		when < 1
+			display 'Found ',A01_Text,' in slot ',I,LF
+		wend
+
+		when < INVALIDKEY
+			display 'Found ',A01_Text,' in slot ',I,' WITH DUPLICATES',LF
+		wend
+
+		when = 23
+			display 'Key NOT found',LF
+		wend
+
+	end.test
+	
+	display.line	
+	
+END.SUB B_5_Search
+
+;-----------------------------------------------------------------------
+;		Program Finalization
+;-----------------------------------------------------------------------
+BEGIN.SUB C_1_Finalise
+;	Now write out the table to file for verification
+
+	f.open A99_File,write+beginning
+	
+	repeat.for (I,1,c_UpperBoundary)
+		t.rget (A01_Table,I)
+		f.write (A99_File,A01_Text)
+	end.repeat
+	
+	f.close (A99_File)
+	display.line
+
+END.SUB C_1_Finalise
+
+;-----------------------------------------------------------------------
+;		Populate the Table prior to sorting
+;-----------------------------------------------------------------------
+BEGIN.SUB X_1_PopulateTable
+
+	@.eq(L,0)
+	L = 0
+	repeat.for (I,26,1)
+		{A01_Text,3} = {Alphabet,I,1} 
+		repeat.for (J,26,1)	
+			{A01_Text,2} = {Alphabet,J,1}			
+			repeat.for (K,26,1)	
+				{A01_Text,1} = {Alphabet,K,1}
+				L = L + 1
+				t.rput (A01_Table,L)
+			end.repeat
+		end.repeat
+	end.repeat
+	
+;	Create duplicates
+	A01_Text = 'AAA' | t.rput (A01_Table,2) | t.rput (A01_Table,3)
+			
+;	--------------------------------------------------------------------
+;	The data below (12 items) makes debugging much more managable. Use it
+;	if you need to debug any sorts. 
+;	NOTE:-The best Gap/Divisor for this dataset is 1.26
+;	--------------------------------------------------------------------
+;	words $copy, '061',A01_Text
+;	tables $rput,A01_Table,1
+	
+;	words $copy, '109',A01_Text
+;	tables $rput,A01_Table,2
+
+;	words $copy, '149',A01_Text
+;	tables $rput,A01_Table,3
+
+;	words $copy, '111',A01_Text
+;	tables $rput,A01_Table,4
+
+;	words $copy, '034',A01_Text
+;	tables $rput,A01_Table,5
+
+;	words $copy, '002',A01_Text
+;	tables $rput,A01_Table,6
+
+;	words $copy, '024',A01_Text
+;	tables $rput,A01_Table,7
+
+;	words $copy, '119',A01_Text
+;	tables $rput,A01_Table,8
+
+;	words $copy, '122',A01_Text
+;	tables $rput,A01_Table,9
+
+;	words $copy, '125',A01_Text
+;	tables $rput,A01_Table,10
+
+;	words $copy, '027',A01_Text
+;	tables $rput,A01_Table,11
+
+;	words $copy, '145',A01_Text
+;	tables $rput,A01_Table,12
+
+;	--------------------------------------------------------------------
+;	--------------------------------------------------------------------
+
+;	words $copy, '073',A01_Text
+;	tables $rput,A01_Table,1
+	
+;	words $copy, '067',A01_Text
+;	tables $rput,A01_Table,2
+
+;	words $copy, '056',A01_Text
+;	tables $rput,A01_Table,3
+
+;	words $copy, '032',A01_Text
+;	tables $rput,A01_Table,4
+
+;	words $copy, '052',A01_Text
+;	tables $rput,A01_Table,5
+
+;	words $copy, '041',A01_Text
+;	tables $rput,A01_Table,6
+
+;	words $copy, '083',A01_Text
+;	tables $rput,A01_Table,7
+
+;	words $copy, '037',A01_Text
+;	tables $rput,A01_Table,8
+
+;	words $copy, '032',A01_Text
+;	tables $rput,A01_Table,9
+
+;	words $copy, '010',A01_Text
+;	tables $rput,A01_Table,10
+
+END.SUB X_1_PopulateTable
+
+;-----------------------------------------------------------------------
+;		Supporting Assembler Routines
+;		These will disappear when the NUMBERS.o module is written
+;			Although the above statement is true (NUMBERS.o) this
+;			has been left as assembler code using the FPU for 
+;			demonstration purposes
+;-----------------------------------------------------------------------
+
+BEGIN.SUB ?_B_2_1_CalcSpan 
+
+	begin.assembler
+	
+		;	Use FPU to divide floating point number	
+			FLD   qword[fspan]						; Load initial span value
+			FDIV  qword[fdivisor]					; Divide by divisor(2)
+			FST   qword[fspan]						; Grab result 			 
+			FISTP qword[span]						; Grab result as languageONE integer
+
+	end.assembler
+	
+END.SUB ?_B_2_1_CalcSpan
+
+;-----------------------------------------------------------------------
+
+BEGIN.SUB ?_B_2_2_SubSpanK 
+
+	begin.assembler
+	
+			mov rax,[span]
+			sub [K_Lower],rax
+
+	end.assembler
+		
+END.SUB ?_B_2_2_SubSpanK
+
+;-----------------------------------------------------------------------
+
+BEGIN.SUB ?_X_1_1_display		
+
+	begin.assembler
+	
+		inc qword[L]
+		mov rax,[L]
+		xor rdx,rdx
+		mov rbx,100000
+		div rbx
+		cmp rdx,0
+			jne X_1_1_EXIT
+			
+		display.at Row,21,L
+
+	X_1_1_EXIT:
+	end.assembler
+		
+END.SUB ?_X_1_1_display
+
+

@@ -1,0 +1,128 @@
+%include 'include/BEGIN.PROGRAM'
+
+;	Refer to VERSION.HISTORY for...well...version history
+
+;	Test ARRAYS.LIB
+
+;	BEGIN.SYNONYMS **************************************
+;		$.	:	WORDS.  
+;		@.	:	INTEGERS.  
+;		#.	:	NUMBERS.  
+;		f.	:	FILES. 
+;		xT.	:	XTABLES. 
+;	END.SYNONYMS ****************************************
+
+;=======================================================================
+;		PROGRAM DATA
+;=======================================================================
+	
+;-----------------------------------------------------------------------
+;		CONSTANTS
+;-----------------------------------------------------------------------
+
+;-----------------------------------------------------------------------
+;		DICTIONARY
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.DICTIONARY'
+%include 'include/END.DICTIONARY'
+
+;-----------------------------------------------------------------------
+;		MATRIX
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.MATRIX'
+
+	insertnumber StartSeconds,		0,'99999999999999999999999999'
+	insertnumber EndSeconds,		0,'99999999999999999999999999'
+	
+	insertnumber I,					0,'999999'
+	insertnumber J,					0,'999999'
+	
+%include 'include/END.MATRIX'
+
+;-----------------------------------------------------------------------
+;		FILES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.FILES'
+%include 'include/END.FILES'
+
+;-----------------------------------------------------------------------
+;		TABLES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.TABLES'	
+%include 'include/END.TABLES'
+	 
+	insertArray _RandomNo,1000000
+
+;=======================================================================
+;		PROGRAM INSTRUCTIONS
+;		Mainline  
+;=======================================================================
+%include 'include/BEGIN.INSTRUCTIONS'
+	
+	$Call Initialise
+
+	date.seconds(StartSeconds)
+	display.line StartSeconds
+	
+	Arrays.Sort _RandomNo
+
+	date.seconds(EndSeconds)
+	display.line EndSeconds
+	
+	EndSeconds = EndSeconds - StartSeconds	
+	display 'Sort Time = ',{EndSeconds,'999'},' Seconds',LF	
+
+	
+	I = 1000	
+	Arrays.Put _RandomNo,(63,I)					; Index,Value
+	Arrays.Get _RandomNo,(1000,J)				; Index,Value
+	display.line J
+	
+	Arrays.Put _RandomNo,(64,1001)				; Index,Value
+	Arrays.Get _RandomNo,(1001,J)				; Index,Value
+	display.line J
+	
+	Arrays.Swap _RandomNo,(1000,1001)			; Index,Index
+	
+	Arrays.Get _RandomNo,(1000,J)				; Index,Value
+	display.line J
+	Arrays.Get _RandomNo,(1001,J)				; Index,Value
+	display.line J
+	
+	Arrays.If _RandomNo (I,=,1001)
+		display.line "This is True"
+	else
+		display.line "This is False"
+	end.if
+	
+	$Call DisplayThem
+	
+%include 'include/END.INSTRUCTIONS'
+%include 'include/END.PROGRAM'      
+
+;-----------------------------------------------------------------------
+;		Initialisation
+;-----------------------------------------------------------------------
+BEGIN.SUB Initialise
+
+	display.line "Preparing the Arrays - Please wait"
+	repeat.for I,0,999999
+		numbers.random 2,J
+		Arrays.Put (_RandomNo,I,J)
+	end.repeat
+	display.line "Sorting now"
+		
+END.SUB Initialise
+
+;-----------------------------------------------------------------------
+;		Display Them
+;-----------------------------------------------------------------------
+BEGIN.SUB DisplayThem
+
+	repeat.for I,100,109
+		Arrays.Get (_RandomNo,I,J)	
+		display.line J
+	end.repeat
+	
+END.SUB Finalise
+

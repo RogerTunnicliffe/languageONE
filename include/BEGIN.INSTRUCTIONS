@@ -1,0 +1,13 @@
+		[section .text]
+_start:	;global entry point export for ld 
+
+		MOV QWORD[w_SaveRSP],RSP				; Save RSP for Environment
+		MOV RBP,RSP								; For CommandLine 						
+		Call _getSTDIOhandles
+		Call _getCommandLine
+
+		mov byte[w_RecordBuffer-9],'X'			; Set up the record buffer
+		mov qword[SX],0							; For Nested stuff
+
+		mov qword[STOP],0						; For Debug	
+

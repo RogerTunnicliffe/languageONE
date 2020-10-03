@@ -1,0 +1,190 @@
+	%assign debug 0	
+	%include '../include/LMACROS.CPY'
+	%include '../include/IMACROS.CPY'
+	%include '../include/CONSTANTS.INC'
+	%line 5 DECISIONS.LIB
+
+;	=================================================
+;	GLOBAL ROUTINES/VARIABLES defined in this library
+;	=================================================
+;	Routines
+;	--------
+	global  _COMPARE
+
+;	------
+;	Fields
+;	------
+	global b_Result
+	global b_WHEN_Result
+	
+;	===============================================
+;	EXTERNAL ROUTINES/VARIABLES used by the library
+;	===============================================
+;	Routines
+;	--------	
+	extern _SYSERROR			; COMMON
+	extern _COMPARE_NO			; NUMBERS
+
+;	------
+;	Fields
+;	------
+	extern	err08				; COMMON
+
+;========================================================================
+;			DATA SEGMENT
+;========================================================================
+;           Initialised - by program
+;------------------------------------------------------------------------
+			section .data
+
+;------------------------------------------------------------------------				
+;           UN Initialised - zero filled when loaded
+;------------------------------------------------------------------------													  
+			section .bss
+b_Result		resq 01								; Result field for compares
+b_WHEN_Result	resq 01								; Result field for WHEN compares
+LOWord1			resq 01								; Length of 1st Word
+LOWord2			resq 01								; Length of 2nd Word
+
+;========================================================================				
+;           CONSTANTS
+;========================================================================	
+
+;========================================================================
+;			CODE SEGMENT
+;========================================================================				
+			section .text	
+;========================================================================
+;       	COMPARE - Compare 2 items
+;			r08 = Request
+;				  Equals			equ 00000001b
+;				  isNOTEqualTo	    equ 00000010b
+;				  isLessThan	    equ 00000100b
+;				  isNOTLessThan	    equ 00001000b
+;				  isGreaterThan		equ 00010000b													
+;				  isNOTGreaterThan	equ	00100000b
+;			r09 = 1st items address,r10,r11	
+;			r12 = 2nd items address,r13
+;
+;			b_Result = RESULT
+;				  1 True
+;				  0 False
+;USES:		RSI,RDI
+;RETURNS:	b_Result	
+;========================================================================
+%define @fieldIndicator(x) byte[x-9]
+%define	@fieldLength(x)	  qword[x-8]  
+
+
+_COMPARE:
+	
+			cmp @fieldIndicator(r_SrcAddress),'9'						; If it is not numeric then
+				jne .Alpha												; 	jump to alpha code
+
+;-----------------------------------------------------------------------
+;			Compare a numeric
+;-----------------------------------------------------------------------
+
+			cmp @fieldIndicator(r_DstAddress),'9'						; If it is not numeric then
+				jne .Error												; 	jump to Error
+
+			Call _COMPARE_NO
+			cmp r15,0													; Do compare
+				je .Equal												; Jump to appropriate spot
+				jg .GreaterThan
+				jl .LessThan
+								
+;-----------------------------------------------------------------------
+;			Compare a alpha
+;-----------------------------------------------------------------------
+	.Alpha: 
+
+			cmp @fieldIndicator(r_DstAddress),'X'						; If it is not alpha then
+				jne .Error												; 	jump to Error
+
+	.word1:	$EndOfWord r_SrcAddress,r_SrcStart,r_SrcLength				; Get end of word 1
+			mov [LOWord1],RDI											;	and store
+
+	.word2:	$EndOfWord r_DstAddress,r_DstStart,r14
+			mov [LOWord2],RDI											;	and store
+
+			LEA RSI,[r_SrcAddress+r_SrcStart-1]
+			LEA RDI,[r_DstAddress+r_DstStart-1]
+			
+	.loop:
+			cmp RSI,[LOWord1]											; Are we at the end of Word1
+				ja .EOWord1												;	then jump
+			cmp RDI,[LOWord2]											; Are we at the end of Word2 
+				ja .EOWord2												;	then jump
+				
+			mov al,[RSI]												; Get byte from word1
+			cmp al,[RDI]												; Compare it to byte from Word2
+				jg .GreaterThan											; Jump if greater
+				jl .LessThan											; Jump if less
+
+			inc RSI														; Goto next byte
+			inc RDI														; Goto next byte
+			jmp .loop													; and loop
+			
+	.EOWord1:
+			cmp RDI,[LOWord2]											; Word1 ended, has Word2 ?
+				ja .Equal												;	if yes then they are equal
+			jmp .LessThan												;	if no then Word1 is < Word 2
+						
+	.EOWord2:
+			cmp RSI,[LOWord1]											; Word2 ended, has Word1 ?
+				ja .Equal												;	if yes then they are equal
+			jmp .GreaterThan											;	if no then Word1 is > Word2
+
+;-----------------------------------------------------------------------
+;			adjudicate
+;-----------------------------------------------------------------------
+	.Equal:
+			test r_Function,Equals	
+				  jnz .ExitTrue
+			test r_Function,isNOTLessThan
+				  jnz .ExitTrue	
+			test r_Function,isNOTGreaterThan
+				  jnz .ExitTrue
+			  			  
+			jmp .ExitFalse
+
+	
+	.GreaterThan:
+			test r_Function,isGreaterThan
+				  jnz .ExitTrue
+			test r_Function,isNOTEqualTo
+				  jnz .ExitTrue
+			test r_Function,isNOTLessThan
+				  jnz .ExitTrue
+				  
+			jmp .ExitFalse				  
+
+	.LessThan:
+			test r_Function,isLessThan
+				  jnz .ExitTrue				  
+			test r_Function,isNOTEqualTo
+				  jnz .ExitTrue				  
+			test r_Function,isNOTGreaterThan
+				  jnz .ExitTrue				  
+
+			jmp .ExitFalse				  
+				 										 
+	.ExitTrue:	
+			mov qword[b_Result],c_TRUE
+			jmp .Exit
+			
+	.ExitFalse:
+			mov qword[b_Result], c_FALSE
+			jmp .Exit
+			
+			
+	.Error:	; Tring to compare an alpha and a numeric field
+			xor rax,rax
+			mov r14,err08
+			Call _SYSERROR	
+								
+	.Exit:							
+_COMPARE_EXIT:
+			ret	
+			

@@ -1,0 +1,264 @@
+%include 'include/BEGIN.PROGRAM'
+
+;		  languageONE 
+;		  Template for developing GUI programs
+
+;=======================================================================
+;		  PROGRAM DATA
+;=======================================================================	      
+
+;-----------------------------------------------------------------------
+;		DICTIONARY
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.DICTIONARY'
+
+	insertword w_PortError,		0024,'Port No cannot be < 1024' 
+	insertword w_ConnectError,	0020,'Cannot create socket'
+
+	insertword w_Screen0,		0022,{'./Template-screen0.html',0x00}
+			
+	insertword w_Response,		2048,''	
+	insertword w_Buffer,		0256,''
+	insertword w_Out,			0256,''
+	
+	
+%include 'include/END.DICTIONARY'
+
+;-----------------------------------------------------------------------
+;		MATRIX
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.MATRIX'
+
+  ; Common Counters
+	INSERTNUMBER I,					0,'999999'
+	INSERTNUMBER J,					0,'999999'
+	INSERTNUMBER K,					0,'999999'
+
+  ; This programs 	
+  	insertnumber n_PortNo,		 1024,'999999'
+	
+%include 'include/END.MATRIX'
+
+;-----------------------------------------------------------------------
+;		FILES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.FILES'
+
+	insertfile c_LF,RSP_FILE,'./GUI.Template.rsp'
+	insertfile c_LF,ERR_FILE,'./GUI.Template.err'
+	insertfile c_LF,HTM_FILE,'./GUI.Template.htm'
+	
+%include 'include/END.FILES'
+
+;=======================================================================
+;		PROGRAM INSTRUCTIONS
+;		Mainline  
+;=======================================================================
+%include 'include/BEGIN.INSTRUCTIONS'
+
+	$Call A_1_Initial
+
+	if RETURN_CODE = 0
+		www.process (w_Screen0,w_Response,B_1_GET,C_1_POST)	
+		$Call Z_1_Finalise
+	end.if
+
+%include 'include/END.INSTRUCTIONS'
+%include 'include/END.PROGRAM'      
+
+;=======================================================================
+;		PROGRAM PROCEDURES
+;=======================================================================
+
+;-------------------------------------------------------------------------------
+;		INITIALISATION
+;-------------------------------------------------------------------------------
+BEGIN.SUB A_1_Initial
+
+;	-------------------------------
+;	GET PORT NUMBER
+;	-------------------------------
+	numbers.eq (n_PortNo,{w_CommandLine,1,6})
+	
+	if n_PortNo < 1024
+	
+		display.line w_PortError
+		@set(RETURN_CODE,99)
+		exit.sub A_1_Initial
+		
+	else
+	
+	;	OPEN THE SOCKET 
+		www.open (n_PortNo)
+		if RETURN_CODE != 0
+			display.line w_ConnectError
+			@set(RETURN_CODE,99)
+			exit.sub A_1_Initial
+		end.if
+		
+	end.if
+
+;	-------------------------------
+;	GRAB STDOUT
+;	-------------------------------
+	begin.assembler												; Close STDIO
+		mov rax,3
+		mov rdi,1
+		syscall
+	end.assembler
+	files.open (RSP_FILE,write+beginning)						; and replace 
+
+;	-------------------------------
+;	GRAB STDERR
+;	-------------------------------
+	begin.assembler												; Close STDERR
+		mov rax,3
+		mov rdi,2
+		syscall
+	end.assembler
+	files.open (ERR_FILE,write+beginning)						; and replace 
+	
+END.SUB A_1_Initial
+
+;-------------------------------------------------------------------------------
+;	GET
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_1_GET
+
+;	****** CODE GOES HERE
+;
+;
+;	****** CODE GOES HERE
+
+END.SUB B_1_GET
+
+;-------------------------------------------------------------------------------
+;	POST
+;-------------------------------------------------------------------------------
+BEGIN.SUB C_1_POST
+	
+;	---------------------------
+;	GRAB OPTIONS
+;	---------------------------
+	$Call C_1_1_GetOptions
+	if RETURN_CODE = 999999
+		exit.sub C_1_POST
+	end.if
+	
+	@set(RETURN_CODE,0)
+
+;	****** CODE GOES HERE
+;
+;
+;	****** CODE GOES HERE
+
+;	---------------------------
+;	FORMAT OUTPUT
+;	---------------------------	
+	$Call C_1_5_FormatOutput
+		
+END.SUB C_1_POST
+
+;-------------------------------------------------------------------------------
+;	Get ENTERED OPTIONS
+;------------------------------------------------------------------------------
+BEGIN.SUB C_1_1_GetOptions
+
+;	-----------
+;	CANCEL
+;	-----------	
+	words.find ({'&CANCEL=CANCEL',I},w_Response)
+	if I > 0
+		@set(RETURN_CODE,999999)
+		exit.sub C_1_1_GetOptions
+	end.if
+
+;	****** CODE GOES HERE
+
+;	---------------------------
+;	EASY WAY TO FLAG SEKECTIONS
+;	---------------------------
+;	words.find ({'&TRANSLATE=on',	b_Translate},		w_Response)
+;	words.find ({'&ASSEMBLE=on',	b_Assemble},		w_Response)
+;	words.find ({'&LINK=on',		b_Link},			w_Response)
+;	words.find ({'&COMMON=on',		b_linkCommon},		w_Response)
+
+;	****** CODE GOES HERE
+	
+END.SUB C_1_1_GetOptions
+
+;-------------------------------------------------------------------------------
+;	FORMAT OUTPUT
+;-------------------------------------------------------------------------------
+BEGIN.SUB C_1_5_FormatOutput
+
+;	----------------------
+;	CLOSE/OPEN FILES
+;	----------------------
+	files.close (RSP_FILE)
+	files.close (ERR_FILE)	
+	files.open  (RSP_FILE,read)	
+	files.open  (ERR_FILE,read)		
+	files.open  (HTM_FILE,write+beginning)
+
+;	-----------------------
+;	RESPONSE FILE
+;	-----------------------
+	files $read,RSP_FILE,w_Buffer
+	repeat.while RSP_FILE_STATUS = 0
+
+		@set(I,RSP_FILE_READLENGTH)
+		$Call C_1_5_1_FormatLineOut
+
+		files $write,HTM_FILE,{w_Out,1,I}
+		files $read,RSP_FILE,w_Buffer
+		
+	end.repeat
+	
+;	-----------------------
+;	ERROR FILE
+;	-----------------------
+	files $read,ERR_FILE,w_Buffer
+	repeat.while ERR_FILE_STATUS = 0
+		
+		@set(I,ERR_FILE_READLENGTH)
+		$Call C_1_5_1_FormatLineOut
+
+		files $write,HTM_FILE,{w_Out,1,I}
+		files $read,ERR_FILE,w_Buffer
+		
+	end.repeat
+		
+;	----------------------
+;	CLOSE FILES
+;	----------------------
+	files.close (RSP_FILE)
+	files.close (ERR_FILE)	
+	files.close (HTM_FILE)		
+	
+END.SUB C_1_5_FormatOutput
+
+;-------------------------------------------------------------------------------
+;	FORMAT OUTPUT LINE
+;-------------------------------------------------------------------------------
+BEGIN.SUB C_1_5_1_FormatLineOut
+
+	words.pad ('<p>',w_Out)
+	words.copy ({w_Buffer,1,I},{w_Out,4})
+	@add(I,4)		
+	words.copy ('</p>',{w_Out,I})
+	@add(I,3)		
+	
+END.SUB C_1_5_1_FormatLineOut
+
+;-------------------------------------------------------------------------------
+;	FINALISATION
+;-------------------------------------------------------------------------------
+BEGIN.SUB Z_1_Finalise
+
+;	-----------------------------------------
+;	CLOSE THE SOCKET 
+;	-----------------------------------------
+	www.close (n_PortNo)
+	
+END.SUB Z_1_Finalise

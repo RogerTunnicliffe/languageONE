@@ -1,0 +1,140 @@
+%include 'include/BEGIN.PROGRAM'
+
+;		  languageONE
+;		  Template for developing programs
+
+;=======================================================================
+;		  PROGRAM DATA
+;=======================================================================
+
+;-----------------------------------------------------------------------
+;		DICTIONARY
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.DICTIONARY'
+%include 'include/END.DICTIONARY'
+
+;-----------------------------------------------------------------------
+;		MATRIX
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.MATRIX'
+
+  ; Common Counters
+	INSERTNUMBER I,0     ,'999999'
+	INSERTNUMBER J,0     ,'999999'
+	INSERTNUMBER K,0     ,'999999'
+
+%include 'include/END.MATRIX'
+;-----------------------------------------------------------------------
+;		FILES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.FILES'
+%include 'include/END.FILES'
+
+;=======================================================================
+;		PROGRAM INSTRUCTIONS
+;		Mainline
+;=======================================================================
+%include 'include/BEGIN.INSTRUCTIONS'
+
+;	----------------
+;	STANDARD IF/ELSE
+;	----------------
+	if 1 = 2
+		display.line "Performing IF"
+		if 2 = 3
+			display.line "NESTED:Performing IF"
+		else
+			display.line "NESTED Performing ELSE"
+		end.if
+	else
+		display.line "Performing ELSE"
+		if 2 = 2
+			display.line "NESTED:Performing IF"
+		else
+			display.line "NESTED Performing ELSE"
+		end.if
+	end.if
+
+;	----------------
+;	COMPOUND IF/ELSE
+;	----------------
+	.if  1 =,2
+	.or  1 =,3
+	.or  1 = 1
+	.and 1 = 2
+	.end
+		display.line "[TRUE] Performing Compound IF"
+	else
+		display.line "[FALSE] Performing Compound IF"
+		.if  1 = 2
+		.or  1 = 3
+		.or  1 = 1
+		.and 1 = 1
+		.end
+			display.line "Performing Nested Compound IF - NO ELSE"
+		end.if
+	end.if
+
+;	------------------------
+;	TEST - STANDARD/COMPOUND
+;	------------------------
+	I = 1
+	begin.test c_TRUE
+		.when 1 = 1
+		  .or 1 = 2
+		 .and 2 = 3
+		 .end
+			display.line "Performing 1st WHEN"
+		wend
+		when 3 = 3
+			display.line "Performing 2nd WHEN"
+			I = 2
+			begin.test I
+				when = 1
+					repeat _01
+						display.line "NAMED Repeat"
+						exit.repeat _01
+					end.repeat _01
+				wend
+				when = 2
+					display.line "Performing NESTED WHEN"
+					if I = 2
+						display.line "[TRUE], If in WHEN"
+					else
+						display.line "[FALSE], If in WHEN"
+					end.if 
+				wend
+				otherwise
+					display.line "Otherwise"
+			end.test
+		wend
+	end.test
+
+
+	begin.test I
+		when _IN {2,3,4,5}
+			display.line "[_IN] Performing 3rd WHEN"
+		wend
+		when _NIN {2,3,4,5}
+			display.line "[_NIN] Performing 3rd WHEN"
+		wend
+	end.test
+
+
+;	-----
+;	LOOPS
+;	-----
+	repeat.for I,1,3
+		display I," REPEAT.FOR working",LF
+	end.repeat
+
+	INTEGERS.CALC I,=,1
+	repeat.while I,<,5
+		display I," REPEAT.WHILE working",LF
+		INTEGERS.CALC I,=,I,+,1
+	end.repeat
+
+%include 'include/END.INSTRUCTIONS'
+%include 'include/END.PROGRAM'
+
+

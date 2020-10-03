@@ -1,0 +1,1780 @@
+%include 'include/BEGIN.PROGRAM'
+
+;	BEGIN.SYNONYMS **************************************
+;		$.	:	WORDS.  
+;		@.	:	INTEGERS.  
+;		#.	:	NUMBERS.  
+;		f.	:	FILES. 
+;		T.	:	TABLES.
+;		xT.	:	XTABLES.
+;	END.SYNONYMS ****************************************
+
+;=======================================================================
+;		  PROGRAM DATA
+;=======================================================================	      
+
+;-----------------------------------------------------------------------
+;		DICTIONARY
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.DICTIONARY'
+
+	insertword w_PortError,			0024,'Port No cannot be < 1024' 
+	insertword w_ConnectError,		0020,'Cannot create socket'
+
+	insertword w_screen0,			0022,{'html/2-06-screen.html',0x00}
+			
+	insertword w_Response,			2048,''	
+	insertword w_Buffer,			0256,''
+	insertword w_Out,				0256,''
+	
+%include 'include/END.DICTIONARY'
+
+;-----------------------------------------------------------------------
+;		MATRIX
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.MATRIX'
+
+	%define c_Black		01
+	%define c_White 	02
+	%define c_bornOff	26
+	%define c_onBar		01
+
+  ; Common Counters
+	INSERTNUMBER I,						0,'999999'
+	INSERTNUMBER J,						0,'999999'
+	INSERTNUMBER K,						0,'999999'
+	INSERTNUMBER L,						0,'999999'
+
+  ; This programs 
+	insertnumber b_1stMove,        c_TRUE,'9'
+	insertnumber b_Found,	 	  c_FALSE,'9'
+  
+ 	insertnumber n_PortNo,			 1024,'999999'
+  	
+	insertnumber n_Dice1,				0,'9'
+	insertnumber n_Dice2,				0,'9'
+	
+	insertnumber n_From,				0,'9'
+	insertnumber n_FromStatus,			0,'9-'
+	insertnumber n_To,					0,'9'
+	insertnumber n_ToStatus1,			0,'9-'
+	insertnumber n_ToStatus2,			0,'9-'
+	insertnumber n_NoOff1,				0,'9'
+	insertnumber n_NoOff2,				0,'9'
+	
+	insertnumber D1,					0,'9'
+	insertnumber D2,					0,'9'
+
+	insertnumber n_NoOfMoves,   		0,'9'
+	insertnumber n_LargestNo,			0,'9'
+	insertnumber n_SmallestNo,			0,'9'
+	insertnumber n_Direction,		   -1,'9-'
+	
+	insertnumber n_MveIdx,				0,'99'
+	insertnumber n_Ctr,					0,'99-'
+	insertnumber n_NoToMove,			0,'9'
+
+	insertnumber z,0,'9'
+
+%include 'include/END.MATRIX'
+
+;-----------------------------------------------------------------------
+;		FILES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.FILES'
+
+	begin.record 2,TblRecord
+	 	insertnumber		TblNoOff,			00,'9'	
+	 	insertnumber		TblColour,			00,'9'
+	end.record TblRecord
+	
+	begin.record 22,MoveRecord
+		insertnumber		mve1NoOff,			00,'9'
+		insertnumber		mve1From,			00,'99'
+		insertnumber		mve1FromStatus,		00,'9-'	
+		insertnumber		mve1To,				00,'99'	
+		insertnumber		mve1ToStatus1,		00,'9-'
+		insertnumber		mve1ToStatus2,		00,'9-'
+		insertnumber		mve2NoOff,			00,'9'
+		insertnumber		mve2From,			00,'99'
+		insertnumber		mve2FromStatus,		00,'9-'	
+		insertnumber		mve2To,				00,'99'		
+		insertnumber		mve2ToStatus1,		00,'9-'
+		insertnumber		mve2ToStatus2,		00,'9-'	
+	end.record MoveRecord
+
+%include 'include/END.FILES'
+	
+;-----------------------------------------------------------------------
+;		TABLES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.TABLES'
+	
+	inserttable Tbl,52		; 2  * 26
+	inserttable Mve,704		; 22 * 32
+	
+%include 'include/END.TABLES'
+
+%imacro mDocumentMove 6
+		integers.eq n_Ctr,%4
+		integers.eq n_From,%5
+		integers.eq n_To,%6
+		$Call X_1_DocumentMove
+		integers.eq %1,n_FromStatus
+		integers.eq %2,n_ToStatus1
+		integers.eq %3,n_ToStatus2		
+%endmacro		
+
+%imacro m3or1 2
+		integers.eq n_NoOff1,%1
+		integers.eq n_NoOff2,%2
+		$Call D_1_1_4_3_1_Move3or1
+%endmacro		
+
+;=======================================================================
+;		PROGRAM INSTRUCTIONS
+;		Mainline  
+;=======================================================================
+%include 'include/BEGIN.INSTRUCTIONS'
+
+	$Call A_1_Initial
+
+	if RETURN_CODE = 0
+		www.process (w_screen0,w_Response,B_1_GET,C_1_POST)	
+		$Call Z_1_Finalise
+	end.if
+
+%include 'include/END.INSTRUCTIONS'
+%include 'include/END.PROGRAM'      
+
+;=======================================================================
+;		PROGRAM PROCEDURES
+;=======================================================================
+
+;-------------------------------------------------------------------------------
+;		INITIALISATION
+;-------------------------------------------------------------------------------
+BEGIN.SUB A_1_Initial
+
+;	-------------------------------
+;	GET PORT NUMBER
+;	-------------------------------
+	numbers.eq (n_PortNo,{w_CommandLine,1,6})
+	
+	if n_PortNo < 1024
+	
+		display.line w_PortError
+		integers.eq(RETURN_CODE,99)
+		exit.sub A_1_Initial
+		
+	else
+	
+	;	OPEN THE SOCKET 
+		www.open (n_PortNo)
+		if RETURN_CODE != 0
+			display.line w_ConnectError
+			integers.eq (RETURN_CODE,99)
+			exit.sub A_1_Initial
+		end.if
+		
+	end.if
+
+	T.Bind Tbl,TblRecord,26
+	T.Bind Mve,MoveRecord,32
+
+END.SUB A_1_Initial
+
+;-------------------------------------------------------------------------------
+;	GET
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_1_GET
+
+	ERROR_CODE = 0
+	RETURN_CODE = 0
+
+END.SUB B_1_GET
+
+;-------------------------------------------------------------------------------
+;	POST
+;-------------------------------------------------------------------------------
+BEGIN.SUB C_1_POST
+	
+	$.find ({'ROLLDICE',I},w_Response)
+	if I > 1
+	   $Call D_1_RollDice
+	   exit.sub C_1_POST
+	end.if	
+	
+	$.find ({'findmoves:',I},w_Response)
+	if I > 1
+	   $Call D_1_FindMoves
+	   exit.sub C_1_POST
+	end.if		
+	
+END.SUB C_1_POST
+
+;-------------------------------------------------------------------------------
+;	Roll Dice
+;-------------------------------------------------------------------------------
+BEGIN.SUB D_1_RollDice
+
+	repeat _01
+		#.random(1,n_Dice1)
+		@.and(n_Dice1,0x07)
+		.if  n_Dice1 > 0 | .and n_Dice1 < 7 | .end
+			exitRepeat = c_TRUE
+		end.if
+	end.repeat _01
+	
+	repeat _02
+		#.random(1,n_Dice2)
+		@.and(n_Dice2,0x07)
+		.if  n_Dice2 > 0 | .and n_Dice2 < 7 | .end
+			exitRepeat = c_TRUE
+		end.if
+	end.repeat _02
+
+;if z = 0
+;	z = 1
+;	n_Dice1 = 6
+;	n_Dice2 = 2
+;else
+;	n_Dice1 = 2
+;	n_Dice2 = 6
+;end.if
+
+	w_Response = {n_Dice1,'9'}
+	{w_Response,2,1} = {n_Dice2,'9'}
+	RETURN_CODE = 2
+	
+END.SUB D_1_RollDice
+
+;-------------------------------------------------------------------------------
+;	Roll Dice
+;-------------------------------------------------------------------------------
+
+BEGIN.SUB D_1_FindMoves
+
+;	------
+;	status
+;	------
+;	-1 = Leave Blot
+;	 0 = Safe
+;	 1 = Cover Blot
+;	 2 = Hit
+;	 3 = 2 Hits
+;	 4 = 3 Hits
+;	 5 = 4 Hits
+
+;	--------------
+;	Grab the board
+;	--------------
+	J = 0 | I = I + 10
+	repeat _03
+		J = J + 1
+		if J > 26 
+			exitRepeat = c_TRUE
+		else
+			TblNoOff[J]		= {w_Response,I,1}
+			I = I + 2
+			TblColour[J]	= {w_Response,I,1}
+			I = I + 2
+		end.if
+	end.repeat _03 		
+
+;	----
+;	Move
+;	----
+	$Call D_1_1_Move		
+
+;	--------------
+;	Load the board
+;	--------------
+	J = 0 | I = 1
+	repeat _04
+		J = J + 1
+		if J > 26
+			exitRepeat = c_TRUE
+		else
+			{w_Response,I} = TblNoOff[J]
+			I = I + 1
+			{w_Response,I} = ","
+			I = I + 1
+			{w_Response,I} = TblColour[J]
+			I = I + 1
+			{w_Response,I} = ","
+			I = I + 1
+		end.if
+	end.repeat _04 		
+
+	RETURN_CODE = 108
+	
+END.SUB D_1_FindMoves
+
+;-------------------------------------------------------------------------------
+;	MOVE
+;-------------------------------------------------------------------------------
+BEGIN.SUB D_1_1_Move
+
+;	--------------------------
+;	Initialise the moves table
+;	--------------------------
+	n_Ctr = 2 | $Call Y_1_InitMovesRec
+	repeat.for n_MveIdx,1,32
+		T.rput Mve,n_MveIdx
+	end.repeat
+	n_MveIdx = 0
+
+;	------------------------
+;	Get Largest and Smallest
+;	------------------------
+	if  n_Dice1 > n_Dice2
+		n_LargestNo		= n_Dice1
+		n_SmallestNo	= n_Dice2
+	else
+		n_LargestNo		= n_Dice2
+		n_SmallestNo	= n_Dice1
+	end.if
+
+;	----------
+;	On the Bar
+;	----------
+	if  TblNoOff[c_onBar] > 0 
+		$Call D_1_1_2_OnTheBar
+		exit.sub D_1_1_Move 
+	end.if
+	
+;	-----------
+;	Bearing Off
+;	-----------
+	if  TblNoOff[c_bornOff] > 0
+		$Call D_1_1_3_BearingOff
+		exit.sub D_1_1_Move 
+	else		
+		repeat.for I,2,19
+			if TblColour[I] = c_Black
+				exitRepeat = c_TRUE
+			end.if
+		end.repeat
+		if I > 19
+			$Call D_1_1_3_BearingOff
+			exit.sub D_1_1_Move 
+		end.if
+	end.if
+		
+;	-------------------
+;	1st move exceptions
+;	-------------------
+	if b_1stMove = c_TRUE
+		$Call D_1_1_1_FirstMove
+	end.if
+	
+;	-------
+;	Doubles
+;	-------	
+	if  n_Dice1 = n_Dice2
+		if D_1_1_4_Double
+			exit.sub D_1_1_Move 
+		end.if		
+	end.if
+
+;	-----------
+;	Other moves
+;	-----------
+	$Call E_1_BestMove
+
+END.SUB D_1_1_Move
+
+;-------------------------------------------------------------------------------
+;	FIRST MOVE
+;-------------------------------------------------------------------------------
+%macro $testDice 2
+
+	RETURN_CODE = c_FALSE
+	.if n_Dice1 = %1 | .and n_Dice2 = %2 | .end
+		RETURN_CODE = c_TRUE
+	end.if
+	
+	.if n_Dice1 = %2 | .and n_Dice2 = %1 | .end
+		RETURN_CODE = c_TRUE
+	end.if
+	
+%endmacro
+
+BEGIN.SUB D_1_1_1_FirstMove
+
+	b_1stMove = c_FALSE
+
+	$testDice(1,1)
+	if RETURN_CODE = c_TRUE
+		.if TblNoOff[21]  < 2
+		.and TblNoOff[19] < 2
+		.end
+			mve1NoOff		= 2
+			mve1From		= 20
+			mve1FromStatus	= 0
+			mve1To			= 21
+			mve1ToStatus1	= 0
+			mve1ToStatus2	= 0	
+			mve2NoOff		= 2
+			mve2From		= 18
+			mve2FromStatus	= -1
+			mve2To			= 19
+			mve2ToStatus1  	= 0	
+			mve2ToStatus2  	= 9	
+			n_MveIdx 	= 1
+			T.rput Mve,n_MveIdx
+			exit.sub D_1_1_1_FirstMove
+		end.if
+	end.if
+
+	$testDice(6,3)
+	if RETURN_CODE = c_TRUE
+		.if TblNoOff[08]  < 2
+		.and TblNoOff[11] < 2
+		.end
+			mve1NoOff		= 1
+			mve1From		= 2
+			mve1FromStatus	= -1
+			mve1To			= 8
+			mve1ToStatus1	= -1
+			mve1ToStatus2	= 0	
+			mve2NoOff		= 1
+			mve2From		= 8
+			mve2FromStatus	= 0
+			mve2To			= 11
+			mve2ToStatus1  	= 0	
+			mve2ToStatus2  	= 9	
+			n_MveIdx 	= 1
+			T.rput Mve,n_MveIdx
+			exit.sub D_1_1_1_FirstMove
+		end.if
+	end.if
+
+	$testDice(6,5)
+	if RETURN_CODE = c_TRUE
+		.if TblColour[8] = c_Black
+		.or TblNoOff[8]  < 2
+		.end
+			mve1NoOff		= 1
+			mve1From		= 2
+			mve1FromStatus	= -1
+			mve1To			= 8
+			mve1ToStatus1	= -1
+			mve1ToStatus2	= 0	
+			mve2NoOff		= 1
+			mve2From		= 8
+			mve2FromStatus	= 0
+			mve2To			= 13
+			mve2ToStatus1  	= 0	
+			mve2ToStatus2  	= 9	
+			n_MveIdx 	= 1
+			T.rput Mve,n_MveIdx
+			exit.sub D_1_1_1_FirstMove
+		end.if
+	end.if
+
+;	-------------------------------------------
+;	Not totally definite cuz we might get a hit
+;	-------------------------------------------
+	$testDice(3,2)
+	if RETURN_CODE = c_TRUE
+		.if TblNoOff[15]  < 2
+		.and TblNoOff[16] < 2
+		.and TblNoOff[25] = 2
+		.end
+			mve1NoOff		= 1
+			mve1From		= 13
+			mve1FromStatus	= 0
+			mve1To			= 15
+			mve1ToStatus1	= -1
+			mve1ToStatus2	= 0	
+			mve2NoOff		= 1
+			mve2From		= 13
+			mve2FromStatus	= 0
+			mve2To			= 16
+			mve2ToStatus1  	= -1
+			mve2ToStatus2  	= 5
+			n_MveIdx 	= 1
+			T.rput Mve,n_MveIdx
+			exit.sub D_1_1_1_FirstMove
+		end.if
+	end.if
+
+	$testDice(5,2)
+	if RETURN_CODE = c_TRUE
+		.if TblNoOff[15]  < 2
+		.and TblNoOff[16] < 2
+		.and TblNoOff[25] = 2
+		.end
+			mve1NoOff		= 1
+			mve1From		= 13
+			mve1FromStatus	= 0
+			mve1To			= 18
+			mve1ToStatus1	= -1
+			mve1ToStatus2	= 0	
+			mve2NoOff		= 1
+			mve2From		= 13
+			mve2FromStatus	= 0
+			mve2To			= 15
+			mve2ToStatus1  	= -1
+			mve2ToStatus2  	= 5
+			n_MveIdx 	= 1
+			T.rput Mve,n_MveIdx
+			exit.sub D_1_1_1_FirstMove
+		end.if
+	end.if
+
+END.SUB D_1_1_1_FirstMove
+
+;-------------------------------------------------------------------------------
+;	ON THE BAR
+;-------------------------------------------------------------------------------
+BEGIN.SUB D_1_1_2_OnTheBar
+
+;	---------------------------------------------------------------------------
+;	There is probably a magical algorithm that deals with all instances at once
+;	but for this demo program I am just going to deal with each in isolation
+;	---------------------------------------------------------------------------
+
+;	Tokens=1------------------->DOUBLE = 1 In or NOT
+;									3 moves to make
+;								SINGLE = 1 In or NOT
+;									1 move to make
+;	Tokens=2------------------->DOUBLE = 2 In or NOT
+;									2 moves to make
+;								SINGLE = 1/2 In or NOT				Coded
+;									No Other moves
+;	Tokens=3------------------->DOUBLE = 3 In or NOT
+;									1 move to make
+;								SINGLE = 1/2 In or NOT				Coded
+;									No Other moves
+;	Tokens=4------------------->DOUBLE = 4 in or NOT
+;									No Other moves
+;								SINGLE = 1/2 In or Not				Coded
+;									No other moves
+
+;	------------------------------------------------
+;	Firstly weed out the occurences of NOT coming in
+;	------------------------------------------------
+	.if  TblColour[[n_Dice1 + 1]] = c_White
+	.and TblNoOff[[n_Dice1 + 1]]  > 1
+	.and TblColour[[n_Dice2 + 1]] = c_White
+	.and TblNoOff[[n_Dice2 + 1]]  > 1
+	.end
+		exit.sub D_1_1_2_OnTheBar
+	else
+		n_Ctr = 2 | $Call Y_1_InitMovesRec
+	end.if
+	
+display.line "OnTheBar"
+
+;	-------------------
+;	1 Token on the bar
+;	-------------------	
+	if  TblNoOff[c_onBar] = 1
+		if n_Dice1 = n_Dice2
+			repeat.for I,[25 - n_SmallestNo],2				; Find individual moves
+				.if  TblColour[I] = c_Black
+				.or I = 1
+				.end				
+					m3or1(3,1)		
+				end.if
+			end.repeat
+		else
+			repeat.for I,[25 - n_SmallestNo],2				; Find individual moves
+				.if  TblColour[I] = c_Black
+				.or I = 1
+				.end
+					D1 = n_SmallestNo | D2 = n_LargestNo
+					$Call E_1_3_Individual
+					D1 = n_LargestNo | D2 = n_SmallestNo
+					$Call E_1_3_Individual
+				end.if
+			end.repeat	
+		end.if	
+	end.if
+
+;	-------------------
+;	2 Tokens on the bar
+;	-------------------	
+	if  TblNoOff[c_onBar] = 2
+		if n_Dice1 = n_Dice2
+			repeat.for I,[25 - n_SmallestNo],2				; Find individual moves
+				.if  TblColour[I] = c_Black
+				.or I = 1
+				.end
+					$Call D_1_1_4_1_Move2
+				end.if
+			end.repeat
+		else		
+			$Call D_1_1_2_2_BringInTwo			
+		end.if
+	end.if
+
+;	-------------------
+;	3 Tokens on the bar
+;	-------------------	
+	if  TblNoOff[c_onBar] = 3
+		if n_Dice1 = n_Dice2
+			repeat.for I,[25 - n_SmallestNo],2
+				.if  TblColour[I] = c_Black
+				.or I = 1
+				.end				
+					m3or1(1,3)		
+				end.if
+			end.repeat		
+		else
+			$Call D_1_1_2_2_BringInTwo					
+		end.if	
+	end.if
+	
+;	---------------------------
+;	3 or more Tokens on the bar
+;	---------------------------	
+	if  TblNoOff[c_onBar] > 3
+		if n_Dice1 = n_Dice2
+			mve1NoOff		= 4
+			mve1From		= 1
+			mve1To			= [1 + n_Dice1]
+			mDocumentMove(mve1FromStatus,mve1ToStatus1,mve1ToStatus2,mve1NoOff,mve1From,mve1To)				
+			n_MveIdx = n_MveIdx + 1
+			T.rput Mve,n_MveIdx
+		else
+			$Call D_1_1_2_2_BringInTwo					
+		end.if	
+	end.if
+
+
+;	=========
+;	And Do It
+;	=========	
+	if n_MveIdx > 0
+		$Call X_2_SelectBestMove
+		$Call Y_2_DisplayTable	
+		$Call X_3_MakeTheMove
+	end.if
+
+END.SUB D_1_1_2_OnTheBar
+
+;-------------------------------------------------------------------------------
+;	NO OTHER MOVES
+;-------------------------------------------------------------------------------
+BEGIN.SUB D_1_1_2_2_BringInTwo
+
+	.if  TblColour[[n_Dice1 + 1]] < c_White						; Black or Empty
+	.or  TblNoOff[[n_Dice1 + 1]]  < 2							; A Blot
+	.end
+		mve1NoOff		= 1
+		mve1From		= 1
+		mve1FromStatus	= 5										; Ensures this gets selected
+		mve1To			= n_Dice1 + 1
+		mve1ToStatus1	= 0
+		mve1ToStatus2	= 0											
+	end.if
+			
+	.if  TblColour[[n_Dice2 + 1]] < c_White						; Black or Empty
+	.or  TblNoOff[[n_Dice2 + 1]]  < 2							; A Blot
+	.end
+		mve2NoOff		= 1
+		mve2From		= 1
+		mve2FromStatus	= 5										; Ensures this gets selected
+		mve2To			= n_Dice2 + 1
+		mve2ToStatus1  	= 0	
+		mve2ToStatus2  	= 0
+	end.if
+
+	.if mve1FromStatus = 5
+	.or mve2FromStatus = 5
+	.end
+		n_MveIdx = n_MveIdx + 1
+		T.rput Mve,n_MveIdx
+	end.if
+
+END.SUB D_1_1_2_2_BringInTwo
+
+;-------------------------------------------------------------------------------
+;	BEARING OFF
+;-------------------------------------------------------------------------------
+BEGIN.SUB D_1_1_3_BearingOff
+
+;	-------------------------------------------------------------------
+;	This is far more complex than I wanted to get into at present so we
+;	will just do the simplest thing - whether a good move or not
+;	-------------------------------------------------------------------
+
+	I = 26 - n_Dice1
+	J = 26 - n_Dice2
+	
+;	---------------------------
+;	Single moves
+;	---------------------------
+	if n_Dice1 != n_Dice2
+	
+		if  TblColour[I] = c_Black 
+			TblNoOff[I] = TblNoOff[I] - 1
+			if TblNoOff[I] = 0
+				TblColour[I] = 0
+			end.if
+			TblNoOff[c_bornOff] = TblNoOff[c_bornOff] + 1
+			I = 0
+		end.if	
+		if  TblColour[J] = c_Black 
+			TblNoOff[J] = TblNoOff[J] - 1
+			if TblNoOff[J] = 0
+				TblColour[J] = 0
+			end.if
+			TblNoOff[c_bornOff] = TblNoOff[c_bornOff] + 1
+			J = 0
+		end.if
+	
+		if I > 0
+			repeat.for n_From,20,25
+				if  TblColour[n_From] = c_Black
+					n_To = n_From + n_Dice1
+					if n_To > 25
+						n_To = 26
+					end.if
+					.if TblColour[n_To] < c_White
+					.or TblNoOff[n_To] < 2
+					.end
+						if TblColour[n_To] = c_White
+							TblNoOff[n_To] = 0
+							TblColour[n_To] = 0
+							TblColour[c_onBar]  = TblColour[c_onBar] + 1
+						end.if
+						TblNoOff[n_From] = TblNoOff[n_From] - 1
+						if TblNoOff[n_From] = 0
+							TblColour[n_From] = 0
+						end.if
+						TblColour[n_To] = c_Black						
+						TblNoOff[n_To] = TblNoOff[n_To] + 1
+					end.if
+					exitRepeat = c_TRUE
+				end.if
+			end.repeat
+		end.if
+	
+		if J > 0
+			repeat.for n_From,20,25
+				if  TblColour[n_From] = c_Black
+					n_To = n_From + n_Dice2
+					if n_To > 25
+						n_To = 26
+					end.if
+					.if TblColour[n_To] < c_White
+					.or TblNoOff[n_To] < 2
+					.end
+						if TblColour[n_To] = c_White
+							TblNoOff[n_To] = 0
+							TblColour[n_To] = 0							
+							TblColour[c_onBar]  = TblColour[c_onBar] + 1
+						end.if
+						TblNoOff[n_From] = TblNoOff[n_From] - 1
+						if TblNoOff[n_From] = 0
+							TblColour[n_From] = 0
+						end.if							
+						TblColour[n_To] = c_Black						
+						TblNoOff[n_To] = TblNoOff[n_To] + 1
+					end.if
+					exitRepeat = c_TRUE					
+				end.if
+			end.repeat
+		end.if
+
+		exit.sub D_1_1_3_BearingOff
+		
+	end.if
+			
+;	---------------------------
+;	Double move
+;	---------------------------
+	n_Ctr = 4
+	if TblColour[I] = c_Black
+		if TblNoOff[I] > 3
+			TblNoOff[I] = TblNoOff[I] - 4
+			if TblNoOff[I] = 0
+				TblColour[I] = 0
+			end.if			
+			TblNoOff[c_bornOff] = TblNoOff[c_bornOff] + 4
+		else
+			TblNoOff[c_bornOff] = TblNoOff[c_bornOff] + TblNoOff[I]
+			n_Ctr = 4 - TblNoOff[I] 
+			TblNoOff[I] = 0
+			TblColour[I] = 0
+		end.if
+	end.if
+	
+	if n_Ctr > 0			
+		repeat.for n_From,20,25
+			if TblColour[n_From] = c_Black
+				n_To = n_From + n_Dice1
+				if n_To > 26 
+					n_To = 26
+				end.if
+				.if TblColour[n_To] < c_White
+				.or TblNoOff[n_To] < 2
+				.end
+					if TblColour[n_To] = c_White
+						TblNoOff[n_To] = 0
+						TblColour[n_To] = 0							
+						TblColour[c_onBar]  = TblColour[c_onBar] + 1
+					end.if					
+					if TblNoOff[n_From] !< n_Ctr
+						TblNoOff[n_From] = TblNoOff[n_From] - n_Ctr
+						TblNoOff[n_To] = TblNoOff[n_To] + n_Ctr
+						exitRepeat = c_TRUE
+					else
+						TblNoOff[n_To] = TblNoOff[n_To] + TblNoOff[n_From]
+						n_Ctr = n_Ctr - TblNoOff[n_From]
+						TblNoOff[n_From] = 0
+						TblColour[n_From] = 0
+						if n_Ctr = 0
+							exitRepeat = c_TRUE
+						end.if
+					end.if
+				end.if
+			end.if
+		end.repeat
+	end.if
+
+END.SUB D_1_1_3_BearingOff
+
+;-------------------------------------------------------------------------------
+;	DOUBLE
+;-------------------------------------------------------------------------------
+BEGIN.FUNCTION D_1_1_4_Double
+
+;	================
+;	Double 6 move
+;	================
+	if D_1_1_4_0_Double6Move
+		exit.sub D_1_1_4_Double
+	end.if
+	
+;	================
+;	Find Moves loops
+;	================
+	repeat.for I,[25 - n_Dice1],2
+
+		if  TblColour[I] = c_Black		
+			$Call D_1_1_4_1_Move2
+			$Call D_1_1_4_2_Move31
+		end.if
+			
+	end.repeat
+
+	repeat.for I,25,2
+		$Call D_1_1_4_3_Move1
+	end.repeat
+
+;	=========
+;	And Do It
+;	=========
+	if n_MveIdx > 0
+		$Call X_2_SelectBestMove
+		$Call Y_2_DisplayTable
+		$Call X_3_MakeTheMove
+		if mve1From > 0
+			RETURN_CODE = c_TRUE
+		end.if
+	end.if
+			
+END.FUNCTION D_1_1_4_Double
+
+;-------------------------------------------------------------------------------
+;	Moving 2 at once
+;-------------------------------------------------------------------------------
+BEGIN.FUNCTION D_1_1_4_0_Double6Move
+
+	.if n_Dice1 != 6
+	.or n_Dice2 != 6
+	.end
+		exit.function D_1_1_4_0_Double6Move
+	end.if
+	
+	.if  TblColour[2]  != c_Black
+	.or  TblNoOff[2]    < 2
+	.or  TblColour[13] != c_Black
+	.or  TblNoOff[13]   < 2
+	.end
+		exit.function D_1_1_4_0_Double6Move
+	end.if
+
+	.if  TblColour[8] = c_White
+	.and TblNoOff[8]  > 1
+	.end
+		exit.function D_1_1_4_0_Double6Move
+	end.if
+	
+	.if  TblColour[19] = c_White
+	.and TblNoOff[13]  > 1
+	.end
+		exit.function D_1_1_4_0_Double6Move
+	end.if
+	
+;	-----------------
+;	We can do it
+;	-----------------
+	RETURN_CODE = c_TRUE
+	
+	mve1NoOff		= 2 
+	mve1From		= 2
+	mve1FromStatus	= 9
+	mve1To			= 8
+	mve1ToStatus1	= 9
+	mve1ToStatus2	= 9
+	mve2NoOff		= 2
+	mve2From		= 13
+	mve2FromStatus	= 9
+	mve2To			= 19
+	mve2ToStatus1	= 9
+	mve2ToStatus2	= 9
+				
+	n_MveIdx = n_MveIdx + 1
+	T.rput Mve,n_MveIdx
+					
+
+END.FUNCTION D_1_1_4_0_Double6Move
+
+;-------------------------------------------------------------------------------
+;	Moving 2 at once
+;-------------------------------------------------------------------------------
+BEGIN.SUB D_1_1_4_1_Move2
+
+;	-----------------------------------------------------
+;	From a double throw this routine will detect a 2 move
+;	It must be a 2 and 2 move or a 2 and 0 move
+;	-----------------------------------------------------
+;	If we only find a single double move we will
+; 	let it drop thru as though it where not a double
+; 	and let the normal routine handle the move
+;	--------------------------------------------------
+	if TblNoOff[I] < 2
+		exit.sub D_1_1_4_1_Move2
+	end.if
+	
+	n_Ctr = 2 | $Call Y_1_InitMovesRec
+	
+	.if  TblColour[[I + n_Dice1]] < c_White									; Black or Empty
+	.or  TblNoOff[[I + n_Dice1]]  < 2										; A Blot
+	.end
+
+		mve2NoOff	= 2
+		mve2From	= I
+		mve2To		= [I + n_Dice1]	
+		mDocumentMove(mve2FromStatus,mve2ToStatus1,mve2ToStatus1,mve2NoOff,mve2From,mve2To)	
+		b_Found		= c_FALSE
+
+	;	------------
+	;	Move 2 again
+	;	------------
+		J = [I + n_Dice1 + n_Dice2]
+		if J < 26
+			.if TblColour[J] < c_White					; Black or Empty
+			.or TblNoOff[J] < 2							; A Blot			
+			.end
+				mve1NoOff		= mve2NoOff 
+				mve1From		= mve2From
+				mve1FromStatus	= mve2FromStatus
+				mve1To			= mve2To
+				mve1ToStatus1	= mve2ToStatus1
+				mve1ToStatus2	= mve2ToStatus2
+				mve2NoOff		= 2
+				mve2From		= mve2To
+				mve2To			= J
+				mDocumentMove(mve2FromStatus,mve2ToStatus1,mve2ToStatus2,mve2NoOff,mve2From,mve2To)
+				
+				n_MveIdx = n_MveIdx + 1
+				T.rput Mve,n_MveIdx
+				
+				mve2NoOff		= mve1NoOff 
+				mve2From		= mve1From
+				mve2FromStatus	= mve1FromStatus
+				mve2To			= mve1To
+				mve2ToStatus1	= mve1ToStatus1
+				mve2ToStatus2	= mve1ToStatus2
+				n_Ctr = 1 | $Call Y_1_InitMovesRec
+
+			end.if
+		end.if
+	;	------------
+	;	Move 2 again
+	;	------------
+		
+		if I > 2
+		  repeat.for J,[I - 1],2
+		
+			.if  TblColour[J] = c_Black									; Black
+			.and TblNoOff[J]  > 1										; and more than 1 of them
+			.end
+				
+				.if TblColour[[J + n_Dice2]] < c_White					; Black or Empty
+				.or TblNoOff[[J + n_Dice2]] < 2							; A Blot			
+				.end
+
+					b_Found		= c_TRUE
+
+					mve1NoOff		= 2
+					mve1From		= J
+					mve1To			= [J + n_Dice2]
+					mDocumentMove(mve1FromStatus,mve1ToStatus1,mve1ToStatus2,mve1NoOff,mve1From,mve1To)				
+							
+					n_MveIdx = n_MveIdx + 1
+					T.rput Mve,n_MveIdx
+				
+					n_Ctr = 1 | $Call Y_1_InitMovesRec
+						
+				end.if
+			end.if
+		  end.repeat
+		 end.if
+
+	;	-------------------------------
+	;	J will be 1 so check for on-bar
+	;	-------------------------------
+		if TblNoOff[c_onBar] > 0	
+			mve1NoOff		= 2									
+			mve1From		= 1
+			mve1To			= [n_Dice2 + 1]
+			mve1FromStatus	= 5
+			n_MveIdx = n_MveIdx + 1
+			T.rput Mve,n_MveIdx
+		end.if
+			
+	end.if
+
+	.if b_Found = c_FALSE
+	.and mve2From > 0
+	.end	
+		n_MveIdx = n_MveIdx + 1
+		T.rput Mve,n_MveIdx
+	end.if
+	
+END.SUB D_1_1_4_1_Move2
+
+;-------------------------------------------------------------------------------
+;	Moving 3 at once
+;-------------------------------------------------------------------------------
+BEGIN.SUB D_1_1_4_2_Move31
+
+;	------------------------------------------------------------------------
+;	From a double throw this routine will detect a 3 and 1 or a 1 and 3 move
+;	It must detect both to write a record
+;	--------------------------------------------------
+
+	m3or1(3,1)
+	m3or1(1,3)
+
+END.SUB D_1_1_4_2_Move31		
+
+;-------------------------------------------------------------------------------
+;	Moving (3 then 1) or (1 then 3)
+;-------------------------------------------------------------------------------
+BEGIN.SUB D_1_1_4_3_1_Move3or1
+
+	n_Ctr = 2 | $Call Y_1_InitMovesRec
+
+	if  TblNoOff[I] !< n_NoOff1											; Can we move a 3 or a 1
+
+		.if  TblColour[[I + n_Dice1]] < c_White							; Target is Black or Empty
+		.or  TblNoOff[[I + n_Dice1]]  < 2								; A Blot
+		.end
+
+			mve2NoOff	= n_NoOff1																			; Passed in a 3 or a 1
+			mve2From	= I
+			mve2To		= [I + n_Dice1]	
+			mDocumentMove(mve2FromStatus,mve2ToStatus1,mve2ToStatus2,mve2NoOff,mve2From,mve2To)
+
+			if I > 2
+			  repeat.for J,[I - 1],2
+
+				.if  TblColour[J] = c_Black							; Source is Black
+				.and TblNoOff[J] !< n_NoOff2						; and we have a 1 or a 3
+				.end
+				
+					.if TblColour[[J + n_Dice1]] < c_White			; target is Black or Empty
+					.or TblNoOff[[J + n_Dice1]] < 2					; A Blot			
+					.end
+
+						mve1NoOff		= n_NoOff2														; Passed in a 3 or a 1
+						mve1From		= J
+						mve1To			= [J + n_Dice2]
+						mDocumentMove(mve1FromStatus,mve1ToStatus1,mve1ToStatus2,mve1NoOff,mve1From,mve1To)				
+							
+						n_MveIdx = n_MveIdx + 1
+						T.rput Mve,n_MveIdx
+				
+						n_Ctr = 1 | $Call Y_1_InitMovesRec
+					
+					end.if
+				end.if
+			  end.repeat	
+			end.if
+		;	-------------------------------
+		;	J will be 1 so check for on-bar
+		;	-------------------------------
+			if TblNoOff[c_onBar] > 0	
+				mve1NoOff		= n_NoOff2								
+				mve1From		= 1
+				mve1To			= [n_Dice2 + 1]
+				mve1FromStatus	= 5
+				n_MveIdx = n_MveIdx + 1
+				T.rput Mve,n_MveIdx
+			end.if			
+			
+		end.if
+	end.if
+	
+END.SUB D_1_1_4_3_1_Move3or1	
+	
+;-------------------------------------------------------------------------------
+;	Moving single piece
+;-------------------------------------------------------------------------------		
+BEGIN.SUB D_1_1_4_3_Move1
+
+;	---------------------------------------------------------------
+;	This routine is only applicable if moving 1 piece of a double 
+;	throw as 3 or 4 moves. Any less and we would be moving 2 tokens
+;	---------------------------------------------------------------
+
+;	------
+;	4 move
+;	------
+	n_Ctr = 2 | $Call Y_1_InitMovesRec
+	n_NoOfMoves = 4
+	$Call D_1_1_4_3_1_3or4			
+	if [[mve2To - mve2From] / n_Dice1] = 4
+		exit.sub D_1_1_4_3_Move1
+	end.if
+
+	if mve2NoOff = 1 													; If we have found a move
+		n_MveIdx = n_MveIdx + 1											;	write the move record
+		T.rput Mve,n_MveIdx
+	end.if
+	
+;	------
+;	3 move - If you don't find a 4th move then you cannot do this
+;	------
+	n_Ctr = 2 | $Call Y_1_InitMovesRec
+	n_NoOfMoves = 3
+	$Call D_1_1_4_3_1_3or4
+	
+	if mve2NoOff = 1
+					
+		repeat.for K,[25 - n_Dice1],2
+			
+			.if  TblColour[K] = c_Black									; Black
+			.and TblNoOff[K]  > 0										; and at least 1 of them
+			.and K != mve2From											; and not the 1 we have already moved
+			.end
+				
+				.if TblColour[[K + n_Dice1]] < c_White					; Black or Empty
+				.or TblNoOff[[K + n_Dice1]] < 2							; A Blot			
+				.end
+
+					mve1NoOff		= 1									
+					mve1From		= K
+					mve1To			= [K + n_Dice2]
+					mDocumentMove(mve1FromStatus,mve1ToStatus1,mve1ToStatus2,mve1NoOff,mve1From,mve1To)				
+							
+					n_MveIdx = n_MveIdx + 1
+					T.rput Mve,n_MveIdx
+				
+					n_Ctr = 1 | $Call Y_1_InitMovesRec
+					
+				end.if
+			end.if			
+			
+		end.repeat
+		
+	end.if	
+	
+END.SUB D_1_1_4_3_Move1		
+
+;-------------------------------------------------------------------------------
+;	Moving single piece - passed in a 3 or a 4 
+;-------------------------------------------------------------------------------		
+BEGIN.SUB D_1_1_4_3_1_3or4
+
+	J = [I - [n_Dice1 * n_NoOfMoves]]						; Go back ? slots
+	.if  J > 1 												; If we haven't fallen of the board
+	.and TblColour[J] = c_Black								; and we have a black
+	.end
+	
+		repeat.for K,1,n_NoOfMoves							; Loop thru ? times
+			.if TblColour[ [J + [K * n_Dice1]] ] = c_Black	; If we have a black
+			.or TblNoOff[ [J + [K * n_Dice1]] ] < 2			;	or only 1 white
+			.end
+			else 											; else
+				exitRepeat = c_TRUE							;	there are more than 1 and we cannot proceed
+			end.if
+		end.repeat
+		
+		if K > n_NoOfMoves									; If we completed all ? moves
+			mve2NoOff		= 1								;	set the No off 
+			mve2From		= J								;	the start position		
+			mve2To			= I								;	the end position
+		;	does not call mDocumentMove - do it here
+			repeat.for K,J,I,n_NoOfMoves					; If we get a hit along the way
+				if TblColour[K] = c_White					;	count it up
+					mve2ToStatus2 = mve2ToStatus2 + 2
+				end.if
+			end.repeat
+		end.if
+		
+	end.if
+
+END.SUB D_1_1_4_3_1_3or4
+
+;-------------------------------------------------------------------------------
+;	FIND BEST MOVE
+;-------------------------------------------------------------------------------
+BEGIN.SUB E_1_BestMove
+
+	n_Ctr = 2 | $Call Y_1_InitMovesRec
+	
+;	================
+;	Find Moves loops
+;	================
+	repeat.for I,25,2
+	
+		if  TblColour[I] = c_Black
+			
+			$Call E_1_1_Stack
+			$Call E_1_2_Single
+			
+			D1 = n_Dice1 | D2 = n_Dice2
+			$Call E_1_3_Individual
+			
+			D1 = n_Dice2 | D2 = n_Dice1
+			$Call E_1_3_Individual
+						
+		end.if
+		
+	end.repeat
+
+;	=========
+;	And Do It
+;	=========	
+	if n_MveIdx > 0
+		$Call X_2_SelectBestMove
+		$Call Y_2_DisplayTable	
+		$Call X_3_MakeTheMove
+	end.if
+	
+END.SUB E_1_BestMove
+
+;-------------------------------------------------------------------------------
+;	Test for a Stack Creation
+;-------------------------------------------------------------------------------
+BEGIN.SUB E_1_1_Stack
+
+;	--------------------------------------------------------
+;	This move results in a Stack (2 or more on the one spot)
+;	--------------------------------------------------------
+
+	RETURN_CODE = c_FALSE
+	
+	if  [I + n_SmallestNo] < 26											; Make sure we don't overrun the board 
+
+		K = I - 1 - n_LargestNo + n_SmallestNo
+		repeat.for J,[I - 1],K											; Working backwards from 1st find
+			
+			if  TblColour[J] = c_Black
+				
+				.if [J + n_LargestNo] = [I + n_SmallestNo]				; If they have the same destination
+				.and TblNoOff[[J + n_LargestNo]] < 2
+				.end
+				
+					mve2NoOff	= 1
+					mve2From	= I
+					mve2To		= [I + n_SmallestNo]	
+					mDocumentMove(mve2FromStatus,mve2ToStatus1,mve2ToStatus2,mve2NoOff,mve2From,mve2To)
+					
+					mve1NoOff	= 1									
+					mve1From	= J
+					mve1To		= [J + n_LargestNo]
+					mDocumentMove(mve1FromStatus,mve1ToStatus1,mve1ToStatus2,mve1NoOff,mve1From,mve1To)
+					
+					RETURN_CODE = c_TRUE
+					exitRepeat = c_TRUE
+
+				end.if
+					
+			end.if
+				
+		end.repeat
+			
+	end.if
+
+	if 	RETURN_CODE = c_TRUE			; Override status as it may have been set to 2 blots
+		if TblNoOff[mve1To] = 0			; Creating a new stack 	
+			mve1ToStatus1		= 1						
+			mve2ToStatus1		= 1						
+		else
+			if TblNoOff[mve1To] = 1		; Covering a blot 	
+				mve1ToStatus1	= 1						
+				mve2ToStatus1	= 0						
+			else						; Just adding to a stack
+				mve1ToStatus1	= 0
+				mve2ToStatus1	= 0
+			end.if
+		end.if
+		n_MveIdx = n_MveIdx + 1		
+		T.rput Mve,n_MveIdx
+	end.if
+	
+END.SUB E_1_1_Stack
+
+;-------------------------------------------------------------------------------
+;	Test for SINGLE MOVE
+;-------------------------------------------------------------------------------
+BEGIN.SUB E_1_2_Single
+
+;	-----------------------------------------------------
+;	This move results in a single token being moved twice
+;	-----------------------------------------------------
+
+	if  [I + n_SmallestNo + n_LargestNo] < 26			; Make sure we don't overrun the board 
+
+		.if TblColour[[I + n_Dice1 + n_Dice2]] = c_Black
+		.or TblNoOff[[I + n_Dice1 + n_Dice2]]  < 2
+		.end
+
+			.if TblColour[[I + n_Dice1]] = c_Black
+			.or TblNoOff[[I + n_Dice1]]  < 2
+			.end
+
+				mve1NoOff	= 1									
+				mve1From	= I
+				mve1To		= [I + n_Dice1]
+				mDocumentMove(mve1FromStatus,mve1ToStatus1,mve1ToStatus2,mve1NoOff,mve1From,mve1To)
+
+				mve2NoOff	= 1
+				mve2From	= [I + n_Dice1]
+				mve2To		= [I + n_Dice1 + n_Dice2]	
+				mDocumentMove(mve2FromStatus,mve2ToStatus1,mve2ToStatus2,mve2NoOff,mve2From,mve2To)
+
+			;	mve1ToStatus	= 0						; Override status as it may have been set to a blot
+				n_MveIdx = n_MveIdx + 1				
+				T.rput Mve,n_MveIdx
+
+			end.if
+		
+			.if TblColour[[I + n_Dice2]] = c_Black
+			.or TblNoOff[[I + n_Dice2]]  < 2
+			.end
+
+				mve1NoOff	= 1									
+				mve1From	= I
+				mve1To		= [I + n_Dice2]
+				mDocumentMove(mve1FromStatus,mve1ToStatus1,mve1ToStatus2,mve1NoOff,mve1From,mve1To)
+
+				mve2NoOff	= 1
+				mve2From	= [I + n_Dice2]
+				mve2To		= [I + n_Dice2 + n_Dice1]	
+				mDocumentMove(mve2FromStatus,mve2ToStatus1,mve2ToStatus2,mve2NoOff,mve2From,mve2To)					
+
+			;	mve1ToStatus	= 0						; Override status as it may have been set to a blot
+				n_MveIdx = n_MveIdx + 1				
+				T.rput Mve,n_MveIdx
+				
+			end.if
+
+		end.if	
+		
+	end.if
+
+END.SUB E_1_2_Single
+
+
+;-------------------------------------------------------------------------------
+;	Test for ONE OR BOTH SAFE
+;-------------------------------------------------------------------------------
+BEGIN.SUB E_1_3_Individual
+
+;	----------------------------------------------------------------------
+;	This move results in the 2 tokens being moved in an independant manner
+;	----------------------------------------------------------------------
+	
+	if  [I + D1] < 26										; Make sure we don't overrun the board
+
+		.if TblColour[[I + D1]] = c_Black
+		.or TblNoOff[[I + D1]]  < 2
+		.end
+
+			mve2NoOff	= 1
+			mve2From	= I
+			mve2To		= [I + D1]	
+			mDocumentMove(mve2FromStatus,mve2ToStatus1,mve2ToStatus2,mve2NoOff,mve2From,mve2To)
+			if I > 2
+				repeat.for J,[I - 1],2
+					.if TblColour[J] = c_Black
+					.and [J + D2] < 26
+					.end
+
+						.if TblColour[[J + D2]] = c_Black
+						.or TblNoOff[[J + D2]]  < 2
+						.end
+
+							mve1NoOff	= 1									
+							mve1From	= J
+							mve1To		= J + D2
+							mDocumentMove(mve1FromStatus,mve1ToStatus1,mve1ToStatus2,mve1NoOff,mve1From,mve1To)
+						
+							n_MveIdx = n_MveIdx + 1
+							T.rput Mve,n_MveIdx
+						
+							n_Ctr = 1 | $Call Y_1_InitMovesRec
+
+						end.if
+					end.if
+				end.repeat
+			end.if
+			
+		;	-------------------------------
+		;	J will be 1 so check for on-bar
+		;	-------------------------------
+			if TblNoOff[c_onBar] > 0
+				.if TblColour[[D2 + 1]] = c_Black
+				.or TblNoOff[[D2 + 1]]  < 2
+				.end			
+					mve1NoOff		= 1									
+					mve1From		= 1
+					mve1To			= [D2 + 1]
+					mve1FromStatus	= 5
+					n_MveIdx = n_MveIdx + 1
+					T.rput Mve,n_MveIdx
+				end.if
+				
+			end.if
+			
+		end.if	
+									
+	end.if
+
+END.SUB E_1_3_Individual
+
+;-------------------------------------------------------------------------------
+;	ASSESS THE MOVE
+;-------------------------------------------------------------------------------
+BEGIN.SUB X_1_DocumentMove
+
+;	---------------------------------------------
+;	n_Ctr contains the number of dice being moved
+;	---------------------------------------------
+
+	n_FromStatus	= 0				; What's Black leaving behind
+	n_ToStatus1		= 0				; Result of move on Black
+	n_ToStatus2		= 0				; Result of move on White
+
+;	----------------------------------
+;	Leaves a blot at the FROM position
+;	----------------------------------
+	if TblNoOff[n_From] = [n_Ctr + 1]									; Leaves a blot
+		n_FromStatus = -1		
+		if n_From < 14													; Upgrade a blot		
+			n_FromStatus = 0											; in the 1st 2
+		end.if															; sections
+	end.if
+
+;	----------------------------------
+;	Removes a blot at the FROM position
+;	----------------------------------
+	if TblNoOff[n_From] = n_Ctr											; Removes a blot
+		n_FromStatus = 2								
+	end.if
+
+;	----------------------------------
+;	Covers a blot at the TO position
+;	----------------------------------
+	.if  TblColour[n_To] = c_Black										; A Black
+	.and TblNoOff[n_To]	 = 1											; Blot
+	.end
+		n_ToStatus1 = 1	 												; 1 to cover a Black blot					
+	end.if
+
+;	--------------------------------------------
+;	Double always creates a stack at TO position
+;	--------------------------------------------
+	if n_Ctr = 2														; Double move
+		n_ToStatus1 = 1													; to create a stack
+	end.if
+
+;	----------------------------------
+;	Hits a white at the TO position
+;	----------------------------------	
+	.if  TblColour[n_To] = c_White										; A white
+	.and TblNoOff[n_To]  = 1											; Blot
+	.end
+		n_ToStatus2 = 6	 												; +6 for a Hit
+	end.if
+
+;	----------------------------------
+;	Creates a blot at the TO position
+;	Make sure this follow the code that sets n_ToStatus2 as a hit
+;	----------------------------------
+	.if n_Ctr = 1		
+	.and TblNoOff[n_To] < 2												; Valid 
+	.end
+		begin.test n_To
+			when > 19
+				n_ToStatus1 = -4										; for creating a blot
+			wend
+			when > 13
+				n_ToStatus1 = -3										; for creating a blot
+			wend
+			when > 7
+				n_ToStatus1 = -2										; for creating a blot
+			wend
+			otherwise
+				n_ToStatus1 = -1										; for creating a blot
+		end.test
+;		n_ToStatus1 = n_ToStatus1 + n_ToStatus2							; add back if hit
+	end.if
+	
+;	----------------------------------
+;	more than 5 on TO position
+;	----------------------------------	
+	.if  TblColour[n_To] = c_Black										; A black
+	.and TblNoOff[n_To]  > 4											; and 5 of them
+	.end
+		n_ToStatus1 = n_ToStatus1 - TblNoOff[n_To] + 5					; Downgrade
+	end.if
+	
+END.SUB X_1_DocumentMove
+
+;-------------------------------------------------------------------------------
+;	SELECT THE BEST MOVE
+;-------------------------------------------------------------------------------
+BEGIN.SUB X_2_SelectBestMove
+
+;	------------------------------------------------
+;	This is where the brains of the program should
+;	do its work. A very simple approach is used here
+;	as it is not the purpose of this program to code
+;	the very best backgammon game
+;	------------------------------------------------
+
+	n_Ctr 		= n_MveIdx 
+	K 			= -2 
+	n_NoOfMoves	= 0
+	
+	repeat.for I,1,n_Ctr
+	
+		T.rget Mve,I
+
+		if mve2ToStatus2 != 9									; If not set by 1st move routine
+			$Call X_2_1_ReEvaluate								;	reevaluate the move
+		end.if
+		
+		L = mve1FromStatus + mve1ToStatus1 + mve1ToStatus2 + mve2FromStatus + mve2ToStatus1 + mve2ToStatus2
+						
+		.if  L = K												; If we find an equal score
+		.and n_NoOfMoves = 1									; but we only had 1 move
+		.and mve1From > 0										; and now we find 2 moves
+		.end
+			n_MveIdx = I										; GRAB IT
+			n_NoOfMoves = 2										; and acknowledge that we have 2 moves
+		end.if
+		
+	;	if L > K												; If we have a higher score
+		if L !< K		; This allows the program to select moves from the lower end of the board
+			K = L												; mark it as such
+			n_MveIdx = I										; GRAB IT
+			if mve1From = 0										; If we only  have 1 move
+				n_NoOfMoves = 1									; 	indicate that
+			else												; else
+				n_NoOfMoves = 2									; 	indicate 2 moves
+			end.if
+		end.if
+
+	end.repeat
+
+END.SUB X_2_SelectBestMove
+
+;-------------------------------------------------------------------------------
+;	RE-EVALUATE THE MOVE
+;-------------------------------------------------------------------------------
+BEGIN.SUB X_2_1_ReEvaluate
+	
+; 	The document move routine does not relate the
+;   2 moves together so we will re-evaluate here
+;	and alter Status's to suit
+
+;	Left a Blot
+	.if mve1From = mve2From			
+	.and TblNoOff[mve1From] = 3
+	.end
+		mve1FromStatus = -1
+	end.if
+
+;	Formed a stack
+	if mve1To = mve2To
+		mve1ToStatus1 = 1 
+	end.if
+
+;	Moved the same one twice 
+	if mve1To = mve2From
+		mve1ToStatus1 = 0
+		.if mve1NoOff = 2							; If it's a double move
+		.and mve2NoOff = 2							; we want to take it
+		.end
+			mve1ToStatus1 = 9
+		end.if
+	end.if
+
+;	Rewrite Move Record
+	T.rput Mve,I
+
+END.SUB X_2_1_ReEvaluate
+
+;-------------------------------------------------------------------------------
+;	DO THE MOVE
+;-------------------------------------------------------------------------------
+BEGIN.SUB X_3_MakeTheMove
+
+	T.rget Mve,n_MveIdx
+	$Call Y_2_1_DisplayTableRecord
+	display "============================================="
+	display "============================================"
+	display LF	
+	
+	if mve1From > 0
+		TblNoOff[mve1From] = TblNoOff[mve1From] - mve1NoOff
+		if  TblNoOff[mve1From] = 0
+			TblColour[mve1From] = 0
+		end.if
+
+	;	if mve1ToStatus = 2									; This will have been downgraded if
+		if TblColour[mve1To] = c_White						; it created a blot
+			TblColour[mve1To] = 0
+			TblNoOff[mve1To] = 0
+			TblColour[c_onBar]  = TblColour[c_onBar] + 1	; TblColour doubles as no of white on bars
+		end.if
+		
+		TblNoOff[mve1To] = TblNoOff[mve1To] + mve1NoOff
+		TblColour[mve1To] = c_Black
+	end.if
+
+	if mve2From > 0
+		TblNoOff[mve2From] = TblNoOff[mve2From] - mve2NoOff
+		if  TblNoOff[mve2From] = 0
+			TblColour[mve2From] = 0
+		end.if
+		
+	;	-------------------------------------------------------------------------
+	;	A long jump move resulting from moving a single token on a double will
+	;	be held in mve2. It can be detect by noting that the long jump is greater
+	;	than the number on the dice. We then have to detect any hits at his point
+	;	rather than finding it in the move table
+	;	-------------------------------------------------------------------------
+		if mve2To > [mve2From + n_LargestNo]
+			I = mve2From + n_Dice1
+			repeat.while I !> mve2To
+				if  TblColour[I] = c_White
+			;	.and TblNoOff[I] = 1
+			;	.end
+					TblColour[I] = 0
+					TblNoOff[I] = 0
+					TblColour[c_onBar]  = TblColour[c_onBar] + 1
+				end.if
+				I = I + n_Dice1
+			end.repeat	
+			TblColour[mve2To] = c_Black
+			TblNoOff[mve2To]  = TblNoOff[mve2To] + mve2NoOff
+		else
+	;	--------------------
+	;	Just a normal Move 2
+ 	;	--------------------
+	;		if mve2ToStatus = 2									; This will have been downgraded if
+			if TblColour[mve2To] = c_White						; it created a blot
+				TblColour[mve2To] = 0
+				TblNoOff[mve2To] = 0
+				TblColour[c_onBar]  = TblColour[c_onBar] + 1	;	TblColour doubles as no of white on bars
+			end.if
+
+			TblColour[mve2To] = c_Black
+			TblNoOff[mve2To]  = TblNoOff[mve2To] + mve2NoOff
+		end.if
+		
+	end.if
+
+END.SUB X_3_MoveTheMove
+
+;-------------------------------------------------------------------------------
+;	INITIALISE MOVES TABLE RECORD
+;-------------------------------------------------------------------------------
+BEGIN.SUB Y_1_InitMovesRec
+
+	if n_Ctr > 0
+		mve1NoOff		= 0
+		mve1From		= 0
+		mve1FromStatus	= 0
+		mve1To			= 0
+		mve1ToStatus1	= 0
+		mve1ToStatus2	= 0
+	end.if
+	if n_Ctr > 1
+		mve2NoOff		= 0
+		mve2From		= 0
+		mve2FromStatus	= 0
+		mve2To			= 0
+		mve2ToStatus1  	= 0	
+		mve2ToStatus2  	= 0
+	end.if
+
+END.SUB Y_1_InitMovesRec
+
+;-------------------------------------------------------------------------------
+;	DISPLAY MOVES TABLE
+;-------------------------------------------------------------------------------
+BEGIN.SUB Y_2_DisplayTable
+
+	display "NoOff From To FromStatus ToStatus1 ToStatus2 "
+	display	"NoOff From To FromStatus ToStatus1 ToStatus2"
+	display LF
+
+	repeat.for I,1,32
+		T.rget Mve,I
+		.if mve1NoOff = 0
+		.and mve2NoOff = 0
+		.end
+			exitRepeat = c_TRUE
+		else
+			$Call Y_2_1_DisplayTableRecord
+		end.if
+	end.repeat
+	display "---------------------------------------------"
+	display "--------------------------------------------"
+	display LF
+	
+END.SUB Y_2_DisplayTable
+
+;-------------------------------------------------------------------------------
+;	DISPLAY MOVES RECORD
+;-------------------------------------------------------------------------------
+BEGIN.SUB Y_2_1_DisplayTableRecord
+		
+	n_Ctr = mve1FromStatus + mve1ToStatus1 + mve1ToStatus2 + mve2ToStatus1 + mve2ToStatus2
+	
+	display	"    ",mve1NoOff,"   ",mve1From," ",mve1To,"         ",					\
+			mve1FromStatus,"        ",mve1ToStatus1,"        ",mve1ToStatus2,"  "
+	display	"   ", mve2NoOff,"   ",mve2From," ",mve2To,"         ",					\
+			mve2FromStatus,"        ",mve2ToStatus1,"        ",mve2ToStatus2,		\
+			"   ",n_Ctr,LF
+
+END.SUB Y_2_1_DisplayTableRecord
+
+;-------------------------------------------------------------------------------
+;	FINALISATION
+;-------------------------------------------------------------------------------
+BEGIN.SUB Z_1_Finalise
+
+;	-----------------------------------------
+;	CLOSE THE SOCKET 
+;	-----------------------------------------
+	www.close (n_PortNo)
+	
+END.SUB Z_1_Finalise

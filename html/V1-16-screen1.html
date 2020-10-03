@@ -1,0 +1,143 @@
+<html>
+<head>
+	<title>V1-16-screen1</title>
+	<style type="text/css">
+     div {font-family: Verdana; font-size: 12px; font-style:normal; color: blue;}
+    </style>
+</head>
+
+<body>
+
+  <frameset rows="10" frameborder="0"/> 
+	<frame>
+	  <img src="LinuxPenguin.jpg" width="15%" height="15%"/>
+	  <img src="logo.jpg" width="80%" height="15%"/>
+	</frame>
+  </frameset>
+	
+  <form name='screen1' id='screen1' action='' method='post' target=''> 
+
+	<fieldset><legend>Make Options</legend>
+
+	<table width="285" cellpadding="0" cellspacing="0">
+		<col width="130">
+		<col width="025">
+		<col width="130">
+	
+		<tr>
+			<td width="130"><div align="right">Program Name</div></td>
+			<td width="155" colspan="2">
+				<input type="text" id="PROGRAMNAME" name="PROGRAMNAME" 
+					   size="30" maxlength="128" style="width: 5cm; height: 0.80cm">
+			</td>
+		</tr>
+		
+		<tr>
+			<td width="130"><div align="right">reWrite</div></td>
+			<td width="025">
+				<input type="checkbox" id="REWRITE" name="REWRITE" 
+					  style="width: 0.35cm; height: 0.35cm">
+			</td>
+			<td width="130"></td>
+		</tr>
+				
+		<tr>		
+			<td width="130"><div align="right">Assemble</div></td>
+			<td width="025">
+				<input type="checkbox" id="ASSEMBLE" name="ASSEMBLE" 
+					  style="width: 0.35cm; height: 0.35cm">
+			</td>
+			<td width="130"></td>			
+		</tr>
+
+		<tr>
+			<td width="130"><div align="right">Link</div></td>
+			<td width="25">
+				<input type="checkbox" id="LINK" name="LINK"  
+					  style="width: 0.35cm; height: 0.35cm">
+			</td>
+			<td width="130"></td>
+		</tr>
+
+		<tr>
+			<td width="130"><div align="right">Debug</div></td>
+			<td width="025">
+				<input type="checkbox" id="DEBUG" name="DEBUG" 
+					  style="width: 0.35cm; height: 0.35cm">
+			</td>
+			<td width="130"></td>
+		</tr>
+
+	</table>
+		
+	<hr/>
+	
+	<input type='SUBMIT' value='SUBMIT' id='SUBMIT' name='SUBMIT' onclick='return f_onclick(this.id);'/>	
+	<input type='SUBMIT' value='EXIT'   id='EXIT'   name='EXIT'   onclick='return f_onclick(this.id);'/>
+   
+  </form>
+  
+</body>
+
+
+<script type='text/javascript'>
+
+//	----------------------------------------------------------------------------
+//	ONCLICK Function
+//	----------------------------------------------------------------------------
+function f_onclick(ButtonID){
+		
+//	------------------
+//	CANCEL
+//	------------------
+	if (ButtonID=='EXIT')
+		{
+	//	LINUX
+		window.close();
+
+	//	Need to send this explicitly on Windows (NO window.close)
+	//	Not so for Linux
+		var xhttp = new XMLHttpRequest();
+		xhttp.open("POST","EXIT=EXIT",false);
+		xhttp.send();
+		} 
+
+//	-----------------
+//	PROGRAM NAME
+//	-----------------
+	if (ButtonID=='SUBMIT')
+		{
+		if (document.getElementById('PROGRAMNAME').value=='')
+			{
+			alert("Please enter a program name");
+			return false;
+			}	
+		}
+		
+//	-----------------------
+//	Translate/Assemble/Link
+//	-----------------------		
+	if (ButtonID=='SUBMIT')
+		{
+		if (document.getElementById('REWRITE').checked==false
+		&&	document.getElementById('ASSEMBLE').checked==false
+		&&  document.getElementById('LINK').checked==false)
+			{
+			alert ('Please make a selection');
+			return false;
+			}
+		}
+		
+//	-----------------
+//	DO IT
+//	-----------------
+	if (ButtonID=='SUBMIT')
+		{
+		newWindow = window.open('V1-16-screen2.html', '', 'left=350, top=150, height=200, width=1000');
+		newWindow.focus();
+		}
+		
+}	
+</script>
+</html>
+

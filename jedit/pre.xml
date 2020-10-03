@@ -1,0 +1,23 @@
+<?xml version="1.0" ?>
+
+<!DOCTYPE COMMANDO SYSTEM "commando.dtd">
+
+<COMMANDO>
+	<UI>
+		<CAPTION LABEL="Assemble">
+			<ENTRY LABEL="File name" VARNAME="file" EVAL="buffer.getName()" />		
+		</CAPTION>
+	</UI>
+
+	<COMMANDS> 
+		<COMMAND SHELL="System"> 
+			sourceWithoutExt = (file).replaceFirst("[.][^.]+$", "");
+			buf = new StringBuffer("./l.pre "+sourceWithoutExt);
+
+		//	return value
+			buf;
+			
+		</COMMAND>
+	</COMMANDS>
+	
+</COMMANDO>

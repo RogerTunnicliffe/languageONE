@@ -1,0 +1,408 @@
+%include 'include/BEGIN.PROGRAM'
+
+;	Refer to VERSION.HISTORY for...well...version history
+
+;	BEGIN.SYNONYMS **************************************
+;		$.	:	WORDS.  
+;		@.	:	INTEGERS.  
+;		#.	:	NUMBERS.  
+;		f.	:	FILES. 
+;		t.	:	TABLES.
+;	END.SYNONYMS ****************************************
+
+;=======================================================================
+;		  PROGRAM DATA
+;=======================================================================	      
+
+;-----------------------------------------------------------------------
+;		DICTIONARY
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.DICTIONARY'
+
+	insertword w_Char1,			0001,''
+	insertword w_Alphabet,		0026,'abcdefghijklmnopqrstuvwxyz'
+	insertword w_Destination,	0026,''
+	
+%include 'include/END.DICTIONARY'
+
+;-----------------------------------------------------------------------
+;		MATRIX
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.MATRIX'
+
+  ; Common Counters
+	INSERTNUMBER I,					0,'999999'
+	INSERTNUMBER J,					0,'999999'
+	INSERTNUMBER K,					0,'999999'
+	INSERTNUMBER L,					0,'999999'	
+
+  ; This programs 	
+  	insertnumber n_Result,			0,'999999'
+  	insertnumber n_Col,				0
+  	insertnumber n_Row,				0  	
+	
+%include 'include/END.MATRIX'
+
+;-----------------------------------------------------------------------
+;		FILES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.FILES'
+
+;	Record for TestTable
+	%define	c_RecordLength  08
+	%define c_NoOfRecords 	08
+
+	begin.record c_RecordLength,TestRecord
+		insertnumber TR_No,0,'99999999'
+	end.record TestRecord	
+
+%include 'include/END.FILES'
+
+;-----------------------------------------------------------------------
+;		TABLES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.TABLES'
+
+	INSERTTABLE TestTable,c_RecordLength*c_NoOfRecords
+	
+	
+%include 'include/END.TABLES'
+
+;=======================================================================
+;		PROGRAM INSTRUCTIONS
+;		Mainline  
+;=======================================================================
+%include 'include/BEGIN.INSTRUCTIONS'
+
+	$Call A_1_Initial
+
+	if RETURN_CODE = 0
+		$call B_1_Process
+		$Call Z_1_Finalise
+	end.if
+
+%include 'include/END.INSTRUCTIONS'
+%include 'include/END.PROGRAM'      
+
+;=======================================================================
+;		PROGRAM PROCEDURES
+;=======================================================================
+
+;-------------------------------------------------------------------------------
+;		INITIALISATION
+;-------------------------------------------------------------------------------
+BEGIN.SUB A_1_Initial	
+END.SUB A_1_Initial
+
+;-------------------------------------------------------------------------------
+;	Process
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_1_Process
+
+	$Call B_1_1_Maths
+	$Call B_1_2_Screen
+	$Call B_1_3_Words
+	$Call B_1_4_Decisions
+	$Call B_1_5_Loops
+	$Call B_1_6_Tables
+
+END.SUB B_1_Process
+
+;-------------------------------------------------------------------------------
+;	Basic Integer Maths
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_1_1_Maths
+
+;	Initialise variables
+	I = 2 | J = 4 | K = 6
+
+	Display c_LightYellowFG,'Testing basic integer maths',LF		
+	Display c_CyanFG,' Testing EQUALS',LF
+	
+	@.eq (n_Result,[I + J + K])	
+	display c_GreenFG,'  Native languageONE   (012)=',n_Result,LF
+	n_Result = [I * J * K]
+	display '  Standard languageONE (048)=',n_Result,LF	
+
+	Display.line c_CyanFG,' Testing ADD'
+	@.eq n_Result,12	
+	@.add n_Result,[I + J + K]
+	display c_GreenFG,'  Native languageONE   (024)=',n_Result,LF
+	n_Result = n_Result + [I * J * K]
+	display c_GreenFG,'  Standard languageONE (072)=',n_Result,LF	
+	
+	Display.line c_CyanFG,' Testing SUBTRACT'
+	@.eq n_Result,112	
+	@.sub n_Result,[I + J + K]
+	display c_GreenFG,'  Native languageONE   (100)=',n_Result,LF
+	n_Result = n_Result - [I * J * K]
+	display c_GreenFG,'  Standard languageONE (052)=',n_Result,LF	
+	
+	Display.line c_CyanFG,' Testing MULTIPLY'
+	@.eq n_Result,2	
+	@.mul n_Result,[[K + J] / I]
+	display c_GreenFG,'  Native languageONE   (010)=',n_Result,LF
+	n_Result = n_Result * [[K + J] / I]
+	display c_GreenFG,'  Standard languageONE (050)=',n_Result,LF	
+	
+	Display.line c_CyanFG,' Testing DIVIDE'
+	@.eq n_Result,72	
+	@.div n_Result,[[I + J] * K]
+	display c_GreenFG,'  Native languageONE   (002)=',n_Result,LF
+	n_Result = n_Result * 10 / [[J + K] / I]
+	display c_GreenFG,'  Standard languageONE (004)=',n_Result,LF	
+
+	$Call GetUserInput	
+
+END.SUB B_1_1_Maths
+
+;-------------------------------------------------------------------------------
+;	Screen
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_1_2_Screen
+
+;	Initialise variables
+	J = 4 | K = 8
+
+	Display c_ClearScreen,c_LightYellowFG,'Testing Screen routines',LF
+	
+	repeat.for I,1,10
+		Cursor [K - J + I],[[K / J] + I]
+		Display c_GreenFG,'testing cursor positioning'
+	end.repeat
+	Display.line 
+	
+	Display c_LightYellowFG
+	Display.at 15,6, 'Testing Acceptline.AT'
+	Display c_GreenFG
+	Acceptline.at [5 * 3],[[30 / 5] + 22],w_Char1
+	
+	Display c_LightYellowFG
+	Display.at 16,6,'Testing Accept.AT'
+	Display c_GreenFG	
+	Accept.at [[5 * 3] + 1],[[6 * 3] + 6],w_Char1
+	
+	Display c_LightYellowFG
+	Display.at 17,6,'Testing Display.AT'
+	Display c_GreenFG
+	Display.at [[K + J] + [25 / 5]],[100 / 4],'Hello World'
+	Display.line
+	
+	$Call GetUserInput	
+
+END.SUB B_1_2_Screen
+
+;-------------------------------------------------------------------------------
+;	Words
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_1_3_Words
+
+;	Initialise variables
+	J = 4 | K = 8
+
+	Display c_ClearScreen,c_LightYellowFG,'Testing WORDS:Square brackets in braces',LF
+	
+	Display c_GreenFG," Source=",c_YellowFG,w_Alphabet,LF
+	Display c_GreenFG," Destination=",c_YellowFG,w_Destination,LF
+	display c_WhiteFG,'  Native languageONE',LF
+	Words.Copy {w_Alphabet,[10 - 5],[9 / 3]},w_Destination	
+	Display c_CyanFG, '    Words.Copy {w_Alphabet,[10 - 5],[9 / 3],w_Destination =',w_Destination,c_YellowFG,LF
+	display c_WhiteFG,'  Standard languageONE',LF
+	w_Destination = {w_Alphabet,[10 - 5],[9 / 3]}
+	Display c_CyanFG, '    w_Destination = {w_Alphabet,[10 - 5],[9 / 3]},w_Destination =',w_Destination,c_YellowFG,LF,LF	
+	
+	Words.copy w_Alphabet,w_Destination
+	Display c_GreenFG," Source=",c_YellowFG,w_Alphabet,LF
+	Display c_GreenFG," Destination=",c_YellowFG,w_Destination,LF
+	display c_WhiteFG,'  Native languageONE',LF	
+	Words.Pad  {w_Alphabet,[K - 4],K},{w_Destination,[[26 - 10] / 2]}
+	Display c_CyanFG,'    Words.Pad  {w_Alphabet,[K - 4],K},{w_Destination,[[26 - 10] / 2]} =',c_YellowFG,w_Destination,LF
+	display c_WhiteFG,'  Standard languageONE',LF	
+	{w_Destination,[[26 - 10] / 2]} = {w_Alphabet,[K - 4],K}
+	Display c_CyanFG,'   {w_Destination,[[26 - 10] / 2]} = {w_Alphabet,[K - 4],K},w_Destination =',c_YellowFG,w_Destination,LF,LF	
+	
+	Words.copy w_Alphabet,w_Destination
+	Display c_GreenFG," Source=",c_YellowFG,w_Alphabet,LF
+	Display c_GreenFG," Destination=",c_YellowFG,w_Destination,LF
+	display c_WhiteFG,'  Native languageONE',LF		
+	Words $uppercase+$pad, {w_Alphabet,K,J},{w_Destination,[[26 - 10] / 2]}
+	Display c_CyanFG, '   Words $uppercase+$pad, {w_Alphabet,K,J},{w_Destination,[[26 - 10] / 2]} =',c_YellowFG,w_Destination
+	display c_WhiteFG,'  Standard languageONE',LF
+	Display c_CyanFG, '   NO EQUIVALENT - Future version',LF,LF
+
+	$Call GetUserInput
+		
+	Words.uppercase w_Alphabet
+	Words.uppercase w_Destination
+	Display c_GreenFG," Source=",c_YellowFG,w_Alphabet,LF
+	Display c_GreenFG," Destination=",c_YellowFG,w_Destination,LF
+	Words.lowercase {w_Alphabet,[K - 1],[J + 10]},{w_Destination,[[5 - 3] * 2]}
+	display c_WhiteFG,'  Native languageONE',LF		
+	Display c_CyanFG, '   Words.lowercase {w_Alphabet,[K-1],[J + 10]},{w_Destination,[[5 - 3] * 2]} =',c_YellowFG,w_Destination,LF
+	display c_WhiteFG,'  Standard languageONE',LF
+	Display c_CyanFG, '   NO EQUIVALENT - Future version',LF,LF	
+
+	Words.copy w_Alphabet,w_Destination
+	Display c_GreenFG," Source=",c_YellowFG,w_Alphabet,LF
+	Display c_GreenFG," Destination=",c_YellowFG,w_Destination,LF
+	display c_WhiteFG,'  Native languageONE',LF		
+	Words.insert {'~~~~test~~~~',[8 - 4 + 1],[2 * 2]},w_Destination
+	Display c_CyanFG, '   Words.insert {"~~~~test~~~~",[8 - 4],[2 * 2]},w_Destination =',c_YellowFG,w_Destination,LF
+	display c_GreenFG,'  Standard languageONE',LF
+	Display c_WhiteFG,'   NO EQUIVALENT - Future version',LF,LF	
+	
+	Display c_GreenFG," Destination=",c_YellowFG,w_Destination,LF
+	Words.find {'ABCD',I},{w_Destination,[K - J - 3]}
+	display c_GreenFG,'  Native languageONE',LF	
+	Display c_CyanFG, '   Words.find {"ABCD",I},{w_Destination,[K - J - 3] =',c_YellowFG,w_Destination,LF
+	if I > 0
+		display '   Found at ',I,LF
+	end.if
+	display c_WhiteFG,'  Standard languageONE',LF
+	Display c_CyanFG, '   NO EQUIVALENT - Future version',LF,LF	
+
+	$Call GetUserInput
+		
+	Display c_GreenFG," Destination=",c_YellowFG,w_Destination,LF
+	Words.replace {'ABCDEFGH','01234567'},{w_Destination,[100 / 10 - 9]}
+	display c_WhiteFG,'  Native languageONE',LF	
+	Display c_GreenFG,'   Words.replace {"ABCDEFGH","01234567"},{w_Destination,[100 / 10 - 9]} =',c_YellowFG,w_Destination,LF
+	display c_WhiteFG,'  Standard languageONE',LF
+	Display c_CyanFG, '   NO EQUIVALENT - Future version',LF,LF	
+		
+	$Call GetUserInput	
+
+END.SUB B_1_3_Words
+
+;-------------------------------------------------------------------------------
+;	Decisions
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_1_4_Decisions
+
+;	Initialise variables
+	I = 2 | J = 4 | K = 6
+
+	Display c_ClearScreen,c_LightYellowFG,'Testing IF/_OR/AND statements',LF
+		
+	if [[K + J] / 2] = [[I * J] - 3]
+		display c_GreenFG,'  IF Test:Succesful',LF
+	end.if
+	
+  .if 1 = 2
+  .or [[K + J] / 2] = [[I * J] - 3]
+ .end
+		display c_GreenFG,' _OR Test:Succesful',LF
+	end.if
+
+   .if 1 = 1
+  .and [[K + J] / 2] = [[I * J] - 3]
+  .end
+		display c_GreenFG,'_AND Test:Succesful',LF
+	end.if
+	
+	if 1 = 2
+		if [[K + J] / 2] = 5
+			display c_RedFG,'IF Test:Failed-Should not display',LF
+		end.if
+	end.if
+			
+	Display c_LightYellowFG,'Testing BEGIN.TEST/WHEN/_OR/AND statements',LF
+
+	begin.test [[K + J] / 5]
+		when = I
+			display c_GreenFG,' begin.Test:Succesful',LF
+		wend
+		otherwise
+			display c_RedFG,' begin.Test:UNSuccesful',LF
+	end.test
+
+	$Call GetUserInput
+	
+END.SUB B_1_4_Decisions
+
+;-------------------------------------------------------------------------------
+;	Loops
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_1_5_Loops
+
+;	Initialise variables
+	I = 2 | J = 4 | K = 6
+
+	Display c_ClearScreen,c_LightYellowFG,'Testing REPEAT.FOR statements',LF
+	display c_GreenFG,' '
+	
+	repeat.for L,[I + J + K],[[I + J + K] * 2]
+		display {L,'99'},spaces(1)
+	end.repeat
+	display.line
+
+	
+	Display c_LightYellowFG,'Testing REPEAT.IF statements',LF
+	display c_GreenFG,' '
+	
+	L = 0
+	repeat.if L < [I + J + K]
+		L = L + 1
+		display {L,'99'},spaces(1)
+	end.repeat
+	display.line
+	
+	Display c_LightYellowFG,'Testing REPEAT.WHILE statements',LF
+	display c_GreenFG,' '
+	
+	L = 0
+	repeat.while L < [[I + J + K] * 2]
+		L = L + 1
+		display {L,'99'},spaces(1)
+	end.repeat
+	display.line
+			
+	$Call GetUserInput		
+
+END.SUB B_1_5_Loops
+
+;-------------------------------------------------------------------------------
+;	Tables
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_1_6_Tables
+
+;	Initialise variables
+	I = 2 | J = 4 | K = 6
+
+	Display c_ClearScreen,c_LightYellowFG,'Testing TABLES statements',LF
+	display c_GreenFG,' '
+	
+	tables.bind (TestTable,TestRecord,[I + K])	
+	display spaces([1 + 2 + I])
+	
+	repeat.for I,0,7
+		TR_No = [[I + 1] * 3]
+		tables.rput (TestTable,[I + 1])	
+	end.repeat
+
+	repeat.for I,0,7
+		tables.rget (TestTable,[I + 1])	 
+		display {TR_No,'99'},' '
+	end.repeat
+	display.line
+	
+	$Call GetUserInput		
+
+END.SUB B_1_6_Tables
+
+;=======================================================================
+;		Routines that are common (can be Called from anywhere)
+;=======================================================================
+BEGIN.SUB GetUserInput
+	
+	display (spaces(5),c_LightBlueFG,'Press <ENTER> to continue ')
+	acceptline (w_Char1)
+	display c_WhiteFG,(LF)
+	
+END.SUB GetUserInput
+
+;-------------------------------------------------------------------------------
+;	FINALISATION
+;-------------------------------------------------------------------------------
+BEGIN.SUB Z_1_Finalise	
+END.SUB Z_1_Finalise

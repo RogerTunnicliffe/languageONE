@@ -1,0 +1,328 @@
+%include 'include/BEGIN.PROGRAM'
+
+%define   c_AM_NoOfRecords	08
+%define   c_M_NoOfRecords	16
+%include 'include/LCURSES.PKG'
+
+;	Refer to VERSION.HISTORY for...well...version history
+
+;	BEGIN.SYNONYMS **************************************
+;		xT.	:	XTABLES.
+;		$.	:	WORDS.  
+;		@.	:	INTEGERS.  
+;		#.	:	NUMBERS.  
+;		f.	:	FILES. 
+;	END.SYNONYMS ****************************************
+
+;=======================================================================
+;		  PROGRAM DATA
+;=======================================================================	      
+;-----------------------------------------------------------------------
+;		CONSTANTS
+;-----------------------------------------------------------------------
+;%define c_Constant 10*10
+
+;-----------------------------------------------------------------------
+;		DICTIONARY
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.DICTIONARY'
+
+	insertword w_Response,			01,''
+		
+%include 'include/END.DICTIONARY'
+
+;-----------------------------------------------------------------------
+;		MATRIX
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.MATRIX'
+
+  ; Common Counters
+	INSERTNUMBER I,					0
+	INSERTNUMBER J,					0
+	INSERTNUMBER K,					0
+	INSERTNUMBER L,					0
+
+
+  ; This programs 	
+	insertnumber depth,				0
+	insertnumber focus,				0
+		 
+	
+%include 'include/END.MATRIX'
+
+;-----------------------------------------------------------------------
+;		FILES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.FILES'	
+
+;	------------------------------
+;	Define the LCURSES MENU tables
+;	------------------------------
+;	Defines the geometry of a menu
+	begin.record c_AM_RecordLen,AM_Record
+		insertnumber	AM_StartRow,	00,'99'								; Starting row
+		insertnumber	AM_StartCol,	00,'99'								; Starting column
+		insertnumber	AM_EndRow,		00,'99'								; Ending Row
+		insertnumber	AM_EndCol,		00,'99'								; Ending Column
+	end.record AM_Record
+	insertnumber AM_Idx,				00,'9'								; the index returned by LCURSES.PKG
+	
+;	Defines the menu items
+	begin.record c_M_RecordLen,M_Record
+		insertword		M_Type,			01,''								; the menu entry type
+		insertnumber	M_Target,		00,'99999999'						; the target
+		insertword		M_Entry,		55,''								; and the text
+	end.record M_Record
+	insertnumber M_Idx,					00,'99'								; the index returned by LCURSES.PKG
+
+	;	M_TYPE
+	;	S - A Subroutine in this program
+	;	M - A sub Menu
+	;	X - An external program
+	;	  - Space is end of options
+	;	M_TARGET
+	;	M_Type = S:Subroutine name
+	;	M_Type = M:Menu No
+	;	M_Type = X:0
+
+%include 'include/END.FILES'
+
+;-----------------------------------------------------------------------
+;		TABLES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.TABLES'	
+
+;	------------------------------
+;	Insert the LCURSES MENU tables
+;	------------------------------
+	inserttable AM_Table,c_AM_RecordLen*c_AM_NoOfRecords					; Allows for 8 menus
+	inserttable M_Table,c_M_RecordLen*c_AM_NoOfRecords*c_M_NoOfRecords		; Allows fo r8 menus with 16 entries
+
+	insertarray MenuNo,9
+				
+
+%include 'include/END.TABLES'
+
+;=======================================================================
+;		PROGRAM INSTRUCTIONS
+;		Mainline  
+;=======================================================================
+%include 'include/BEGIN.INSTRUCTIONS'
+
+	$Call A_1_Initial
+	repeat.while focus > 0
+		$Call B_1_Process
+	end.repeat
+	$Call Z_1_Finalise
+
+%include 'include/END.INSTRUCTIONS'
+%include 'include/END.PROGRAM'      
+
+;=======================================================================
+;		Initialise  
+;=======================================================================
+BEGIN.SUB A_1_Initial
+
+;	----------------------------
+;	Bind the LCURSES MENU tables
+;	----------------------------
+	tables.bind AM_Table,AM_Record,8
+	tables.bind M_Table,M_Record,8,16
+
+;	---------
+;	1st MENU
+;	---------
+	integers.eq AM_StartRow,08
+	integers.eq AM_StartCol,04
+	integers.eq AM_EndRow,12
+	integers.eq AM_EndCol,25
+	integers.eq AM_Idx,1
+	tables.rput AM_Table,AM_Idx
+
+	lcurses.MenuItems (AM_Idx,01,"M",2,"Goto Sub Menu 2")
+	lcurses.MenuItems (AM_Idx,02,"M",3,"Goto Sub Menu 3")
+	lcurses.MenuItems (AM_Idx,03,"M",4,"Goto Sub Menu 4")
+	lcurses.MenuItems (AM_Idx,04," ",0,"")
+
+;	---------
+;	2nd MENU
+;	---------	
+	integers.eq AM_StartRow,09
+	integers.eq AM_StartCol,05
+	integers.eq AM_EndRow,13
+	integers.eq AM_EndCol,26
+	integers.eq AM_Idx,2
+	tables.rput AM_Table,AM_Idx
+
+	lcurses.MenuItems (AM_Idx,01,"M",5,"Goto Sub Menu 5")
+	lcurses.MenuItems (AM_Idx,02,"S",B_1_2_Blank,"Blank Subroutine")
+	lcurses.MenuItems (AM_Idx,03,"S",B_1_2_Blank,"Blank Subroutine")
+	lcurses.MenuItems (AM_Idx,04," ",0,"")
+	
+;	---------
+;	3rd MENU
+;	---------	
+	integers.eq AM_StartRow,09
+	integers.eq AM_StartCol,05
+	integers.eq AM_EndRow,14
+	integers.eq AM_EndCol,26
+	integers.eq AM_Idx,3
+	tables.rput AM_Table,AM_Idx
+
+	lcurses.MenuItems (AM_Idx,01,"S",B_1_2_Blank,"Blank Subroutine")
+	lcurses.MenuItems (AM_Idx,02,"S",B_1_2_Blank,"Blank Subroutine")
+	lcurses.MenuItems (AM_Idx,03,"S",B_1_2_Blank,"Blank Subroutine")
+	lcurses.MenuItems (AM_Idx,04,"S",B_1_2_Blank,"Blank Subroutine")
+	lcurses.MenuItems (AM_Idx,05," ",0,"")
+
+;	---------
+;	4th MENU
+;	---------	
+	integers.eq AM_StartRow,09
+	integers.eq AM_StartCol,05
+	integers.eq AM_EndRow,15
+	integers.eq AM_EndCol,26
+	integers.eq AM_Idx,4
+	tables.rput AM_Table,AM_Idx
+
+	lcurses.MenuItems (AM_Idx,01,"S",B_1_2_Blank,"Blank Subroutine")
+	lcurses.MenuItems (AM_Idx,02,"S",B_1_2_Blank,"Blank Subroutine")
+	lcurses.MenuItems (AM_Idx,03,"S",B_1_2_Blank,"Blank Subroutine")
+	lcurses.MenuItems (AM_Idx,04,"S",B_1_2_Blank,"Blank Subroutine")
+	lcurses.MenuItems (AM_Idx,05,"S",B_1_2_Blank,"Blank Subroutine")
+	lcurses.MenuItems (AM_Idx,06," ",0,"")
+
+
+;	---------
+;	5th MENU
+;	---------	
+	integers.eq AM_StartRow,10
+	integers.eq AM_StartCol,06
+	integers.eq AM_EndRow,14
+	integers.eq AM_EndCol,27
+	integers.eq AM_Idx,5
+	tables.rput AM_Table,AM_Idx
+
+	lcurses.MenuItems (AM_Idx,01,"M",6,"Goto Sub Menu 6")
+	lcurses.MenuItems (AM_Idx,02,"S",B_1_2_Blank,"Blank Subroutine")
+	lcurses.MenuItems (AM_Idx,03,"S",B_1_2_Blank,"Blank Subroutine")
+	lcurses.MenuItems (AM_Idx,04," ",0,"")
+
+;	---------
+;	6th MENU
+;	---------	
+	integers.eq AM_StartRow,11
+	integers.eq AM_StartCol,07
+	integers.eq AM_EndRow,15
+	integers.eq AM_EndCol,28
+	integers.eq AM_Idx,6
+	tables.rput AM_Table,AM_Idx
+
+	lcurses.MenuItems (AM_Idx,01,"S",B_1_2_Blank,"Blank Subroutine")
+	lcurses.MenuItems (AM_Idx,02,"S",B_1_2_Blank,"Blank Subroutine")
+	lcurses.MenuItems (AM_Idx,03,"S",B_1_2_Blank,"Blank Subroutine")
+	lcurses.MenuItems (AM_Idx,04," ",0,"")
+
+;	--------------
+;	Setup the loop
+;	--------------
+	focus = 1
+	depth = 0
+
+END.SUB A_1_Initial
+
+;=======================================================================
+;		Process  
+;=======================================================================
+BEGIN.SUB B_1_Process
+
+;	----------------------------------------------------------------------
+;	Because we are not saving screens this routine works by iterating from
+;	the 1st screen through each level of menu until the required menu is
+;	arrived at. 
+;		FOCUS defines the required menu level while
+;		DEPTH defines the current depth we are at
+;	The routine works by comparing the depth to the focus and redisplaying
+;	menus until we arrive at the required focus
+;
+;	The MenuNo array contains the required AM_Idx [Menu No] using DEPTH as
+;	the array index
+;	----------------------------------------------------------------------
+
+	if  depth = 0
+	;	-------------------------
+	;	Initial - Draw Background
+	;	-------------------------
+		depth = 1
+		Arrays.Put MenuNo,(depth,1)
+		$Call B_1_1_Background
+	else	
+		if  focus = depth
+		;	--------------------------
+		;	We are where we want to be
+		;	--------------------------
+			Arrays.Get MenuNo,(depth,AM_Idx)
+			lcurses.Menu (AM_Idx,c_TRUE)
+			if RETURN_CODE = RETURN
+			;	--------------------
+			;	Menu option selected
+			;	--------------------
+				if M_Type = "M"		
+					depth = depth + 1
+					focus = focus + 1
+					Arrays.Put MenuNo,depth,M_Target
+				end.if
+			end.if
+			if  RETURN_CODE = ESCAPE
+			;	--------------------
+			;	User selected Escape
+			;	--------------------
+				depth = 0
+				focus = focus - 1
+			end.if
+		else
+		;	--------------------------------------------
+		;	We are displaying the menu and moving deeper
+		;	--------------------------------------------
+			Arrays.Get MenuNo,(depth,AM_Idx)			
+			lcurses.Menu (AM_Idx,c_FALSE)
+			depth = depth + 1
+
+		end.if
+	end.if
+
+END.SUB B_1_Process
+
+BEGIN.SUB B_1_1_Background
+
+;	--------------------------
+;	Draw the background screen
+;	--------------------------
+	display c_ResetAll,c_ClearScreen,c_DarkGreyFG,c_DarkGreyBG				; Clear the screen
+	lcurses.Box (01,01,24,80,c_FALSE)										; by coloring it grey
+
+	display c_WhiteFG,c_RedBG												; Setup for HEADING 
+	lcurses.Box (02,02,04,78,c_TRUE)										; and draw it						
+	display c_WhiteFG,c_RedBG												; Setup for text
+	display.at (03,25,"Menu Demonstration Screen")							; and write it
+
+	display c_WhiteFG,c_RedBG												; Setup for BODY
+	lcurses.Box (06,02,22,78,c_TRUE)										; and draw it
+	display c_WhiteFG,c_RedBG												; Setup for text
+	display.at 06,05,"Main Menu System"										; and write it
+
+END.SUB B_1_1_Background
+
+BEGIN.SUB B_1_2_Blank
+END.SUB B_1_2_Blank
+
+;=======================================================================
+;		Finalise  
+;=======================================================================
+BEGIN.SUB Z_1_Finalise
+
+	cursor 01,01 | 	display c_ResetAll,c_BlackBG,c_WhiteFG					; rest options
+	lcurses.Box (01,01,24,80,c_FALSE)										; clear the screen
+	display LF
+
+END.SUB Z_1_Finalise

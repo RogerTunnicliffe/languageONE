@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<style>
+			#overlay{
+				visibility: hidden;
+				position: absolute;
+				left: 0px;
+				top: 0px;
+				width:100%;
+				height:100%;
+				text-align:center;
+				background-color: rgba(0,0,0,0.4); /* Black background with opacity */	
+				z-index: 1000;
+			}
+			#overlay div{
+				width:20%;
+				margin: 100px auto;
+				background-color: #eee;
+				font-family: verdana,arial,sans-serif;
+				font-size:12px;	
+				border:1px solid #000;
+				padding:15px;
+				text-align:center;
+			}
+		</style>
+</head>
+
+<body onload="swapColor();">	
+
+	<img id="VacantSquare"	src="VacantSquare.png"	height="100" width="100" hidden>
+	
+	<img id="WhiteRook" 		src="WhiteRook.png" 		height="100" width="100" hidden>
+	<img id="WhiteKnight" 	src="WhiteKnight.png" 	height="100" width="100" hidden>
+	<img id="WhiteBishop" 	src="WhiteBishop.png" 	height="100" width="100" hidden>
+	<img id="WhiteKing"   	src="WhiteKing.png"   	height="100" width="100" hidden>
+	<img id="WhiteQueen"  	src="WhiteQueen.png" 		height="100" width="100" hidden>
+	<img id="WhitePawn"   	src="WhitePawn.png"   	height="100" width="100" hidden>
+
+	<img id="BlackRook" 		src="BlackRook.png" 		height="100" width="100" hidden>
+	<img id="BlackKnight" 	src="BlackKnight.png" 	height="100" width="100" hidden>
+	<img id="BlackBishop" 	src="BlackBishop.png" 	height="100" width="100" hidden>
+	<img id="BlackKing"  	 	src="BlackKing.png"   	height="100" width="100" hidden>
+	<img id="BlackQueen"  	src="BlackQueen.png" 		height="100" width="100" hidden>
+	<img id="BlackPawn"			src="BlackPawn.png"   	height="100" width="100" hidden>
+	
+	<table>
+		<tr>
+			<td>
+				<canvas id="board" width="800" height="800" onClick="return getMousePos();"></canvas>
+			</td>
+			<td valign="top">
+				<input type="button" value="Black/White" id="BlackWhite" onclick='return swapColor();'>	
+			</td>
+			<td>
+			
+				<table>
+					<tr>
+						<td height="150">
+							<div id="yoursTaken"></div>
+						</td>
+					</tr>
+					<tr><td height="500"></td></tr>
+					<tr>
+						<td height="150">
+							<div id="theirsTaken"></div>
+						</td>
+					</tr>
+				</table>					
+			
+			</td>		
+		</tr>
+	</table>
+
+	<!-- ================-->
+	<!-- Promote Overlay -->
+	<!-- ================-->
+  <div id="overlay">
+     <div><p>Promote pawn to ?</p>
+	     	<input type="radio" id="promoteQueen" 	name="aRadio"	value="promoteQueen" checked>	<label for="promoteQueen">Queen</label>	     	
+	     	<input type="radio" id="promoteRook"		name="aRadio"	value="promoteRook">	<label for="promoteRook">Rook</label>
+	     	<input type="radio" id="promoteKnight"	name="aRadio"	value="promoteKnight"><label for="promoteKnight">Knight</label>
+	     	<input type="radio" id="promoteBishop"  name="aRadio"	value="promoteBishop"><label for="promoteBishop">Bishop</label>
+	     	<br><br>
+        <input type='BUTTON' value='Submit' id='submit' onclick ="return promotePawn();"/>	
+     </div>
+  </div>
+
+</body>
+
+<script>
+
+		const c_Rook="1",				c_Knight="2", 			c_Bishop="3", 			c_King="4", 			c_Queen="5", 			 c_Pawn="6";
+		const c_blackRook="01", c_blackKnight="02", c_blackBishop="03", c_blackKing="04", c_blackQueen="05", c_blackPawn="06";
+		const c_whiteRook="11", c_whiteKnight="12", c_whiteBishop="13", c_whiteKing="14", c_whiteQueen="15", c_whitePawn="16";
+			
+		White=false; savePiece=""; x=0; saveX=0; y=0; saveY=0; kingMoved=false; leftRookMoved=false; rightRookMoved=false; 
+				
+//	----------------------
+//	Define the board Array
+//	----------------------
+		boardArray=new Array(7);
+		for (i=0; i<8; i++)
+			{boardArray[i]=new Array(7)};
+			
+//	---------------------------
+//	Define the Cordinates Array
+//	---------------------------		
+		coordArray=new Array(7);
+		for (i=0; i<8; i++){
+			coordArray[i]=new Array(7);
+			for (j=0; j<8; j++){
+				coordArray[i][j]=new Array(1);							
+			}
+		};
+
+		yVal=-100;
+		for (j=0; j<8; j++){
+			yVal=yVal+100;
+			xVal=-100;
+			for (i=0; i<8; i++){
+				xVal=xVal+100;
+				coordArray[i][j][0] = xVal;
+				coordArray[i][j][1] = yVal;			
+			}
+		};			
+				
+//	-----------------
+//	Define the canvas
+//	-----------------
+		canvas = document.getElementById("board");
+		ctx = canvas.getContext("2d");		
+		ctx.font = "10px Arial";
+			
+//	--------------
+//	Draw the Board
+//	--------------
+		click=true;
+		showingOverlay=false;
+			
+//==============================================================================
+//	Function to toggle Color
+//==============================================================================
+function swapColor(){
+
+		White=!White;
+		kingMoved=false; leftRookMoved=false; rightRookMoved=false; 
+		
+//	----------------------
+//	set for White or Black
+//	----------------------
+		if (White){
+			a1=007;a2=006;a3=000;a4=001;
+		}
+		else
+		{	
+			a1=000;a2=001;a3=007;a4=006;
+		}
+
+//	--------------
+//	Load the Array
+//	--------------
+		boardArray[0][a1] = boardArray[7][a1] = c_whiteRook;
+		boardArray[1][a1] = boardArray[6][a1] = c_whiteKnight;
+		boardArray[2][a1] = boardArray[5][a1] = c_whiteBishop;
+		boardArray[3][a1] = c_whiteKing;
+		boardArray[4][a1] = c_whiteQueen;
+		for (i=0; i<8; i++){boardArray[i][a2] = c_whitePawn;}			
+
+		boardArray[0][a3] = boardArray[7][a3] = c_blackRook;
+		boardArray[1][a3] = boardArray[6][a3] = c_blackKnight;
+		boardArray[2][a3] = boardArray[5][a3] = c_blackBishop;
+		boardArray[3][a3] = c_blackKing;
+		boardArray[4][a3] = c_blackQueen;
+		for (i=0; i<8; i++){boardArray[i][a4] = c_blackPawn;}	
+		
+		for (i=0; i<8; i++){
+			for (j=2; j<6; j++){	
+				boardArray[i][j]="";
+			}
+		}
+						
+//	-----------
+//	and Draw It
+//	-----------	
+		drawBoard();
+		placePieces();		
+
+		div = document.getElementById('yoursTaken');
+		while(div.firstChild){div.removeChild(div.firstChild);}
+		div = document.getElementById('theirsTaken');
+		while(div.firstChild){div.removeChild(div.firstChild);}
+
+}
+
+//==============================================================================
+//	Function to draw the board
+//==============================================================================
+function drawBoard(){
+
+		letters=["a","b","c","d","e","f","g","h"];
+		flip=-1;
+
+//	----------------------------------------------------------------------------
+//	This code works by letting the drawing fall off the canvas. In addition when
+//	a square is drawn it is the preceding one that is will hold the text. 
+//	By letting these loops run to 8 we draw the 8th one "off canvas" (and therefore 
+//	NOT drawn). This allows the color to flip for the next slot and also allows the 
+//	text to be drawn in the opposite color to the square it is drawn in.
+//	----------------------------------------------------------------------------
+		for (i=0; i<=8; i++){
+			for (j=0; j<=8; j++){	
+				
+				if (flip==-1)
+					{ctx.fillStyle = "#f0d9b5";}
+				else
+					{ctx.fillStyle = "#b58863";}
+				ctx.fillRect(i*100, j*100, 100, 100);
+				
+				if (i==0)
+					{ctx.fillText(j, 5, j*100-85);}
+
+				if (j==8)
+					{ctx.fillText(letters[i], i*100+5, 795);}
+				flip=flip*-1;
+			}
+		}
+
+}
+
+//==============================================================================
+//	Function to place the pieces
+//==============================================================================
+function placePieces(){
+
+		for (i=0; i<8; i++){
+			for (j=0; j<8; j++){				
+				ctx.drawImage(detectPiece(),coordArray[i][j][0],coordArray[i][j][1]);
+			}
+		}
+				
+}
+
+//==============================================================================
+//	Function to Detect Piece
+//==============================================================================
+function detectPiece(){
+
+		switch (boardArray[i][j]){
+			case c_whiteRook:		return document.getElementById("WhiteRook");
+			case c_whiteKnight:	return document.getElementById("WhiteKnight");	
+			case c_whiteBishop:	return document.getElementById("WhiteBishop");
+			case c_whiteKing:		return document.getElementById("WhiteKing");
+			case c_whiteQueen:	return document.getElementById("WhiteQueen");
+			case c_whitePawn:		return document.getElementById("WhitePawn");
+			case c_blackRook:		return document.getElementById("BlackRook");	
+			case c_blackKnight:	return document.getElementById("BlackKnight");
+			case c_blackBishop:	return document.getElementById("BlackBishop");
+			case c_blackKing:		return document.getElementById("BlackKing");
+			case c_blackQueen:	return document.getElementById("BlackQueen");	
+			case c_blackPawn:		return document.getElementById("BlackPawn");
+			default:						return document.getElementById("VacantSquare");
+		}
+		
+}
+
+//==============================================================================
+//	Function for Click Event Listener
+//==============================================================================
+function getMousePos(){
+
+		if (event.clientX > 800 || event.clientY > 800){return false;};
+		if (showingOverlay){return false;};
+
+		exit=false;		
+		for (y=7; y>-1; y--){
+			for (x=7; x>-1; x--){
+				if (event.clientX>coordArray[x][y][0] && event.clientY>coordArray[x][y][1]){
+					exit=true;
+					break;
+				};
+			};
+			if (exit){break};
+		};
+
+
+			
+		if (click){
+			if (White  && boardArray[x][y].substr(0,1)=="0"){alert("Cannot Move Opponents Piece");return false;}
+			if (!White && boardArray[x][y].substr(0,1)=="1"){alert("Cannot Move Opponents Piece");return false;}
+			
+			ctx.strokeStyle = 'black';
+			ctx.beginPath();
+			ctx.rect(coordArray[x][y][0], coordArray[x][y][1], 100, 100);
+			ctx.stroke();
+			saveX=x; saveY=y; savePiece=boardArray[x][y];
+		}
+		else
+		{
+			if (validMove()){
+				captured();
+				boardArray[saveX][saveY]="";
+				boardArray[x][y]=savePiece;			
+				drawBoard();
+				placePieces();
+			}
+		}
+		
+		click=!click
+		
+}	
+
+//==============================================================================
+//	Function TO VALIDATE MOVE
+//==============================================================================
+function validMove(){
+
+//	Cannot land on a square you occupy yourself
+		if (White  && boardArray[x][y].substr(0,1)=="1"){alert("Invalid Move");return false;}
+		if (!White && boardArray[x][y].substr(0,1)=="0"){alert("Invalid Move");return false;}
+		
+//	Cannot take King
+		if (White  && boardArray[x][y]==c_blackKing){alert("Invalid Move");return false;}
+		if (!White && boardArray[x][y]==c_whiteKing){alert("Invalid Move");return false;}
+
+//	Validate each pieces move		
+		if (savePiece.substr(1,1)==c_Rook 	&& validRook())		{return true;}
+		if (savePiece.substr(1,1)==c_Knight	&& validKnight())	{return true;}
+		if (savePiece.substr(1,1)==c_Bishop	&& validBishop())	{return true;}
+		if (savePiece.substr(1,1)==c_King		&& validKing())		{return true;}
+		if (savePiece.substr(1,1)==c_Queen	&& validQueen())	{return true;}
+		if (savePiece.substr(1,1)==c_Pawn		&& validPawn())		{return true;}
+			
+		alert("Invalid Move"); 
+		return false;
+		
+}
+//--------------------
+//	Validate Rook move
+//--------------------
+function validRook(){
+
+//	Cannot be a diagonal move
+		if (x!=saveX && y!=saveY){return false;}
+		
+//	Cannot go vertically through a piece
+		if (x==saveX){	
+			if (saveY>y){y1=y+1; y2=saveY;}else{y1=saveY+1;y2=y}
+			for (i=y1; i<y2; i++){ 
+				if (boardArray[x][i] !=""){
+					return false;
+				}
+			}
+		}	
+
+//	Cannot go horizontally through a piece
+		if (y==saveY){	
+			if (saveX>x){x1=x+1; x2=saveX;}else{x1=saveX+1;x2=x}
+			for (i=x1; i<x2; i++){ 
+				if (boardArray[i][y] !=""){
+					return false;
+				}
+			}
+		}
+
+//	Document that it has been moved
+		if (saveX==0 && saveY==7){leftRookMoved=true;}
+		if (saveX==7 && saveY==7){rightRookMoved=true;}
+		
+		return true;
+}
+
+function validKnight(){
+	
+	if (x-saveX==2 && (saveY-y==1 || y-saveY==1)){return true;}	
+	if (saveX-x==2 && (saveY-y==1 || y-saveY==1)){return true;}	
+	if (y-saveY==2 && (saveX-x==1 || x-saveX==1)){return true;}	
+	if (saveY-y==2 && (saveX-x==1 || x-saveX==1)){return true;}	
+	return false;
+}
+//----------------------
+//	Validate Bishop move
+//----------------------
+function validBishop(){
+
+//	Must be a diagonal move
+		a=Math.abs(x-saveX);b=Math.abs(y-saveY);
+		if (a!=b){return false;}
+	
+//	Cannot go through a piece	
+		_x=1; if (x<saveX){_x=-1;} _y=1; if (y<saveY){_y=-1;}
+		
+		for (i=1; i<a; i++){ 
+			if (boardArray[saveX+(_x*i)][saveY+(_y*i)] !=""){
+				return false;
+			}
+		}
+	
+	return true;
+}
+function validKing(){
+
+//	------
+//	Castle
+//	------
+		if (saveX==3 && saveY==7 && x==1){
+			
+			if (kingMoved){return false;}
+			if (leftRookMoved){return false;}
+			
+			if (boardArray[0][7].substr(1,1)==c_Rook &&
+					boardArray[1][7]=="" &&
+					boardArray[2][7]==""){
+				if (White){boardArray[1][7]=c_whiteKing;}
+				else			{boardArray[1][7]=c_blackKing;}
+				boardArray[3][7]="";				
+				saveX=0; saveY=7; x=2; y=7 ;savePiece=boardArray[0][7]; kingMoved=true;
+				return true;
+			}
+		}
+	
+		if (saveX==3 && saveY==7 && x==5){
+
+			if (kingMoved){return false;}
+			if (rightRookMoved){return false;}	
+			
+			if (boardArray[7][7].substr(1,1)==c_Rook &&
+					boardArray[6][7]=="" &&
+					boardArray[5][7]=="" &&
+					boardArray[4][7]==""){
+				if (White){boardArray[5][7]=c_whiteKing;}
+				else			{boardArray[5][7]=c_blackKing;}
+				boardArray[3][7]="";				
+				saveX=7; saveY=7; x=4; y=7; savePiece=boardArray[7][7];  kingMoved=true;
+				return true;
+			}
+		}
+
+//	-----------
+//	Normal Move
+//	-----------
+		a=Math.abs(x-saveX);b=Math.abs(y-saveY);
+		if (a>1 | b>1){return false;}
+
+		kingMoved=true;
+		return true;
+}
+
+function validQueen(){
+
+	if (!validRook(x,y) && !validBishop(x,y)){return false;}
+	
+	return true;
+}
+//--------------------
+//	Validate Pawn move
+//--------------------
+function validPawn(){
+
+		if (y>saveY){return false;}															// Cannot Move Backwards
+		if (saveY==6 && saveY-y>2){return false;}								// Can only move 2 from 7th rank
+		if (saveY!=6 && saveY-y>1){return false;}								// Can only move 1 normally
+		if (x==saveX && boardArray[x][y] !=""){return false;} 	// Can only take diagonally
+		
+// 	Can only move diagonally(by 1) when taking
+		if (x!=saveX){
+			if (x-saveX>1 || saveX-x>1){return false;}
+			else
+			{
+		//	NOT En Passant
+				if (White  && boardArray[x][y].substr(0,1)!="0"){return false;}
+				if (!White && boardArray[x][y].substr(0,1)!="1"){return false;}
+			}
+		}
+	
+//	We need to know our opponents move to detect en passant		
+
+//	Promote Pawn
+		if (y==0){overlay();}
+		
+		return true;
+}
+//==============================================================================
+//	Function TO VALIDATE MOVE
+//==============================================================================
+function captured(){
+
+		if (boardArray[x][y]==""){return false;}
+		if (White  && boardArray[x][y].substr(0,1)=="1"){return false;}
+		if (!White && boardArray[x][y].substr(0,1)=="0"){return false;}
+			
+		switch (boardArray[x][y]){
+			case c_whiteRook:		document.getElementById('theirsTaken').appendChild(createImage("WhiteRook.png"));		break;
+			case c_whiteKnight:	document.getElementById('theirsTaken').appendChild(createImage("WhiteKnight.png"));	break;
+			case c_whiteBishop:	document.getElementById('theirsTaken').appendChild(createImage("WhiteBishop.png"));	break;
+			case c_whiteQueen:	document.getElementById('theirsTaken').appendChild(createImage("WhiteQueen.png"));	break;
+			case c_whitePawn:		document.getElementById('theirsTaken').appendChild(createImage("WhitePawn.png"));		break;
+			case c_blackRook:		document.getElementById('theirsTaken').appendChild(createImage("BlackRook.png"));		break;
+			case c_blackKnight:	document.getElementById('theirsTaken').appendChild(createImage("BlackKnight.png"));	break;
+			case c_blackBishop:	document.getElementById('theirsTaken').appendChild(createImage("BlackBishop.png"));	break;
+			case c_blackQueen:	document.getElementById('theirsTaken').appendChild(createImage("BlackQueen.png"));	break;	
+			case c_blackPawn:		document.getElementById('theirsTaken').appendChild(createImage("BlackPawn.png"));		break;
+		}			
+
+		return true;
+}
+
+function createImage(piece){
+	
+	img = document.createElement('img');
+	img.src = piece;
+	img.width = '50';
+	img.height='50';
+	return img;
+	
+}
+
+//==============================================================================
+//				 Toggles Promote overlay
+//==============================================================================
+function overlay(){
+ 	
+  	z = document.getElementById("overlay");
+  	z.style.visibility = (z.style.visibility == "visible") ? "hidden" : "visible";
+  	showingOverlay=!showingOverlay;
+  	
+}
+
+function promotePawn(){
+
+		switch (document.querySelector('input[name=aRadio]:checked').value){
+			case "promoteQueen"		: if (White){boardArray[x][y]=c_whiteQueen;}	else{boardArray[x][y]=c_blackQueen;}	break;
+			case "promoteRook"		:	if (White){boardArray[x][y]=c_whiteRook;}		else{boardArray[x][y]=c_blackRook;}		break;
+			case "promoteKnight"	: if (White){boardArray[x][y]=c_whiteKnight;}	else{boardArray[x][y]=c_blackKnight;}	break;
+			case "promoteBishop"	:	if (White){boardArray[x][y]=c_whiteBishop;}	else{boardArray[x][y]=c_blackBishop;}	break;
+		}
+		
+		overlay();
+		
+		drawBoard();
+		placePieces();
+		
+}
+
+</script>	

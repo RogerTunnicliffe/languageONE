@@ -1,0 +1,112 @@
+%include 'include/BEGIN.PROGRAM'
+
+%include 'include/BEGIN.DICTIONARY'
+%include 'include/END.DICTIONARY'
+
+%include 'include/BEGIN.MATRIX'			
+%include 'include/END.MATRIX'
+
+;-----------------------------------------------------------------------
+;		PROTOTYPES - MACROS
+;-----------------------------------------------------------------------
+
+	%imacro CompoundInterest 4
+		numbers.eq	Deposit,%1
+		numbers.eq	Rate,%2
+		numbers.eq	Freq,%3
+		numbers.eq	Term,%4
+		Call CompoundInterest
+	%endmacro
+
+	%imacro Concatenate 2
+		words.pad %1,Hello
+		words.pad %2,World
+		Call Concatenate
+	%endmacro
+	
+;=======================================================================
+;		PROGRAM INSTRUCTIONS
+;		Mainline  
+;=======================================================================
+%include 'include/BEGIN.INSTRUCTIONS'
+
+    I = 3 | J = 1 | K = 5
+    
+	if AllOkay
+		display.line "Haven't broken the original Function facility"
+	end.if
+
+	display.line [ CompoundInterest(1500,{{43,'.099'}},4,6) ]
+	
+	FutureValue = [ CompoundInterest(1500,{{43,'.099'}},4,6) ]
+	display "Works assigning a value=",FutureValue,LF
+	
+	if [ [ CompoundInterest 1500,{{43,'.099'}},4,6 ] * 2 ] = [1938.8368 * 2 ]
+		display.line "Works for IF"
+	end.if
+
+	begin.test c_TRUE
+		when 1 != 1
+			display.line "Error"
+		wend
+		when [ CompoundInterest(1500,{{43,'.099'}},4,6)] = 1938.8368
+			display.line "Works with TEST"
+		wend
+	end.test
+	
+	display.line [Concatenate ("Hello","World")]
+	
+%include 'include/END.INSTRUCTIONS'
+%include 'include/END.PROGRAM'      
+
+;========================================================================
+;	COMPOUND INTEREST FUNCTION
+;========================================================================
+BEGIN.FUNCTION CompoundInterest,{number:FutureValue,0,'9999.9999'}
+
+	[section .data]
+		insertnumber Deposit,				0,'999999999.99'
+		insertnumber Rate,					0,'999999999.999999999'
+		insertnumber Freq,					0,'99.99'
+		insertnumber Term,					0,'99'
+		
+		insertnumber I,						0,'9999'
+		insertnumber J,						0,'999999999.999999999'
+		insertnumber K,						0,'999999999.999999999'
+	[section .text]
+
+;	-----------------------------------------------------------
+; 	FutureValue=Deposit*Math.pow( (1+(rate/freq)),(freq*term) )
+;	-----------------------------------------------------------  
+	J = Rate / Freq + 1 
+	K = 1
+
+	repeat.for I,1,[ Freq * Term ]
+		K = K * J
+	end.repeat
+	
+	FutureValue = Deposit * K
+	
+END.FUNCTION CompoundInterest
+
+;========================================================================
+;	FUNCTION THAT RETURN A TEXT VALUE
+;========================================================================
+BEGIN.FUNCTION Concatenate,{word:NewText,30,''}
+
+	[section .data]
+		insertword Hello,		6,''
+		insertword World,		5,''
+	[section .text]	
+
+	words.pad Hello,NewText
+	words.copy World,{NewText,7}
+	
+END.FUNCTION Concatenate
+
+;========================================================================
+;	STANDARD FUNCTION
+;========================================================================
+BEGIN.FUNCTION AllOkay
+	RETURN_CODE = c_TRUE	
+END.FUNCTION AllOkay

@@ -1,0 +1,21 @@
+<?xml version="1.0" ?>
+
+<!DOCTYPE COMMANDO SYSTEM "commando.dtd">
+
+<COMMANDO>
+	<UI>
+		<CAPTION LABEL="Assemble">
+			<ENTRY LABEL="File name" VARNAME="object" EVAL="buffer.getName()" />		
+		</CAPTION>
+	</UI>
+
+	<COMMANDS>
+		<COMMAND SHELL="System">
+			objectWithoutExt = (object).replaceFirst("[.][^.]+$", "");
+			buf = new StringBuffer("./l.link "+objectWithoutExt);
+			
+		//	return value
+			buf;
+		</COMMAND>
+	</COMMANDS>
+</COMMANDO>

@@ -1,0 +1,192 @@
+	%include 'include/LMACROS.CPY'
+	%include 'include/IMACROS.CPY'
+	%include 'include/CONSTANTS.INC'
+
+;   COMMON.LIB
+;	==========
+;->	Routines
+	extern _ENVIRONMENT
+	extern _SYSERROR	
+	extern _DATE
+;V2.13
+;	extern _RUN	
+	extern _RUN_INTERACTIVE
+	extern _RUN_BATCH
+;V2.13
+	extern _WAIT
+	extern _RANDOM
+	extern _VALIDATE_SRC
+	extern _VALIDATE_DST
+	extern _ENDPROGRAM
+	extern  No_Assist
+	extern _CMPSTR
+	extern _MOVESTR
+	
+;->	Fields
+	extern RETURN_CODE
+	extern LF
+	extern CHILD_PID
+	extern w_SaveRSP	
+	extern err01
+	extern err02
+	extern err03
+	extern err04
+	extern err05
+	extern err06
+	extern err07
+	extern err08
+	extern ERROR_CODE	
+	extern w_RecordBuffer
+	extern w_One
+	extern w_SaveAddress
+	extern w_Spaces
+	extern w_Temp
+	extern w_TopOfBSS
+	extern w_BottomOfBSS
+	extern w_SaveRSP
+	extern savedRegisters
+	extern SX
+	
+;	STDIO.LIB
+;	=========
+;->	Routines
+	extern _getSTDIOhandles
+	extern _getCommandLine
+	extern _CURSOR
+	extern _ACCEPTLINE
+	extern _ACCEPT.AT
+	extern _DISPLAY
+
+;->	Fields
+	extern StdInHandle
+	extern StdOutHandle
+	extern StdErrHandle
+	extern w_CommandLine
+	extern w_AcceptAt
+	extern w_Function
+	
+	extern Col9
+	extern Row9
+	extern ColX
+	extern RowX
+	extern c_ClearScreen
+	extern c_Cursor
+	extern c_BottomRight						
+	extern c_TopRight
+	extern c_TopLeft
+	extern c_BottomLeft
+	extern c_Cross
+	extern c_Line
+	extern c_MiddleLeft
+	extern c_MiddleRight
+	extern c_MiddleBottom
+	extern c_MiddleTop
+	extern c_Bar	
+	extern c_DefaultFG
+	extern c_BlackFG
+	extern c_RedFG
+	extern c_GreenFG
+	extern c_YellowFG
+	extern c_BlueFG
+	extern c_MagentaFG
+	extern c_CyanFG
+	extern c_LightGreyFG
+	extern c_DarkGreyFG
+	extern c_LightRedFG
+	extern c_LightGreenFG
+	extern c_LightYellowFG
+	extern c_LightBlueFG
+	extern c_LightMagentaFG
+	extern c_LightCyanFG
+	extern c_WhiteFG
+	extern c_DefaultBG
+	extern c_BlackBG
+	extern c_RedBG
+	extern c_GreenBG
+	extern c_YellowBG
+	extern c_BlueBG
+	extern c_MagentaBG
+	extern c_CyanBG
+	extern c_LightGreyBG
+	extern c_DarkGreyBG
+	extern c_LightRedBG
+	extern c_LightGreenBG
+	extern c_LightYellowBG
+	extern c_LightBlueBG
+	extern c_LightMagentaBG
+	extern c_LightCyanBG
+	extern c_WhiteBG
+	extern c_ResetAll
+	extern c_Bold
+	extern c_Dim
+	extern c_Underlined
+	extern c_Blink
+	extern c_Reverse
+	extern c_Hidden
+	extern c_ResetBold
+	extern c_ResetDim
+	extern c_ResetUnderlined
+	extern c_ResetBlink
+	extern c_ResetReverse
+	extern c_ResetHidden
+;V2.13 - lcurses
+	extern c_HideCursor
+	extern c_ShowCursor
+;V2.13 - lcurses
+
+
+;	WORDS.LIB
+;	=========
+	extern _WORDS
+
+;	NUMBERS
+;	=======
+	extern _NUMBERS
+	extern _FROMALPHA
+	extern _TOALPHA
+	extern _COMPARE_NO
+
+;	DECISIONS
+;	=========
+	extern _COMPARE
+	extern b_Result
+	extern b_WHEN_Result
+
+;	FILES
+;	=====
+;->	Routines
+	extern _FILEIO
+	extern _FIELDS
+	extern _DELIMITER
+	extern _DELETE
+;	-------------------------------------------
+;	V2.05 opened these for WORDS.StringToRecord
+;	and WORDS.RecordToString
+;	-------------------------------------------	
+	extern _FROMRECORD
+	extern _TORECORD
+	
+;->	Fields
+	extern EOF
+	extern DUPLICATES
+	extern INVALIDKEY
+	extern LOCKED
+
+;	TABLES
+;	======
+	extern _TABLES
+	extern _XTABLES
+	
+;	ARRAYS
+;	======
+	extern _ARRAYS
+	extern _ARRAYCOMPARE
+	
+;	WWW
+;	===
+	extern _WWW
+
+;	Program Entry Point
+;	-------------------
+	global _start
+    

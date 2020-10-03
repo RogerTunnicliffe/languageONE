@@ -1,0 +1,95 @@
+%include 'include/BEGIN.PROGRAM'
+;
+;	This demonstration program shows a "LESS THAN PERFECT" multiuser data entry
+;	program. It covers most cases other than ADD record and should be considered
+;	a transition program developed on the way to a more complete multiuser example.
+;	It does demonstrate:-
+;		1) How to load an Index and use it access records in a file
+;		2) How to lock and unlock records in that file
+
+;	Refer to VERSION.HISTORY for...well...version history
+
+;	BEGIN.SYNONYMS **************************************
+;		$.	:	WORDS.  
+;		@.	:	INTEGERS.  
+;		#.	:	NUMBERS.  
+;		f.	:	FILES.
+;		xT.	:	XTABLES. 
+;	END.SYNONYMS ****************************************
+
+;	==========================================================================
+;	This program has been taken up into the languageONE system and is provided
+;	as the languageONE GUI make utility 'GUI-makeONE'
+;	==========================================================================
+
+;=======================================================================
+;		  PROGRAM DATA
+;=======================================================================	      
+
+;-----------------------------------------------------------------------
+;		DICTIONARY
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.DICTIONARY'
+%include 'include/END.DICTIONARY'
+
+;-----------------------------------------------------------------------
+;		MATRIX
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.MATRIX'
+
+  ; Common Counters
+	INSERTNUMBER I,					0,'999999'
+	INSERTNUMBER J,					0,'999999'
+	INSERTNUMBER K,					0,'999999'
+	
+%include 'include/END.MATRIX'
+
+;-----------------------------------------------------------------------
+;		FILES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.FILES'
+%include 'include/END.FILES'
+
+;-----------------------------------------------------------------------
+;		TABLES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.TABLES'
+%include 'include/END.TABLES'
+
+;=======================================================================
+;		PROGRAM INSTRUCTIONS
+;		Mainline  
+;=======================================================================
+%include 'include/BEGIN.INSTRUCTIONS'
+	
+	$Call A_1_Initial
+	
+	if ERROR_CODE = 0
+		$Call B_1_Process
+		$Call Z_1_Finalise
+	end.if
+
+%include 'include/END.INSTRUCTIONS'
+%include 'include/END.PROGRAM'      
+
+;=======================================================================
+;		PROGRAM PROCEDURES
+;=======================================================================
+
+;=======================================================================
+;		INITIALISATION
+;=======================================================================
+BEGIN.SUB A_1_Initial
+END.SUB A_1_Initial
+
+;-----------------------------------------------------------------------
+;		Process
+;-----------------------------------------------------------------------
+BEGIN.SUB B_1_Process
+END.SUB B_1_Process
+
+;=======================================================================
+;	FINALISATION
+;=======================================================================
+BEGIN.SUB Z_1_Finalise	
+END.SUB Z_1_Finalise

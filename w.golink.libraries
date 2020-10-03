@@ -1,0 +1,10 @@
+ lib\DECISIONS.obj
+ lib\NUMBERS.obj
+ lib\TABLES.obj
+ lib\WORDS.obj
+ lib\w_COMMON.obj 
+ lib\w_STDIO.obj
+ lib\w_FILES.obj
+ lib\w_XTABLES.obj
+ lib\w_WWW.obj
+ kernel32.dll ws2_32.dll

@@ -1,0 +1,675 @@
+%include 'include/BEGIN.PROGRAM'
+
+;	Refer to VERSION.HISTORY for...well...version history
+
+;	BEGIN.SYNONYMS **************************************
+;		$.	:	WORDS.  
+;		@.	:	INTEGERS.  
+;		#.	:	NUMBERS.  
+;		f.	:	files. 
+;		t.	:	tables.
+;		T.	:	xtables. 
+;	END.SYNONYMS ****************************************
+
+;=======================================================================
+;		  PROGRAM DATA
+;=======================================================================	      
+;-----------------------------------------------------------------------
+;		CONSTANTS
+;-----------------------------------------------------------------------
+
+;-----------------------------------------------------------------------
+;		DICTIONARY
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.DICTIONARY'
+	insertword char1,				01, ' '		
+
+	insertword w_Operand1,			26, ' '
+	insertword w_Operation,			01, ' '
+	insertword w_Operand2,			26, ' '
+
+	insertword w_ErrorMessage,		80, "Operation can only be '+','-','*' or '/'"		
+	insertword w_BlankLine,			80, ' '
+	insertword w_OutputLine,		80, ' '
+	
+%include 'include/END.DICTIONARY'
+
+;-----------------------------------------------------------------------
+;		MATRIX
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.MATRIX'
+
+;	IT SHOULD BE NOTED
+;	==================
+;	This version introduces the numbers.o package and as such the following applies
+;		Unsigned: All numbers will be considered as signed
+;		Signed:   From −9,223,372,036,854,775,807 to 9,223,372,036,854,775,807
+;		Signed:   From −.9223372036854775807 to 9223372036854775807
+
+;	The numbers.o package is designed to handle Fixed Point numbers. [Although it 
+;	will manage Integers also, this is best done with the:
+;		integers.eq(I,0) integers.add(I,1) integers.sub(I,2) 
+;		integers.mul(I,3) integers.div(I,4) integers.calc a= 999   keywords]
+;
+;	Being designed solely for a 64bit system gives languageONE an opportunity to
+;	easily manage large/small numbers. Counting in seconds tha largest time value 
+;	that can worked with is 292,471,208,678 years. (That is over 292 Billion years.
+;	Considering the Big Bang is said to have occured 4.5 billion years ago it seems
+;	ample). Equally with an electron being 2.82x10e+15 of a metre it is also
+;	clearly adequate for measuring very small things.
+;
+;	Again, because languageONE is 64bit it is able to avoid floating point arithmatic 
+;	where a FPU is required. Floating Point Units are additional hardware and are also  
+;	not entirely accurate. (Ever done that thing with a calculator where you enter
+;	something as simple as 2 * 2 and you get an answer 3.9999999999998)
+;
+;	And once more with 64bits you can avoid all the problems with different types of
+;	numbers. Other languages will require you to 'type' a number as shortInteger,
+;	longInteger,Single,Double etc. languageONE has only one type. It is a 64bit no.
+;	
+;	The Fixed Point No in languageONE is an "implied" decimal place and is defined 
+;	by a "Picture". The picture serves two purposes. It provides an implied decimal
+;	place and additionally it details how the number is displayed on a screen/report
+;
+;	What does Implied Decimal Place mean.
+;		All numbers manipulated by languageONE are integers. 
+;		LanguageONE keeps a scaled value to determine where the decimal place will be
+;		So that if you use a picture or '9.9' you are asking for a number with one 
+;		decimal place. Equally if you use a picture of '999.9999' you are asking for
+;		for a number with 4 decimal places.
+;
+;	You need to be careful on a number points:- 
+;		Because languageONE uses 64bit numbers for everything if you multiplied a
+;		number with a picture of '9.9' and a value of say 3.4 by 9 (giving an internal 
+;		value of 30.6) it would be displayed as 0.6 There is no overflow trapping at
+;		this time in relation to the picture value. So just make sure you result field
+;		picture is large enough to hold the value
+;	
+;	REFER NOTE DIRECTLY BELOW
+;	The other area to be mindful of is the way you would code a value in relation to its 
+;	picture. Because languageONE keeps all values as integers you need to code an integer
+;	value without a decimal place.
+;		For example;   the AddResult field below has a picture of '###,###.9999-'
+;					   and a value of 1234
+;		This represents a real value of .1234, as the decimal place is implied
+;		In another example, perhaps you are dealing with money, so a field with
+;		a picture of '9,999.99' and a value of 123 represents $1.23
+;
+;	NOTE:-V1.18 - has resolved the need to code in this manner. You may now code a literal
+;					value as you would expect it. ie. Code 1.23 as 1.23
+;	
+
+
+  ; Common Counters						 
+	insertnumber	H,					-9223372036854775808,	'#,###,###,###,###,###,999-'
+	insertnumber	I,				     9223372036854775807,	'#,###,###,###,###,###,##9'
+	insertnumber	J,					-1,						'9,999,999,999,999,999,999-'
+	insertnumber	K,					 1,						'9,999,999,999,999,999,999'
+	insertnumber	L,					-1.000,					'#,###,###,###,###,##9.999-'
+
+	insertnumber	AddResult,			 .1234,					'###,###.9999-'	
+	insertnumber	SubResult,			 .1234,					'###,###.9999-'
+	insertnumber	MulResult,			 .23456,				'##,###,###,###,##9.99999-'	
+	insertnumber	DivResult,			 .0,					'###,###,###,##9.9999-'
+	insertnumber	X,					-1.23,					'9.99-'
+	
+
+;	For Division
+	insertnumber	PiResult00,			22.0,'#9',
+	insertnumber	PiResult01,			22.0,'#9.9'
+	insertnumber	PiResult02,			22.0,'#9.99'
+	insertnumber	PiResult03,			22.0,'#9.999'
+	insertnumber	PiResult04,			22.0,'#9.9999'
+	insertnumber	PiResult05,			22.0,'#9.99999'
+	insertnumber	PiResult06,			22.0,'#9.999999'	
+	insertnumber	PiResult07,			22.0,'#9.9999999'
+	insertnumber	PiResult08,			22.0,'#9.99999999'
+	insertnumber	PiResult09,			22.0,'#9.999999999'
+	insertnumber	PiResult10,			22.0,'#9.9999999999'		
+	insertnumber	PiResult11,			22.0,'#9.99999999999'
+	insertnumber	PiResult12,			22.0,'#9.999999999999'
+	insertnumber	PiResult13,			22.0,'#9.9999999999999'
+	insertnumber	PiResult14,			22.0,'#9.99999999999999'
+	insertnumber	PiResult15,			22.0,'#9.999999999999999'
+	insertnumber	PiResult16,			22.0,'#9.9999999999999999'
+	insertnumber	PiResult17,			22.0,'#9.99999999999999999'
+	insertnumber	PiDivisor,			   7,'9'		
+
+;	For Calculator
+	insertnumber n_Operand1,			0
+	insertnumber n_Operand2,			0
+	insertnumber n_Result,				0
+	insertnumber n_Error,				0
+			
+	
+%include 'include/END.MATRIX'
+;-----------------------------------------------------------------------
+;		FILES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.FILES'
+%include 'include/END.FILES'
+;-----------------------------------------------------------------------
+;		TABLES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.TABLES'		
+%include 'include/END.TABLES'
+
+;=======================================================================
+;		PROGRAM INSTRUCTIONS
+;		Mainline  
+;=======================================================================
+%include 'include/BEGIN.INSTRUCTIONS'
+	
+	$Call A_1_Initial
+		
+;	$Call B_1_Addition
+;	$Call B_2_Subtraction
+;	$Call B_3_Multiplication
+;	$Call B_4_Division
+	$Call B_5_Calculator
+	
+	$Call Z_1_Finalise
+
+%include 'include/END.INSTRUCTIONS'
+%include 'include/END.PROGRAM'      
+
+;=======================================================================
+;		PROGRAM PROCEDURES
+;=======================================================================
+BEGIN.SUB A_1_Initial	
+END.SUB A_1_Initial
+
+;-----------------------------------------------------------------------
+;		Demonstrate Addition
+;-----------------------------------------------------------------------
+BEGIN.SUB B_1_Addition
+
+	display (c_ClearScreen,c_DefaultBG, LF)
+	display (c_RedFG,c_Underlined,'01A] DEMONSTRATING Addition',c_ResetUnderlined,LF)
+
+;	insertnumber AddResult,.1234,'###,###.9999-'	
+;	Starting with a number as described above. It has an initial value of .1234
+	display (c_RedFG,spaces(5),'AddResult starts @ .1234',c_CyanFG,LF)
+	display (spaces(5),AddResult,LF)
+	$Call GetUserInput
+	
+;	insertnumber MulResult,.23456,'##,###,###,###,##9.99999-'
+;	We can add other numbers from the Matrix
+	display (c_RedFG,spaces(5),'Add .23456 (from Matrix) to Addresult = .3580',c_CyanFG,LF)
+	AddResult = AddResult + MulResult
+	display (spaces(5),AddResult,LF)
+	$Call GetUserInput
+
+;	We can add integers from the Matrix
+	display (c_RedFG,spaces(5),'Add 1 (from Matrix) to Addresult = 1.3580',c_CyanFG,LF)
+	AddResult = AddResult + K
+	display (spaces(5),AddResult,LF)
+	$Call GetUserInput
+
+;	We can add integer literals
+;	NOTE:- Integer literals may be coded without a picture. They are given a 
+;	default picture of '#,###,###,###,###,###,###-'
+;	NOTE ALSO:-If your operation only involves integers you may think about using
+;	the commands integers.eq(I,0) integers.add(I,1) integers.sub(I,2) integers.mul(I,3) 
+;	integers.div(I,4) and integers.calc A = B + 1
+;	** Careful though as these commands provide no error checking and will over
+;	thru the +ve/-ve boundary.
+
+	display (c_RedFG,spaces(5),'Add 3 (Integer literal) to Addresult = 4.3580',c_CyanFG,LF)
+	AddResult = AddResult + 3
+	display (spaces(5),AddResult,LF)
+	$Call GetUserInput
+
+;	We can add fixed point literals
+;	Note that we must code a picture for a Fixed Point literal
+;	NOTE:-As off V1.18 you do not need to
+	display (c_RedFG,spaces(5),'Add .123456- (Fixed Point literal) to Addresult = 4.2345',c_CyanFG,LF)
+	AddResult = AddResult + -.123456
+	display (spaces(5),AddResult,LF)
+	$Call GetUserInput
+
+;	We can also code an integer with a picture [BUT THERE IS REASON TO DO SO]
+	display (c_RedFG,spaces(5),'Add -1 to zero',c_CyanFG,LF)
+	AddResult = {0,'9'}
+	AddResult = AddResult + {-1,'9'}
+	display (spaces(5),AddResult,LF)
+	$Call GetUserInput
+
+;	Additions in languageONE may be overloaded, that is we can supply more than one Operand
+;	ie.	10 = 1 + 2 + 3 + 4
+;	The syntax changes a little when an operation is overloaded
+;	Rather than use '#.add' you must code
+;					'numbers $add,'
+;	This example also shows that you can mix integer literals with and without a picture 
+	display (c_RedFG,spaces(5),'Overload an Add .123456+2+3+.69 to Addresult (-1) giving 4.8135',c_CyanFG,LF)
+	AddResult = AddResult + .123456 + 2 + 3 + .69
+	display (spaces(5),AddResult,LF)
+	$Call GetUserInput
+
+;	Both positive and negative
+	display (c_RedFG,spaces(5),'Add .123456+7+(-5)+(-1) to Addresult (4.8135) giving 5.9370',c_CyanFG,LF)
+	AddResult = AddResult + .123456 + 7 - 5 - 1
+	display (spaces(5),AddResult,LF)
+	$Call GetUserInput
+
+;	And finally an overflow	
+;	display (c_RedFG,spaces(5),'Add 1 to largest +ve number to create overflow',c_CyanFG,LF)
+;	#.add (I,K)
+
+END.SUB B_1_Addition
+
+;-----------------------------------------------------------------------
+;		Demonstrate Subtraction
+;-----------------------------------------------------------------------
+BEGIN.SUB B_2_Subtraction
+
+	display (c_ClearScreen,c_DefaultBG, LF)
+	display (c_RedFG,c_Underlined,'02A] DEMONSTRATING Subtraction',c_ResetUnderlined,LF)
+
+;	insertnumber SubResult,.1234,'###,###.9999-'	
+;	Starting with a number as described above. It has an initial value of .1234
+	display (c_RedFG,spaces(5),'SubResult starts @ .1234',c_CyanFG,LF)
+	display (spaces(5),SubResult,LF)
+	$Call GetUserInput
+	
+;	insertnumber MulResult,23456,'##,###,###,###,##9.99999-'
+;	We can subtract other numbers from the Matrix
+	display (c_RedFG,spaces(5),'Subtract .23456 (from Matrix) to Subresult = .1112-',c_CyanFG,LF)
+	SubResult = SubResult - MulResult
+	display (spaces(5),SubResult,LF)
+	$Call GetUserInput
+
+;	We can subtract integers from the Matrix
+	display (c_RedFG,spaces(5),'Subtract 1 (from Matrix) to Subresult = 1.1112-',c_CyanFG,LF)
+	SubResult = SubResult - K
+	display (spaces(5),SubResult,LF)
+	$Call GetUserInput
+
+;	We can subtract integer literals
+	display (c_RedFG,spaces(5),'Subtract 3 (Integer literal) to Subresult = 4.1112-',c_CyanFG,LF)
+	SubResult = SubResult - 3
+	display (spaces(5),SubResult,LF)
+	$Call GetUserInput
+
+;	We can subtract fixed point literals
+;	Note that we must code a picture for a Fixed Point literal		
+	display (c_RedFG,spaces(5),'Subtract .123456- (Fixed Point literal) to Subresult = 3.9877-',c_CyanFG,LF)
+	SubResult = SubResult - -.123456	
+	display (spaces(5),SubResult,LF)
+	$Call GetUserInput
+
+;	We can also code an integer with a picture
+	display (c_RedFG,spaces(5),'Subtract -1 from zero',c_CyanFG,LF)
+	SubResult = {0,'9'}
+	SubResult = SubResult - -1
+	display (spaces(5),SubResult,LF)
+	$Call GetUserInput
+
+;	Subtractions in languageONE may be overloaded, that is we can supply more than one Operand
+;	ie.	0 = 10 - 1 - 2 - 3 - 4
+;	The syntax changes a little when an operation is overloaded
+;	Rather than use '#.sub' you must code
+;					'numbers $subtract,'
+;	This example also shows that you can mix integer literals with and without a picture 
+	display (c_RedFG,spaces(5),'Overload an Subtract .123456-2-3-.69 to Subresult (-1) giving 4.8135-',c_CyanFG,LF)
+	SubResult = SubResult - .123456 - 2 - 3 - .69
+	display (spaces(5),SubResult,LF)
+	$Call GetUserInput
+
+;	Both positive and negative
+	display (c_RedFG,spaces(5),'Subtract .123456-7-(-5)-(-1) to Subresult (4.8135) giving 5.9370-',c_CyanFG,LF)
+	SubResult = SubResult - .123456 - 7 - -5 - -1		
+	display (spaces(5),SubResult,LF)
+	$Call GetUserInput
+
+;	And finally an overflow	
+;	display (c_RedFG,spaces(5),'Subtract 1 from largest -ve number to create overflow',c_CyanFG,LF)
+;	#.sub (H,K)
+
+END.SUB B_2_Subtraction
+
+;-----------------------------------------------------------------------
+;		Demonstrate Multiplication
+;-----------------------------------------------------------------------
+BEGIN.SUB B_3_Multiplication
+
+	display (c_ClearScreen,c_DefaultBG, LF)
+	display (c_RedFG,c_Underlined,'03A] DEMONSTRATING Multiplication',c_ResetUnderlined,LF)
+	
+;	Starting with a number as described above. It has an initial value of .23456
+	display (c_RedFG,spaces(5),'MulResult starts @ .23456',c_CyanFG,LF)
+	display (spaces(5),MulResult,LF)
+	$Call GetUserInput
+	
+;	We can Multiply by other numbers from the Matrix
+	display (c_RedFG,spaces(5),'Multiply it by iteself (Effectively squaring it) Mulresult = .05502',c_CyanFG,LF)
+	MulResult = MulResult * MulResult
+	display (spaces(5),MulResult,LF)
+	$Call GetUserInput
+
+;	We can multiply with integer literals
+	display (c_RedFG,spaces(5),'Multiply by 3 (Integer literal) to Mulresult = .16506',c_CyanFG,LF)
+	MulResult = MulResult * 3
+	display (spaces(5),MulResult,LF)
+	$Call GetUserInput
+
+;	We can Multiply fixed point literals
+;	Note that we must code a picture for a Fixed Point literal	
+	display (c_RedFG,spaces(5),'Multiply by 12345.6- (Fixed Point literal) to Mulresult = 2037.76474-',c_CyanFG,LF)
+	MulResult = MulResult * -12345.6
+	display (spaces(5),MulResult,LF)
+	$Call GetUserInput
+
+;	We can also code an integer with a picture
+	display (c_RedFG,spaces(5),'Multiply by -1 ',c_CyanFG,LF)
+	MulResult = MulResult *	-1
+	display (spaces(5),MulResult,LF)
+	$Call GetUserInput
+
+;	Multiplications in languageONE may be overloaded, that is we can supply more than one Operand
+;	ie.	Result (30 cubed) = 30 * 30 * 30
+;	The syntax changes a little when an operation is overloaded
+;	Rather than use '#.mul' you must code
+;					'numbers $multiply,'
+;	This example also shows that you can mix integer literals with and without a picture 
+	display (c_RedFG,spaces(5),'Overload a multiplication (cube a No) 30*30*30 = 27,000',c_CyanFG,LF)
+	MulResult = 30
+	MulResult = MulResult * 30 * 30
+	display (spaces(5),MulResult,LF)
+	$Call GetUserInput
+
+;	Both positive and negative
+	display (c_RedFG,spaces(5),'Same as above but with 1 -ve 30 ',c_CyanFG,LF)
+	MulResult = 30
+	MulResult = MulResult * -30 * 30
+	display (spaces(5),MulResult,LF)
+	$Call GetUserInput
+
+	display (c_RedFG,spaces(5),'Multiply - TESTING THE LIMITS',LF)
+	display (c_RedFG,spaces(5),'Multiply 4611686018427387903 by 2',c_CyanFG,LF)
+	display (c_RedFG,spaces(5),'Answer is 1 less than the highest +ve limit',c_CyanFG,LF)
+	H = 4611686018427387903
+	J = H * 2
+	display (spaces(5),J,LF)
+	$Call GetUserInput
+
+	display (c_RedFG,spaces(5),'Multiply -4611686018427387904 by 2',c_CyanFG,LF)
+	display (c_RedFG,spaces(5),'Answer is 1 less than the highest -ve limit',c_CyanFG,LF)
+	H = -4611686018427387903
+	J = H * 2
+	display (spaces(5),J,LF)
+	$Call GetUserInput
+
+;	display (c_RedFG,spaces(5),'(OVERFLOW:Multiply 6800988912345.67890 by 18',c_CyanFG,LF)
+;	MulResult = 6800988912345.67890
+;	MulResult = MulResult * 18
+;	display (spaces(5),MulResult,LF)
+;	$Call GetUserInput
+	
+	
+;	display (c_RedFG,spaces(5),'Create an overflow : Multiply 4611686018427387904 by 3',c_CyanFG,LF)
+;	#.eq (I,4611686018427387903)
+;	#.mul (I,-3)
+;	display (spaces(5),I,LF	)
+;	$Call GetUserInput
+
+END.SUB B_3_Multiplication
+
+;-----------------------------------------------------------------------
+;		Demonstrate Division
+;-----------------------------------------------------------------------
+BEGIN.SUB B_4_Division
+
+	display (c_ClearScreen,c_DefaultBG, LF)
+	display (c_RedFG,c_Underlined,'04A] DEMONSTRATING Division',c_ResetUnderlined,c_CyanFG,LF)
+	display (c_RedFG,spaces(5),'Pi to 17 decimal places',c_CyanFG,LF)
+	
+	PiResult00 = PiResult00 / PiDivisor
+	display.line (PiResult00)
+
+	PiResult01 = PiResult01 / PiDivisor
+	display.line (PiResult01)
+
+	PiResult02 = PiResult02 / PiDivisor
+	display.line (PiResult02)
+	
+	PiResult03 = PiResult03 / PiDivisor
+	display.line (PiResult03)
+	
+	PiResult04 = PiResult04 / PiDivisor
+	display.line (PiResult04)
+	
+	PiResult05 = PiResult05 / PiDivisor
+	display.line (PiResult05)
+	
+	PiResult06 = PiResult06 / PiDivisor
+	display.line (PiResult06)
+	
+	PiResult07 = PiResult07 / PiDivisor
+	display.line (PiResult07)
+	
+	PiResult08 = PiResult08 / PiDivisor
+	display.line (PiResult08)
+	
+	PiResult09 = PiResult09 / PiDivisor
+	display.line (PiResult09)
+	
+	PiResult10 = PiResult10 / PiDivisor
+	display.line (PiResult10)
+	
+	PiResult11 = PiResult11 / PiDivisor
+	display.line (PiResult11)
+	
+	PiResult12 = PiResult12 / PiDivisor
+	display.line (PiResult12)
+	
+	PiResult13 = PiResult13 / PiDivisor
+	display.line (PiResult13)
+	
+	PiResult14 = PiResult14 / PiDivisor
+	display.line (PiResult14)
+	
+	PiResult15 = PiResult15 / PiDivisor
+	display.line (PiResult15)
+	
+	PiResult16 = PiResult16 / PiDivisor
+	display.line (PiResult16)
+	
+	display (c_RedFG,spaces(5),'765.4321 / -12.345 : DivResult = 62.0034-',c_CyanFG,LF)
+	DivResult = 765.4321
+	DivResult = DivResult / -12.345
+	display.line (DivResult)
+	$Call GetUserInput
+
+;	display (c_RedFG,spaces(5),'Create an overflow : Divide',c_CyanFG,LF)
+;	#.div (PiResult17,PiDivisor)
+;	display.line (PiResult17)
+;	$Call GetUserInput
+
+END.SUB B_4_Division
+
+;-----------------------------------------------------------------------
+;		Demonstrate Simple Calculator
+;-----------------------------------------------------------------------
+BEGIN.SUB B_5_Calculator
+
+	display (c_ClearScreen,c_DefaultBG, LF)
+	display (c_RedFG,c_Underlined,'03A] DEMONSTRATING Simple Calculator',LF)
+
+	display (c_ResetUnderlined,c_CyanFG)
+	display.at (05,03,'Operand 1 [Ctrl-C=Exit)')
+	display.at (06,03,'Operation [+,-,*,/]')
+	display.at (07,03,'Operand 2')
+	display.at (08,33,'=========')
+	display.at (09,03,'Result')
+
+	display (c_LightYellowFG	)
+	display.at (18,03,"Ensure you overright the no completely, else the value is taken up")
+	display.at (19,03,"to where you pressed the enter key")
+	CURSOR (20,03)
+	display (c_CyanFG,"Please Note:",c_LightYellowFG)
+	display.at (20,16,"Your result will be rounded to the no of decimal places")
+	display.at (21,03,"contained in the Operand with the most decimal places")
+
+	Repeat _01
+		$Call ClearPictures
+	
+	;	Operand 1
+		acceptLine.at (05,33,w_Operand1)
+		#.eq (n_Operand1,w_Operand1)	; Converting from alpha to numerix requires the NUMBERS module
+
+	;	Operator
+		display.at (09,03,w_BlankLine)
+		n_Error = 1	
+		repeat.if n_Error != 0
+			acceptLine.at (06,33,w_Operation)
+		   .if  w_Operation = '+'
+		   .or w_Operation = '-'
+		   .or w_Operation = '*'
+		   .or w_Operation = '/'
+		   .end
+				n_Error = 0
+				display.at (19,03,w_BlankLine)
+			else
+				Cursor (19,03)
+				display c_RedFG,c_Blink,					\
+						"Operation can only be '+','-','*' or '/'", \
+						c_ResetBlink,c_LightYellowFG
+			end.if
+		end.repeat
+			
+	;	Operand 2	
+		acceptLine.at (07,33,w_Operand2)
+		#.eq (n_Operand2,w_Operand2)	; Converting from alpha to numerix requires the NUMBERS module
+
+	;	Initialise Result
+		$Call ResultPicture
+
+		begin.test w_Operation
+			when = '+'
+			;	n_Result = n_Result + n_Operand2
+				numbers.calc n_Result,=,n_Operand1,+,n_Operand2
+			wend
+
+			when = '-'
+			;	n_Result = n_Result - n_Operand2
+				numbers.calc n_Result,=,n_Operand1,-,n_Operand2
+			wend
+
+			when = '*'
+			;	n_Result = n_Result * n_Operand2
+				numbers.calc n_Result,=,n_Operand1,*,n_Operand2
+			wend
+
+			when = '/'
+			;	n_Result = n_Result / n_Operand2
+				numbers.calc n_Result,=,n_Operand1,/,n_Operand2
+			wend
+
+		end.test
+
+   		display.at (09,13,n_Result)
+
+	end.repeat _01
+	
+END.SUB B_5_Calculator
+
+		
+BEGIN.SUB Z_1_Finalise
+END.SUB Z_1_Finalise
+
+;=======================================================================
+;		Routines that are common (can be $Called from anywhere)
+;=======================================================================
+BEGIN.SUB GetUserInput
+	
+	display (spaces(5),c_LightBlueFG,'Press <ENTER> to continue ')
+	acceptLine (char1)
+	display (LF)
+	
+END.SUB GetUserInput
+
+;=======================================================================
+;		Assembler Help Routine - Dynami$Cally Clear Operand Pictures
+;=======================================================================
+BEGIN.SUB ClearPictures
+
+	begin.assembler
+		cld																; Set direction flag
+		mov rcx,25														; Set counter to picture length -1 
+		mov RSI,n_Operand1												; Setup RSI
+		add RSI,8														;	as picture start
+		mov RDI,n_Operand2												; Setup RDI 
+		add RDI,8														;	as picture start
+		mov al,' '														; move a space to AL
+		.1:	mov byte[RSI],al											; move a space to n_Operand1 (rcx)
+			inc RSI														;	and advance
+			mov byte[RDI],al											; move a space to n_Operand2 (rcx)
+			inc RDI														;	and advance
+			loop .1														; loop back
+		mov byte[RSI],'-'												; move in a sign for n_Operand1
+		mov byte[RDI],'-'												; move in a sign for n_Operand2
+	end.assembler
+
+END.SUB ClearPictures
+
+;=======================================================================
+;		Assembler Help Routine - Dynamically set Result Picture
+;=======================================================================
+BEGIN.SUB ResultPicture
+
+	begin.assembler
+		  %define _NumScale(x)		qword[x-17]
+
+		;	Set the Picture Length
+			mov qword[n_Result-8],26									; Setup the length
+			
+		;	Get the Scale
+			mov rax,_NumScale(n_Operand1)								; Grab Operand1 Scale		
+	.If1:	cmp rax,_NumScale(n_Operand2)								; IF it greater than Operand2 Scale
+			ja .EndIf1													;		then continue 
+				mov rax,@NumScale(n_Operand2)							; ELSE  Grab Operand2 Scale
+	.EndIf1:	
+			mov _NumScale(n_Result),rax									; and set the result scale
+
+
+		;	Place the sign and 1st digit at the end of the picture
+			mov rdi,n_Result
+			add rdi,33
+			mov byte[rdi],'-'
+			dec rdi
+			mov byte[rdi],'9'
+			
+		;	Decimal Place
+			$ScaleToPlaces @NumScale(n_Result)							; Returns NoOfDecimalPlaces in RCX
+	.If2:	cmp rcx,0													; IF NOT integer
+			je .ElseIf2													;	
+																		;				 
+			.l1:mov byte[rdi],'9'										;	 move in '9's
+				dec rdi													;	 until Decimal Place
+				loop .l1
+				mov byte[rdi],'.'										; 	 and move in Decimal Place
+				dec rdi
+	.ElseIf2:															; ELSE 
+			cmp rdi,n_Result+12											;	IF less than 4 from the start of the picture
+			jb .EndIf2													;		then exit	
+																		;	ELSE
+				mov byte[rdi-0],'#'										;		move in the hashes 
+				mov byte[rdi-1],'#'										;
+				mov byte[rdi-2],'#'										;
+				mov byte[rdi-3],','										;
+				sub rdi,4												;		backup by 4 characters
+				jmp .ElseIf2											;		and continue
+	.EndIf2:
+
+	.If3:	cmp rdi,n_Result+8
+				jb .EndIf3
+				mov byte[rdi], '#'
+				dec RDI
+				jmp .If3
+	.EndIf3:
+					
+	end.assembler	
+	
+END.SUB ResultPicture
+

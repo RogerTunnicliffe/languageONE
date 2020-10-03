@@ -1,0 +1,256 @@
+%include 'include/BEGIN.PROGRAM'
+
+;	Refer to VERSION.HISTORY for...well...version history
+
+;	BEGIN.SYNONYMS **************************************
+;		$.	:	WORDS.  
+;		@.	:	INTEGERS.  
+;		#.	:	NUMBERS.  
+;		f.	:	files. 
+;		t.	:	tables.
+;		T.	:	xtables. 
+;	END.SYNONYMS ****************************************
+
+;=======================================================================
+;		  PROGRAM DATA
+;=======================================================================	      
+
+;-----------------------------------------------------------------------
+;	CONSTANTS
+;-----------------------------------------------------------------------
+	%define c_recLen		 	  12
+	%define c_noRecs  		 	1024	
+
+;-----------------------------------------------------------------------
+;		DICTIONARY
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.DICTIONARY'
+
+	insertword w_Parent,		0004,{'../',0x00}
+	insertword w_dirEntry,		0255,''
+	insertword x_Null,			0001,0x00
+			
+%include 'include/END.DICTIONARY'
+
+;-----------------------------------------------------------------------
+;		MATRIX
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.MATRIX'
+
+  ; Common Counters
+	INSERTNUMBER I,				0,'999999'
+	INSERTNUMBER J,				0,'999999'
+	INSERTNUMBER K,				0,'999999'
+
+  ; This programs 
+	insertnumber dirIdx, 	   	0,'9999'
+	
+%include 'include/END.MATRIX'
+
+;-----------------------------------------------------------------------
+;		FILES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.FILES'
+
+	insertfile c_DIRECTORY,IN_DIR
+	
+;	Record for dirTable	
+	begin.record c_recLen,dirRecord
+		insertnumber i_fileHandle,0,'999999999999'
+	end.record dirRecord
+	
+%include 'include/END.FILES'
+
+;-----------------------------------------------------------------------
+;		TABLES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.TABLES'
+
+	inserttable  dirTable,c_recLen*c_noRecs
+		
+%include 'include/END.TABLES'
+
+;=======================================================================
+;		PROGRAM INSTRUCTIONS
+;		Mainline  
+;=======================================================================
+%include 'include/BEGIN.INSTRUCTIONS'
+
+	$Call A_1_Initial
+
+	if RETURN_CODE = 0
+		$Call B_1_Process
+		$Call Z_1_Finalise
+	end.if
+
+%include 'include/END.INSTRUCTIONS'
+%include 'include/END.PROGRAM'      
+
+;=======================================================================
+;		PROGRAM PROCEDURES
+;=======================================================================
+
+;-------------------------------------------------------------------------------
+;		INITIALISATION
+;-------------------------------------------------------------------------------
+BEGIN.SUB A_1_Initial
+
+	$.copy (w_CommandLine,w_dirEntry)									; Get command line parameters
+	if w_dirEntry = spaces(1)
+		display.line 'Please enter a starting directory'
+		RETURN_CODE = 9999
+	else
+		tables.bind (dirTable,dirRecord,c_noRecs)
+		J = 1
+	end.if
+	
+END.SUB A_1_Initial
+
+;-------------------------------------------------------------------------------
+;	Process - This routine demonstrates recursion in languageONE
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_1_Process
+
+;	Types not catered for in this sub routine
+;	-----------------------------------------
+;	when = 00	: Unknown Entry
+;	when = 01	: FIFO Entry
+;	when = 02	: Character Device
+;	when = 06	: Block Device
+;	when = 12	: Socket
+;	when = 14	: WhiteOut			
+
+;	---------------------------------------
+;	Stuff required to step into a directory
+;	---------------------------------------
+	$Call B_1_1_StepIN	
+
+;	-----------------
+;	Recursive process
+;	-----------------
+	f.read IN_DIR,w_dirEntry											; 1st Directory entry
+	
+	repeat.while IN_DIR_STATUS = 0										; Repeat until the end
+	
+		begin.test RETURN_CODE											; Entry Type is delivered in RETURN_CODE
+		
+		;	---------
+		;	DIRECTORY
+		;	---------
+			when = 4 		
+				if w_dirEntry _NIN {'.','..'}							; We wish to ignore ("." this dir) & (".." parent dir)
+					display c_BlueFG,spaces(J),{w_dirEntry,1,32},LF	; So..display the directory					
+					$Call B_1_Process									; $Call yourself
+				end.if
+			wend
+
+		;	----
+		;	FILE
+		;	----
+			when = 8 
+				display c_YellowFG,spaces(J),{w_dirEntry,1,32},LF		; Display the filename
+			wend
+				
+		;	-------------
+		;	SYMBOLIC LINK
+		;	-------------		
+			when = 10 
+				display c_GreenFG,spaces(J),'(Symbolic Link) '			; Display  the symbolic linkinfo
+				display c_CyanFG,{w_dirEntry,1,64},LF
+			wend
+				
+		end.test
+
+		f.read IN_DIR,w_dirEntry
+		
+	end.repeat
+
+;	-----------------------------------------
+;	Stuff required to step out of a directory
+;	-----------------------------------------
+	$Call B_1_2_StepOUT
+	
+END.SUB B_1_Process
+
+;-------------------------------------------------------------------------------
+;	Setup what is required before entering a directory
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_1_1_StepIN
+
+;	A Linux file systems expects a strings to be terminated with a null
+	repeat.for I,255,1														; work backwards from the 
+		if {w_dirEntry,I,1} != spaces(1)									; to find entries last character
+			I = I + 1
+			{w_dirEntry,I,1} = x_Null
+			exitRepeat = c_TRUE
+		end.if
+	end.repeat
+
+;	------------------
+;	Change Directories
+;	------------------
+;	Could not seem to open file with a relative directory name
+	f.chdir w_dirEntry													; Change Directory
+	f.getcwd w_dirEntry													; and get absolute path
+	J = J + 4
+
+;	-----------------------
+;	Prime and Open the file
+;	-----------------------
+	IN_DIR = w_dirEntry													; setup the directories name	
+	f.Open IN_DIR														; and open											
+
+;	---------------------------------
+;	Save position - enables recursion
+;	---------------------------------
+	dirIdx       = dirIdx + 1												; Grab the next slot
+	i_fileHandle = IN_DIR_HANDLE											; populate the file handle
+	
+	t.rPUT (dirTable,dirIdx)												; and save the record
+	
+	if dirTable_STATUS != 0													; If error = panic
+		display.line 'put error'
+		TERMINATE 1
+	end.if
+
+END.SUB B_1_1_StepIN
+
+;-------------------------------------------------------------------------------
+;	Setup what is required after exiting a directory
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_1_2_StepOUT
+
+;	-------------------
+;	Close the directory
+;	-------------------
+	f.Close IN_DIR														; Close the Directory
+
+;	---------------------------
+;	Manage location in the tree
+;	---------------------------
+	$.copy w_Parent,w_dirEntry											; Step back 1 directory
+	f.chdir  w_dirEntry													; Change dir to parent	
+	f.getcwd w_dirEntry													; Change dir to parent	
+	J = J - 4															; Step back (spaces in display)
+
+;	-----------------------
+;	Restore the file handle
+;	-----------------------
+	dirIdx	= dirIdx - 1												; Grab the previous slot
+	
+	t.rGET (dirTable,dirIdx)											; Grab the record
+	
+	if dirTable_STATUS != 0												; If error - panic
+		display 'get error'
+		TERMINATE 1
+	end.if
+ 					
+	IN_DIR_HANDLE	= i_fileHandle										; Restore the file handle
+
+END.SUB B_1_2_StepOUT
+
+;-------------------------------------------------------------------------------
+;	FINALISATION
+;-------------------------------------------------------------------------------
+BEGIN.SUB Z_1_Finalise	
+END.SUB Z_1_Finalise

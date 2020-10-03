@@ -1,0 +1,637 @@
+%include 'include/BEGIN.PROGRAM'
+
+%define   c_AM_NoOfRecords	08
+%define   c_M_NoOfRecords	16
+%include 'include/LCURSES.PKG'
+	
+;	Refer to VERSION.HISTORY for...well...version history
+
+;	BEGIN.SYNONYMS **************************************
+;		xT.	:	XTABLES.
+;		$.	:	WORDS.
+;		@.	:	INTEGERS.
+;		#.	:	NUMBERS.
+;		f.	:	FILES.
+;	END.SYNONYMS ****************************************
+
+;=======================================================================
+;		  PROGRAM DATA
+;======================================================================	      
+;-----------------------------------------------------------------------
+;		CONSTANTS
+;-----------------------------------------------------------------------
+;%define c_Constant 10*10
+
+;-----------------------------------------------------------------------
+;		DICTIONARY
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.DICTIONARY'
+
+	insertword w_Response,			01,''
+	insertword w_Buffer,			64,''
+
+%include 'include/END.DICTIONARY'
+
+;-----------------------------------------------------------------------
+;		MATRIX
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.MATRIX'
+
+  ; Common Counters
+	INSERTNUMBER I,					0
+	INSERTNUMBER J,					0
+	INSERTNUMBER K,					0
+	INSERTNUMBER L,					0
+
+  ; This programs 
+	insertnumber endLoop,			c_FALSE
+
+  	
+%include 'include/END.MATRIX'
+
+;-----------------------------------------------------------------------
+;		FILES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.FILES'	
+
+;	------------------------------
+;	Define the LCURSES MENU tables
+;	------------------------------
+;	Defines the geometry of a menu
+	begin.record c_AM_RecordLen,AM_Record
+		insertnumber	AM_StartRow,	00,'99'								; Starting row
+		insertnumber	AM_StartCol,	00,'99'								; Starting column
+		insertnumber	AM_EndRow,		00,'99'								; Ending Row
+		insertnumber	AM_EndCol,		00,'99'								; Ending Column
+	end.record AM_Record
+	insertnumber AM_Idx,				00,'9'								; the index returned by LCURSES.PKG
+	
+;	Defines the menu items
+	begin.record c_M_RecordLen,M_Record
+		insertword		M_Type,			01,''								; the menu entry type
+		insertnumber	M_Target,		00,'99999999'						; the target
+		insertword		M_Entry,		55,''								; and the text
+	end.record M_Record
+	insertnumber M_Idx,					00,'99'								; the index returned by LCURSES.PKG
+
+	;	M_TYPE
+	;	S - A Subroutine in this program
+	;	M - A sub Menu
+	;	X - An external program
+	;	  - Space is end of options
+	;	M_TARGET
+	;	M_Type = S:Subroutine name
+	;	M_Type = M:Menu No
+	;	M_Type = X:0
+	
+insertfile c_LF,RSP1_FILE,'pipe'
+
+%include 'include/END.FILES'
+
+;-----------------------------------------------------------------------
+;		TABLES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.TABLES'
+
+;	------------------------------
+;	Insert the LCURSES MENU tables
+;	------------------------------
+	inserttable AM_Table,c_AM_RecordLen*c_AM_NoOfRecords					; Allows for 8 menus
+	inserttable M_Table,c_M_RecordLen*c_AM_NoOfRecords*c_M_NoOfRecords		; Allows fo r8 menus with 16 entries
+
+%include 'include/END.TABLES'
+
+;=======================================================================
+;		PROGRAM INSTRUCTIONS
+;		Mainline
+;=======================================================================
+%include 'include/BEGIN.INSTRUCTIONS'
+
+	$Call A_1_Initial
+	$Call B_1_Process
+	$Call C_1_Process
+	$Call D_1_Process
+	$Call Z_1_Finalise
+
+%include 'include/END.INSTRUCTIONS'
+%include 'include/END.PROGRAM'
+
+;=======================================================================
+;		Initialise  
+;=======================================================================
+BEGIN.SUB A_1_Initial
+
+;	----------------------------
+;	Bind the LCURSES MENU tables
+;	----------------------------
+	tables.bind AM_Table,AM_Record,8
+	tables.bind M_Table,M_Record,8,16
+
+END.SUB A_1_Initial
+
+;=======================================================================
+;		B_1 Process
+;=======================================================================
+BEGIN.SUB B_1_Process
+
+    $Call B_1_1_Initial														; Load the Menu Tables
+   
+	display c_ResetAll,c_ClearScreen,c_DarkGreyFG,c_DarkGreyBG				; Clear the screen
+	lcurses.Box (01,01,25,80,c_FALSE)										; by coloring it grey
+
+	display c_WhiteFG														; rest the FG to white 	
+	display.at 09,15,"   This program demonstrates the use of Main menus"	; Display the opening text
+	display.at 10,15," facilitated by the the languageONE lcurses package"	;
+	display.at 11,15,"   The program will respond to a <Function Key>"		;
+	display.at 12,15, "         typical of to menu systems"					;
+	display.at 13,15, "          Continue (Y/N)   <ENTER>" 					;
+
+	accept.at 13,40,w_Response												; Accept a response
+	if w_Response _NIN {"Y","y"}											; If No
+	    exit.sub B_1_Process												; EXIT	
+	end.if																	; END
+
+	display c_WhiteFG,c_RedBG												; Setup for HEADING 
+	lcurses.Box (02,02,04,78,c_TRUE)										; and draw it						
+	display c_WhiteFG,c_RedBG												; Setup for text
+	display.at (03,25,"Menu Demonstration Screen")							; and write it
+
+	display c_WhiteFG,c_RedBG												; Setup for BODY
+	lcurses.Box (06,02,23,78,c_TRUE)										; and draw it
+	display c_WhiteFG,c_RedBG												; Setup for text
+	display.at 06,05,"Main Menu System"										; and write it
+
+	AM_Idx = 1																; Using Menu 1
+	repeat.while RETURN_CODE != ESCAPE										; LOOP until ESCAPE
+
+   		lcurses.Menu (AM_Idx,c_TRUE)										; Process Menu 1													
+  	
+    	if RETURN_CODE = RETURN												; IF menu item selected
+
+			begin.test M_Type												; Test the menu type
+
+			;	--------
+			;	SUB-MENU
+			;	--------
+				when = "M"													; When it's a Submenu									
+					AM_Idx = M_Target										; set the menu no
+					lcurses.Menu (AM_Idx,c_TRUE)							; Process the menu
+					RETURN_CODE = ESCAPE									; and setup exit
+				wend														; END
+
+			;	----------
+			;	SUBROUTINE
+			;	----------
+				when = "S"													; When it's a subroutine call
+					lcurses.Call (M_Target)									; process the call
+					RETURN_CODE = ESCAPE									; and setup exit
+				wend														; END
+
+			;	----------------
+			;	EXTERNAL PROGRAM
+			;	----------------
+				when = "X"													; When its an external program
+					If M_Idx = 4											; menu option 4
+						run "/usr/bin/xterm -e bash -ic ./V2.13-xterm"		; run it
+					;	run "/usr/bin/konsole -e bash -ic ./V2.13-xterm"	; run it
+					end.if													; END
+				wend
+
+				otherwise													; OTHERWISE
+					display c_ResetAll,c_WhiteFG,c_LightGreyBG				; setup for message    	   
+					lcurses.Box (08,28,11,56,c_TRUE)						; draw the box
+
+					display c_ResetAll,c_BlackFG,c_LightGreyBG 				; setup for the message text   	   
+					display.at 09,29,"You have selected Option"				; display 1st part
+					display.at 09,54,M_Idx									; display the option
+					display.at 10,29,"   Press Any Key to Exit"				; display the 2nd part
+	
+					display c_ResetAll,c_BlackFG,c_BlackBG					; setup for response 
+;					w_Response = spaces(1)									; clear the value
+;					display.at 10,54,w_Response								; display it				 
+					accept.at  10,54,w_Response								; and accept it
+					RETURN_CODE = ESCAPE									; and setup exit
+			
+			end.test
+																			; END
+    	end.if																; END
+	end.repeat																; END
+	
+END.SUB B_1_Process
+
+;-----------------------------------------------------------------------
+;   Initial process for C_1_Process
+;-----------------------------------------------------------------------
+BEGIN.SUB B_1_1_Initial
+
+;	---------
+;	1st MENU
+;	---------
+	integers.eq AM_StartRow,08
+	integers.eq AM_StartCol,04
+	integers.eq AM_EndRow,17
+	integers.eq AM_EndCol,25
+	integers.eq AM_Idx,1
+	tables.rput AM_Table,AM_Idx
+
+	lcurses.MenuItems (AM_Idx,01,"S",B_1_2_Subroutine,"B_1_2_Subroutine")
+	lcurses.MenuItems (AM_Idx,02,"S",B_1_3_Subroutine,"B_1_3_Subroutine")
+	lcurses.MenuItems (AM_Idx,03,"M",2,"A Sub Menu")
+	lcurses.MenuItems (AM_Idx,04,"X",0,"An External Terminal Program")
+	lcurses.MenuItems (AM_Idx,05,"X",0,"Menu Option 5")
+	lcurses.MenuItems (AM_Idx,06,"X",0,"Menu Option 6")
+	lcurses.MenuItems (AM_Idx,07,"X",0,"Menu Option 7")
+	lcurses.MenuItems (AM_Idx,08,"X",0,"Menu Option 8")
+	lcurses.MenuItems (AM_Idx,09," ",0,"")
+
+;	---------
+;	2nd MENU
+;	---------	
+	integers.eq AM_StartRow,09
+	integers.eq AM_StartCol,5
+	integers.eq AM_EndRow,18
+	integers.eq AM_EndCol,26
+	integers.eq AM_Idx,2
+	tables.rput AM_Table,AM_Idx
+	
+	lcurses.MenuItems (AM_Idx,01,"X",0,"Menu Option 1")
+	lcurses.MenuItems (AM_Idx,02,"X",0,"Menu Option 2")
+	lcurses.MenuItems (AM_Idx,03,"X",0,"Menu Option 3")
+	lcurses.MenuItems (AM_Idx,04,"X",0,"Menu Option 4")
+	lcurses.MenuItems (AM_Idx,05,"X",0,"Menu Option 5")
+	lcurses.MenuItems (AM_Idx,06,"X",0,"Menu Option 6")
+	lcurses.MenuItems (AM_Idx,07,"X",0,"Menu Option 7")
+	lcurses.MenuItems (AM_Idx,08,"X",0,"Menu Option 8")
+	lcurses.MenuItems (AM_Idx,09," ",0,"")
+	
+END.SUB B_1_1_Initial
+
+;-----------------------------------------------------------------------
+;   Initial process for B_1_2_Subroutine
+;-----------------------------------------------------------------------
+BEGIN.SUB B_1_2_Subroutine
+
+	display c_ResetAll,c_BlackFG,c_LightGreyBG
+	lcurses.Box (08,28,12,55,c_TRUE)
+
+	display c_ResetAll,c_RedFG,c_LightGreyBG
+	display.at 09,29,"You have selected Option 1"
+	display.at 10,29,"  Call B_1_2_Subroutine"
+	display.at 11,29,"  Press Any Key to Exit"
+
+	display c_ResetAll,c_LightGreyFG,c_LightGreyBG
+	w_Response = spaces(1)
+	display.at 11,53,w_Response
+	accept.at  11,53,w_Response
+
+END.SUB B_1_2_Subroutine
+
+;-----------------------------------------------------------------------
+;   Initial process for B_1_3_Subroutine
+;-----------------------------------------------------------------------
+BEGIN.SUB B_1_3_Subroutine
+
+	display c_ResetAll,c_BlackFG,c_LightGreyBG
+	lcurses.Box (08,28,12,55,c_TRUE)
+
+	display c_ResetAll,c_RedFG,c_LightGreyBG
+	display.at 09,29,"You have selected Option 2"
+	display.at 10,29,"  Call B_1_3_Subroutine"
+	display.at 11,29,"  Press Any Key to Exit"
+
+	display c_ResetAll,c_LightGreyFG,c_LightGreyBG
+	w_Response = spaces(1)
+	display.at 11,53,w_Response
+	accept.at  11,53,w_Response
+
+END.SUB B_1_3_Subroutine
+
+;=======================================================================
+;		C_1 Process  
+;=======================================================================
+BEGIN.SUB C_1_Process
+
+    $Call C_1_1_Initial														; Load the menu tables
+    
+	display c_ResetAll,c_ClearScreen,c_WhiteFG,c_DarkGreyBG					; Clear the screen (with a box)
+	lcurses.Box (01,01,25,80,c_FALSE)										; by coloring it grey
+
+	display c_WhiteFG														; reset the FG to white
+	display.at 09,15,"This program demonstrates the use of drop down menus"	; Display the opening text
+	display.at 10,15," facilitated by the the languageONE lcurses package"
+	display.at 11,15,"The program will respond to the <ALT-Key> combimation"
+	display.at 12,15, "     typical of common drop dowm menu systems"
+	display.at 13,15, "            Continue (Y/N)   <ENTER>" 
+
+	accept.at 13,42,w_Response												; Accept a response
+	if w_Response _NIN {"Y","y"}											; If No	
+	    exit.sub C_1_Process												; EXIT
+	end.if																	; END
+
+	display c_ResetAll,c_ClearScreen,c_BlueFG,c_BlueBG						; Clear the Screen
+	lcurses.Box (01,01,25,80,c_FALSE)										; by coloring it blue    
+	
+  	cursor 01,01															; start on the second row
+	display c_ResetAll,c_BlackFG,c_LightGreyBG,spaces(80)					; recolor it
+	display.at (01,04,"File  Edit  Search")									; display the menu options
+	display c_Underlined													; and underline them
+	display.at (01,04,"F")
+	display.at (01,10,"E")
+	display.at (01,16,"S")
+	display c_ResetUnderlined
+
+	display c_WhiteFG,c_BlueBG												; set up the body
+	lcurses.Box (02,01,25,80,c_FALSE)										; and display it
+	
+;	------
+;	ACCEPT
+;	------
+	RETURN_CODE = RETURN													; prime the loop
+	repeat.while RETURN_CODE != ESCAPE										; and run until escape
+
+		display c_HideCursor
+		accept.at 01,75,w_Response											; accept it
+		display c_ShowCursor
+
+		if RETURN_CODE = ALT												; If ALT
+		    if w_Response _IN {"f","F","e","E","s","S"}						; Check the response
+		        begin.test w_Response										; Test it
+		            when _IN {"f","F"} | AM_Idx = 3 | wend					; When it's "F" Menu = 3
+		            when _IN {"e","E"} | AM_Idx = 4 | wend					; When it's "E" Memu = 4
+		            when _IN {"s","S"} | AM_Idx = 5 | wend					; When it's "S" Menu = 5
+		        end.test   													; END 
+				RETURN_CODE = ESCAPE										; Exit the loop
+			end.if															; END
+		end.if																; END
+
+	end.repeat																; END
+
+;	---------
+;	Main Loop
+;	---------	
+	endLoop = c_FALSE														; Head on into the LOOP
+	repeat.while endLoop,!=,c_TRUE
+
+		lcurses.Menu (AM_Idx,c_TRUE)										; Do the menus
+			
+		if RETURN_CODE _IN {ARROWLEFT,ARROWRIGHT}							; If left or right arrow
+
+			if RETURN_CODE = ARROWLEFT										; For left arrow
+				AM_Idx = AM_Idx - 1											; move to the left 
+				If AM_Idx < 3												; if we are most left
+					AM_Idx = 5												; then rotate around
+				end.if														; END
+			end.if															; END
+
+			if RETURN_CODE = ARROWRIGHT										; For roght arrow			
+		        AM_Idx = AM_Idx + 1											; move to the right
+		        If AM_Idx > 5												; if we are most right
+		            AM_Idx = 3												; then rotate around
+		        end.if														; END
+		    end.if															; END
+
+		end.if
+
+		if RETURN_CODE,_IN,{RETURN,ESCAPE}									; If we have selected an option
+			endLoop = c_TRUE												; terminate the loop
+		else																; ELSE
+			display c_ResetAll,c_BlueBG,c_WhiteFG							; set the color options	
+			lcurses.Box (02,01,25,80,c_FALSE)								; clear the screen
+		end.if																; END
+
+	end.repeat
+
+;	---------------------------
+;	Display the selected option
+;	---------------------------
+	display c_ResetAll,c_BlueBG,c_WhiteFG									; set the color options
+	lcurses.Box (01,01,25,80,c_FALSE)										; clear the screen
+
+	if RETURN_CODE = RETURN													; if entry selected
+		cursor 10,10														; display the selection
+		begin.test AM_Idx
+        	when = 3 | display "You have selected the following option from the File Menu"		| wend 
+			when = 4 | display "You have selected the following option from the Edit Menu"		| wend   
+			when = 5 | display "You have selected the following option from the Search Menu"	| wend  
+        end.test
+
+		tables.rget M_Table,AM_Idx,M_Idx 									; grab the selected item
+        repeat.for I,55,1													; and trim the trailing spaces
+            if {M_Entry,I,1} != spaces(1)
+                exitRepeat = c_TRUE
+            end.if    
+        end.repeat
+        J = 40 - [I / 2]													; Centre it
+       
+        display c_ResetAll,c_YellowFG,c_BlueBG,c_Blink,c_Bold				; reset display options
+        display.at 11,J,{M_Entry,1,I}										; and display it
+    end.if
+
+	display c_ResetAll,c_BlueBG,c_WhiteFG									; rest options
+	display.at 12,23,"End of Drop Down Menu Demonstration"					; display text
+	display.at 13,23, "	   Hit any key to continue"							; display text
+	accept.at 14,38, w_Response												; and get a response
+
+	cursor 01,01 | 	display c_ResetAll,c_BlackBG,c_WhiteFG					; rest options
+	lcurses.Box (01,01,24,80,c_FALSE)										; clear the screen
+	display LF
+
+END.SUB C_1_Process
+
+;-----------------------------------------------------------------------
+;   Initial process for C_1_Process
+;-----------------------------------------------------------------------
+BEGIN.SUB C_1_1_Initial
+
+;	---------
+;	FILE MENU
+;	---------
+	integers.eq AM_StartRow,02
+	integers.eq AM_StartCol,02
+	integers.eq AM_EndRow,11
+	integers.eq AM_EndCol,20
+	integers.eq AM_Idx,3
+	tables.rput AM_Table,AM_Idx
+	
+	lcurses.MenuItems (AM_Idx,01,"X",0,"New")
+	lcurses.MenuItems (AM_Idx,02,"X",0,"Open...")
+	lcurses.MenuItems (AM_Idx,03,"X",0,"Save")
+	lcurses.MenuItems (AM_Idx,04,"X",0,"Save As...")
+	lcurses.MenuItems (AM_Idx,05,"-",0,"")
+	lcurses.MenuItems (AM_Idx,06,"X",0,"Print")
+	lcurses.MenuItems (AM_Idx,07,"-",0,"")
+	lcurses.MenuItems (AM_Idx,08,"X",0,"Exit")
+	lcurses.MenuItems (AM_Idx,09," ",0,"")
+
+;	---------
+;	EDIT MENU
+;	---------	
+	integers.eq AM_StartRow,02
+	integers.eq AM_StartCol,09
+	integers.eq AM_EndRow,07
+	integers.eq AM_EndCol,27
+	integers.eq AM_Idx,4
+	tables.rput AM_Table,AM_Idx
+	
+	lcurses.MenuItems (AM_Idx,01,"X",0,"Cut")
+	lcurses.MenuItems (AM_Idx,02,"X",0,"Copy")
+	lcurses.MenuItems (AM_Idx,03,"X",0,"Paste")
+	lcurses.MenuItems (AM_Idx,04,"X",0,"Clear")
+	lcurses.MenuItems (AM_Idx,05," ",0,"")	
+
+;	-----------
+;	SEARCH MENU
+;	-----------	
+	integers.eq AM_StartRow,02
+	integers.eq AM_StartCol,15
+	integers.eq AM_EndRow,06
+	integers.eq AM_EndCol,40
+	integers.eq AM_Idx,5
+	tables.rput AM_Table,AM_Idx
+	
+	lcurses.MenuItems (AM_Idx,01,"X",0,"Find")
+	lcurses.MenuItems (AM_Idx,02,"X",0,"Repeat Last Find")
+	lcurses.MenuItems (AM_Idx,03,"X",0,"Change")
+	lcurses.MenuItems (AM_Idx,04," ",0,"")	
+	
+END.SUB C_1_1_Initial
+
+;=======================================================================
+;		D_1 Process  
+;=======================================================================
+BEGIN.SUB D_1_Process
+
+[section .data]
+	insertword		firstName,		15,''
+	insertword		lastName,		30,''
+	insertword		addressLine1,	30,''
+	insertword		addressLine2,	30,''
+	insertword		addressLine3,	30,''
+	insertword		postcodeX,		04,''
+	insertnumber	postcode9,		00,'9999'
+	insertnumber	fieldNo,		00
+[section .text]
+
+	display c_ResetAll,c_ClearScreen,c_WhiteFG,c_DarkGreyBG					; Clear the screen (with a box)
+	lcurses.Box (01,01,25,80,c_FALSE)										; by coloring it grey
+
+	display c_WhiteFG														; reset the FG to white
+	display.at 09,15,"This program demonstrates the use of the function"	; Display the opening text
+	display.at 10,15,"   keys as enhanced by the lcurses package"
+	display.at 11,15,"         Continue (Y/N)   <ENTER>" 
+
+	accept.at 11,39,w_Response												; Accept a response
+	if w_Response _NIN {"Y","y"}											; If No	
+	    exit.sub D_1_Process												; EXIT
+	end.if																	; END
+
+	display c_ResetAll,c_ClearScreen,c_WhiteFG,c_CyanBG						; Clear the screen (with a box)
+	lcurses.Box (01,01,25,80,c_FALSE)										; by coloring it Cyan
+	display c_BlueFG
+	display.at 02,02,"The following FUNCTION keys are captured"
+
+	display c_WhiteFG
+	display.at 03,02,"  ENTER/DOWNARROW:-Proceed to next field"
+	display.at 04,02,"  ESCAPE/UPARROW :-Return to previous field"
+	display.at 05,02,"  LEFTARROW      :-Move cursor 1 charcater to the left"
+	display.at 06,02,"  RIGHTARROW     :-Move cursor 1 charcater to the right"
+	display.at 07,02,"  HOME           :-Move cursor to the beginning of the field"
+	display.at 08,02,"  END            :-Move cursor to the end of the field"
+	display.at 09,02,"  BACKSPACE      :-Delete previous character"
+	display.at 10,02,"  INSERT         :-Insert a space at the cursor position"
+
+
+	display c_WhiteFG														; rest the FG to white 	
+	display.at 13,15,"First Name.....:[               ]"
+	display.at 14,15,"Last Name......:[                              ]"
+	display.at 15,15,"Address Line 1.:[                              ]"
+	display.at 16,15,"Address Line 2.:[                              ]"
+	display.at 17,15,"Address Line 3.:[                              ]"
+	display.at 18,15,"Postcode.......;[    ]"
+
+	display c_BlueFG
+
+	fieldNo = 1 			
+	repeat.while 1 = 1
+
+		begin.test fieldNo
+			when = 1 
+				display.at 13,32,firstName									; Only xterm will show a cursor without this
+				lcurses.AcceptAt 13,32,firstName							; Get the firstname 	
+			wend
+			when = 2
+				display.at 14,32,lastName									; Only xterm will show a cursor without this
+				lcurses.AcceptAt 14,32,lastName								; Get the lastname
+			wend
+			when = 3
+				display.at 15,32,addressLine1								; Only xterm will show a cursor without this
+				lcurses.AcceptAt 15,32,addressLine1							; get the 1st address line
+			wend
+			when = 4
+				display.at 16,32,addressLine2								; Only xterm will show a cursor without this
+				lcurses.AcceptAt 16,32,addressLine2							; get the 2nd address line
+			wend
+			when = 5
+				display.at 17,32,addressLine3								; Only xterm will show a cursor without this
+				lcurses.AcceptAt 17,32,addressLine3							; get the 3rd address line
+			wend
+			when = 6
+				display.at 18,32,postcodeX									; Only xterm will show a cursor without this
+				lcurses.AcceptAt 18,32,postcodeX							; get the postcode
+				postcode9 = postcodeX
+			wend
+		end.test
+
+		if RETURN_CODE _IN {RETURN,ARROWDOWN}
+			if fieldNo = 6
+				exitRepeat = c_TRUE
+			else
+				fieldNo = fieldNo + 1
+			end.if
+		end.if
+
+		if RETURN_CODE _IN {ESCAPE,ARROWUP}
+			if fieldNo = 1
+				exitRepeat = c_TRUE
+			else
+				fieldNo = fieldNo - 1
+			end.if
+		end.if
+
+	end.repeat
+
+	display c_ResetAll,c_ClearScreen,c_WhiteFG,c_CyanBG						; Clear the screen (with a box)
+	lcurses.Box (01,01,25,80,c_FALSE)										; by coloring it Cyan
+
+	display.at 08,23,"End of Functon Key Demonstration"						; display text
+
+	display.at 10,25,firstName
+	display.at 11,25,lastName
+	display.at 12,25,addressLine1
+	display.at 13,25,addressLine2
+	display.at 14,25,addressLine3
+	display.at 15,25,postcode9
+
+	display.at 17,23, "	   Hit any key to continue"							; display text
+	accept.at 18,38, w_Response												; and get a response
+
+
+
+
+END.SUB D_1_Process
+
+;=======================================================================
+;		Finalise  
+;=======================================================================
+BEGIN.SUB Z_1_Finalise	
+
+	cursor 01,01 | 	display c_ResetAll,c_BlackBG,c_WhiteFG					; rest options
+	lcurses.Box (01,01,24,80,c_FALSE)										; clear the screen
+	display LF
+
+END.SUB Z_1_Finalise
+
+
+
+
+

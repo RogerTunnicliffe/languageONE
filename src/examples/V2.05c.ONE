@@ -1,0 +1,616 @@
+%include 'include/BEGIN.PROGRAM'
+;
+;	This demonstration program shows a multiuser data entry program. 
+;	It does demonstrate:-
+;		1) How to comminicate with an external file handler
+
+;	Refer to VERSION.HISTORY for...well...version history
+
+;	BEGIN.SYNONYMS **************************************
+;		$.	:	WORDS.  
+;		@.	:	INTEGERS.  
+;		#.	:	NUMBERS.  
+;		f.	:	FILES.
+;		xT.	:	XTABLES. 
+;	END.SYNONYMS ****************************************
+
+;	==========================================================================
+;	This program has been taken up into the languageONE system and is provided
+;	as the languageONE GUI make utility 'GUI-makeONE'
+;	==========================================================================
+
+;=======================================================================
+;		  PROGRAM DATA
+;=======================================================================	      
+
+;-----------------------------------------------------------------------
+;		DICTIONARY
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.DICTIONARY'
+
+	insertword w_MSGPortNo,		0005,''
+	insertword w_Screen0,		0024,{'html/2-05-screen.html',0x00}
+	
+	insertword w_Response,		2048,''	
+	insertword x_Null,			0001,0x00
+	
+	insertword w_UserInput,		0001,''
+	
+	insertword w_Msg,			0384,''
+	insertword w_AcctNo,		0005,''	
+	insertword w_Description,	0128,''
+	insertword w_Date,			0008,''
+	insertword w_Time,			0006,''
+	insertword w_DateTime,		0014,''
+
+			
+%include 'include/END.DICTIONARY'
+
+;-----------------------------------------------------------------------
+;		MATRIX
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.MATRIX'
+
+  ; Common Counters
+	INSERTNUMBER I,						0,'999999'
+	INSERTNUMBER J,						0,'999999'
+	INSERTNUMBER K,						0,'999999'
+
+  ; This programs 	
+  	insertnumber n_GUIPortNo,		01024,'99999'
+  	insertnumber n_MSGPortNo,		32767,'99999'
+
+  	insertnumber b_Add,		  	  c_FALSE,'9'
+  	
+
+	
+	insertnumber b_acctSrchFlag,		0,'99999'
+	insertnumber n_tranSrchFlag,		0,'99999'
+	
+%include 'include/END.MATRIX'
+
+;-----------------------------------------------------------------------
+;		FILES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.FILES'
+
+   %define c_coaRecordLength 60
+	insertfile c_INDEXED,coaFile,'./coaFile.dat'
+	  begin.record c_coaRecordLength,coaRecord
+		insertword		coaAcctNo,				05,''
+		insertword		coaDescription,  		30,''
+		insertword 		coaFlag1,				02,''
+		insertword		coaFlag2,				01,''
+		insertword		coaFlag3,				01,''
+		insertword		coaFlag4,				01,''
+		insertword		coaBalanceIndicator,	02,''
+		insertword		coaControlAcctNo,		05,''
+		insertnumber	coaDepreciation,		00,'999'
+		insertnumber	coaUnitPrice,			00,'9999.9999'
+		insertword		coaCR,					01, 0x0A
+	  end.record coaRecord
+  
+   %define c_gjRecordLength 244
+	insertfile c_INDEXED,gjFile,'./gjFile.dat'
+	  begin.record c_gjRecordLength,gjRecord
+	  	insertnumber	gjDate,					00,'99999999'
+	  	insertnumber	gjTime,					00,'999999'
+	  	insertword		gjDRAcctNo,				05,''
+	  	insertword		gjCRAcctNo,				05,''
+	  	insertword		gjDRCtrlAcctNo,			05,''
+	  	insertword		gjCRCtrlAcctNo,			05,''
+	  	insertword		gjDescription,		000128,''
+	  	insertnumber	gjValue,				00,'999999.99'
+	  	insertnumber	gjNoOfUnits,			00,'999999.9999'
+		insertword		gjReference,			10,''
+	  	insertnumber	gjINVTranType,			00,'9'
+	  	insertword		gjINVAcctNo,			05,''
+	  	insertnumber	gjINVParcelNo,			00,'999'
+	  	insertnumber	gjINVGrouping,			00,'999'
+	  	insertnumber	gjFrankedAmt,			00,'999999.99'
+	  	insertnumber	gjImputedCredit,		00,'999999.99'
+	  	insertnumber	gjSUnitPrice,			00,'999999.9999'
+	  	insertword		gjSReference,			10,''
+		insertword		gjCR,					01, 0x0A
+	  end.record gjRecord
+
+%include 'include/END.FILES'
+
+;-----------------------------------------------------------------------
+;		TABLES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.TABLES'
+%include 'include/END.TABLES'
+
+
+;=======================================================================
+;		PROGRAM INSTRUCTIONS
+;		Mainline  
+;=======================================================================
+%include 'include/BEGIN.INSTRUCTIONS'
+
+	$Call A_1_Initial
+	
+	if ERROR_CODE = 0
+		www.process (w_Screen0,w_Response,0x00,C_1_POST)
+		$Call Z_1_Finalise
+	end.if
+
+%include 'include/END.INSTRUCTIONS'
+%include 'include/END.PROGRAM'      
+
+;=======================================================================
+;		PROGRAM PROCEDURES
+;=======================================================================
+
+;=======================================================================
+;		INITIALISATION
+;=======================================================================
+BEGIN.SUB A_1_Initial
+
+;	-------------------------------
+;	GET GUI PORT NUMBER
+;	-------------------------------
+	n_GUIPortNo = {w_CommandLine,1,5}
+
+	if n_GUIPortNo < 1025				; The server listens on 1024
+	
+		display.line '[000001]GUI Port No cannot be < 1025'
+		TERMINATE 1
+		
+	else
+	
+	;	OPEN THE SOCKET 
+		www.open (n_GUIPortNo)
+		if ERROR_CODE != 0
+			display.line '[000002]Cannot create GUI socket'
+			TERMINATE 2
+		end.if
+		
+	end.if
+
+;	-------------------------------
+;	GET MSG PORT NUMBER
+;	-------------------------------
+	$.find {" ",I},w_CommandLine
+	w_MSGPortNo = {w_CommandLine,[I + 1]}	
+	n_MSGPortNo = w_MSGPortNo
+
+	if n_MSGPortNo < 32767
+	
+		display.line '[000003]MSG Port No cannot be < 32767'
+		TERMINATE 3
+		
+	end.if
+
+
+END.SUB A_1_Initial
+
+;=======================================================================
+;	GET
+;=======================================================================
+BEGIN.SUB B_1_GET
+END.SUB B_1_GET
+
+;=======================================================================
+;	POST
+;=======================================================================
+BEGIN.SUB C_1_POST
+	
+	RETURN_CODE = 0
+	ERROR_CODE = 0
+
+	$.find ({'COMMIT=',I},w_Response)
+	if I > 0	
+		ERROR_CODE = 99
+		exit.sub C_1_POST
+	end.if
+	
+	$Call C_1_1_ChartOfAccounts
+	$Call C_1_2_GeneralJournal
+
+END.SUB C_1_POST
+
+;===============================================================================
+;	Chart of Accounts
+;===============================================================================
+BEGIN.SUB C_1_1_ChartOfAccounts
+
+	$.find ({'coaACCTNO=',I},w_Response)
+	if I > 1
+	   $Call C_1_1_1_coaKEY
+		exit.sub C_1_1_ChartOfAccounts
+	end.if	
+
+	$.find ({'SEARCH=ACCT',I},w_Response)
+	if I > 1
+		$Call C_1_1_2_coaSEARCH
+		exit.sub C_1_1_ChartOfAccounts
+	end.if	
+	
+	$.find ({'acctVALIDATE=',I},w_Response)
+	if I > 1
+	   $Call C_1_1_3_coaVALIDATE
+	   exit.sub C_1_1_ChartOfAccounts
+	end.if
+
+	$.find ({'coaDESCRIPTION=',I},w_Response)
+	if I > 1
+	   $Call C_1_1_4_coaDATA
+	   exit.sub C_1_1_ChartOfAccounts
+	end.if
+	
+	$.find ({'coaDELETE=',I},w_Response)
+	if I > 1
+		w_Msg			= "127.000.000.001"
+		{w_Msg,16}		= w_MSGPortNo
+		{w_Msg,21}		= "1D "
+		www.SendMsg "127.0.0.1","1024",w_Msg		
+		www.RecvMsg "127.0.0.1",w_MSGPortNo,w_Msg
+		if {w_Msg,1,1}	= "9"
+			w_Response	= "ERROR"
+			RETURN_CODE = 5
+			display.line "[000004]coaFile File System Error"
+		end.if
+		exit.sub C_1_1_ChartOfAccounts
+	end.if	
+
+	$.find ({'coaEXIT=',I},w_Response)
+	if I > 1
+		w_Msg			= "127.000.000.001"
+		{w_Msg,16}		= w_MSGPortNo
+		{w_Msg,21}		= "1X "
+		www.SendMsg "127.0.0.1","1024",w_Msg		
+		www.RecvMsg "127.0.0.1",w_MSGPortNo,w_Msg
+		if {w_Msg,1,1}	= "9"
+			w_Response	= "ERROR"
+			RETURN_CODE = 5
+			display.line "[000004]coaFile File System Error"
+		end.if
+		exit.sub C_1_1_ChartOfAccounts
+	end.if	
+
+END.SUB C_1_1_ChartOfAccounts
+
+;-------------------------------------------------------------------------------
+;	Chart of Accounts Key - get record
+;-------------------------------------------------------------------------------
+BEGIN.SUB C_1_1_1_coaKEY
+
+;	********************************************
+;	w_Msg =	xxxxxRecord
+;			x = IP Address "999.999.999.999"
+;			x = Port No "99999"
+;			x = File No where 1=coaFile,2=gjFile
+;			x = (V)alidate,(R)ead,(W)rite,(S)tart,(N)ext,(D)elete,(X)exit
+;			x = Lock,Unlock,Blank(No Lock)
+;
+;	123456789012345678901234
+;	999.999.999.999nnnnn1RLRecord
+;	********************************************
+
+;	---------------
+;	Process the KEY
+;	---------------
+	I = I + 10
+	$.find ({" ",J},{w_Response,I})								; Get the end location of the field
+	if J = 0
+		$.find ({x_Null,J},{w_Response,I})
+	end.if
+	
+	if J > 0
+		
+	;	-----------------
+	;	Add/Modify Record
+	;	-----------------
+		w_Msg			= "127.000.000.001"
+		{w_Msg,16}		= w_MSGPortNo
+		{w_Msg,21}		= "1RL"
+		{w_Msg,24,5} 	= {w_Response,I,[J - I + 1]}
+		
+		www.SendMsg "127.0.0.1","1024",w_Msg		
+		www.RecvMsg "127.0.0.1",w_MSGPortNo,w_Msg
+
+		begin.test c_TRUE
+			when {w_Msg,1,1} = "1"
+				w_Response = "LOCKED"
+				RETURN_CODE = 6
+				exit.sub C_1_1_1_coaKEY
+			wend
+
+			when {w_Msg,1,1} = "9"
+				w_Response = "ERROR"
+				RETURN_CODE = 5
+				display.line "[000005]coaFile File System Error"
+				exit.sub C_1_1_1_coaKEY
+			wend
+		end.test
+		
+	;	-------------
+	;	Load Response
+	;	-------------
+		$.StringToRecord {w_Msg,2},coaRecord
+
+		w_Response			= coaDescription
+		{w_Response,31,1}	= "^"
+		{w_Response,32}		= coaFlag1
+		{w_Response,34,1}	= "^"
+		{w_Response,35} 	= coaFlag2
+		{w_Response,36,1}	= "^"				
+		{w_Response,37} 	= coaFlag3
+		{w_Response,38,1}	= "^"				
+		{w_Response,39} 	= coaFlag4
+		{w_Response,40,1}	= "^"		
+		{w_Response,41} 	= coaBalanceIndicator
+		{w_Response,43,1}	= "^"				
+		{w_Response,44} 	= coaControlAcctNo
+		{w_Response,49,1}	= "^"				
+		{w_Response,50} 	= coaDepreciation
+		{w_Response,53,1}	= "^"				
+		{w_Response,54} 	= coaUnitPrice
+		{w_Response,64,1}	= "^"
+		RETURN_CODE = 65											; tells WWW.LIB to return Response to the browser
+		
+	end.if
+	
+END.SUB C_1_1_1_coaKEY
+
+;-------------------------------------------------------------------------------
+;	Chart of Accounts Data - search
+;-------------------------------------------------------------------------------
+BEGIN.SUB C_1_1_2_coaSEARCH
+
+;	********************************************
+;	w_Msg =	xxxxxRecord
+;			x = IP Address "999.999.999.999"
+;			x = Port No "99999"
+;			x = File No where 1=coaFile,2=gjFile
+;			x = (V)alidate,(R)ead,(W)rite,(S)tart,(N)ext,(D)elete,(X)exit
+;			x = Lock,Unlock,Blank(No Lock)
+;
+;	123456789012345678901234
+;	999.999.999.999nnnnn1RLRecord
+;	********************************************
+
+	w_Msg			= "127.000.000.001"
+	{w_Msg,16}		= w_MSGPortNo
+	{w_Msg,21}		= "1"
+
+	if b_acctSrchFlag = 0
+		{w_Msg,22}	= "S "
+		b_acctSrchFlag = 1	
+	else
+		{w_Msg,22}	= "N "
+	end.if
+	
+	www.SendMsg "127.0.0.1","1024",w_Msg
+	www.RecvMsg "127.0.0.1",w_MSGPortNo,w_Msg
+
+	if {w_Msg,1,1} = "8"								; EOF
+		b_acctSrchFlag = 0
+		w_Response = "99999"
+		RETURN_CODE = 5
+	else
+		w_Response = {w_Msg,2,5}		
+		{w_Response,7} = {w_Msg,7,30}		
+		RETURN_CODE = 36		
+	end.if
+
+END.SUB C_1_1_2_coaSEARCH
+
+;-------------------------------------------------------------------------------
+;	Chart Of Accounts Data - validate
+;-------------------------------------------------------------------------------
+BEGIN.SUB C_1_1_3_coaVALIDATE
+
+;	-------------------
+;	Process the ACCT No
+;	-------------------
+	I = I + 13
+	$.find ({" ",J},{w_Response,I})									; Get the end location of the field
+	if J = 0
+		$.find ({x_Null,J},{w_Response,I})
+	end.if
+
+	if J > 0
+
+	;	---------------
+	;	Find Account No
+	;	---------------
+		w_Msg			= "127.000.000.001"
+		{w_Msg,16}		= w_MSGPortNo
+		{w_Msg,21}		= "1V "
+		{w_Msg,24,5} 	= {w_Response,I,[J - I + 1]}
+		
+		www.SendMsg "127.0.0.1","1024",w_Msg		
+		www.RecvMsg "127.0.0.1",w_MSGPortNo,w_Msg
+
+		begin.test c_TRUE
+
+			when {w_Msg,1,1} = "2"
+				w_Response = "INVALID"
+				RETURN_CODE = 7
+				display.line "[000005]VALID Account"				
+			wend
+		
+			when {w_Msg,1,1} = "9"
+				w_Response = "ERROR"
+				RETURN_CODE = 5
+				display.line "[000005]coaFile File System Error"
+			wend
+			
+			otherwise
+				w_Response = "VALID"
+				RETURN_CODE = 5
+				display.line "[000005]VALID Account"
+
+		end.test	
+
+	else
+
+		w_Response = "INVALID"
+		RETURN_CODE = 7
+		display.line "[000005]INVALID Account"
+		
+	end.if
+	
+END.SUB C_1_1_3_coaVALIDATE
+
+;-------------------------------------------------------------------------------
+;	Chart of Accounts Data - put record
+;-------------------------------------------------------------------------------
+BEGIN.SUB C_1_1_4_coaDATA
+
+;	----------------
+;	Process the DATA
+;	----------------
+	I = I + 15
+	$.find ({'&',J},{w_Response,I})
+	w_Description = {w_Response,I,[J - I]}
+	repeat.for K,[J - I - 2],1
+		if {w_Description,K,3} = "%20"
+			{w_Description,K,1} = spaces(1)
+			{w_Description,[K + 1]} = {w_Description,[K + 3]}
+		end.if
+	end.repeat
+	coaDescription = w_Description
+	
+	$.find ({'coaFLAG1=',I},w_Response)
+	I = I + 9
+	$.find ({'&',J},{w_Response,I})
+	coaFlag1 = {w_Response,I,[J - I]}	
+	
+	$.find ({'coaFLAG2=',I},w_Response)
+	I = I + 9
+	$.find ({'&',J},{w_Response,I})
+	coaFlag2 = {w_Response,I,[J - I]}	
+
+	$.find ({'coaFLAG3=',I},w_Response)
+	I = I + 9
+	$.find ({'&',J},{w_Response,I})
+	coaFlag3 = {w_Response,I,[J - I]}	
+		
+	$.find ({'coaFLAG4=',I},w_Response)
+	I = I + 9
+	$.find ({'&',J},{w_Response,I})			
+	coaFlag4 = {w_Response,I,[J - I]}	
+
+	$.find ({'coaBALANCEINDICATOR=',I},w_Response)
+	I = I + 20	
+	$.find ({'&',J},{w_Response,I})
+	coaBalanceIndicator = {w_Response,I,[J - I]}	
+	
+	$.find ({'coaCONTROLACCTNO=',I},w_Response)
+	I = I + 17
+	$.find ({'&',J},{w_Response,I})
+	if J > I
+		coaControlAcctNo = {w_Response,I,[J - I]}
+	else
+		coaControlAcctNo = spaces(1)
+	end.if
+	
+	$.find ({'coaDEPRECIATION=',I},w_Response)
+	I = I + 16
+	$.find ({'&',J},{w_Response,I})	
+	#.eq coaDepreciation,{w_Response,I,[J - I]}	
+
+	$.find ({'coaUNITPRICE=',I},w_Response)
+	I = I + 13
+	$.find ({'&',J},{w_Response,I})	
+	#.eq coaUnitPrice,{w_Response,I,[J - I]}
+
+;	--------------------
+;	Now Write the record
+;	--------------------
+;	********************************************
+;	w_Msg =	xxxxxRecord
+;			x = IP Address "999.999.999.999"
+;			x = Port No "99999"
+;			x = File No where 1=coaFile,2=gjFile
+;			x = (V)alidate,(R)ead,(W)rite,(S)tart,(N)ext,(D)elete,(X)exit
+;			x = Lock,Unlock,Blank(No Lock)
+;
+;	123456789012345678901234
+;	999.999.999.999nnnnn1RLRecord
+;	********************************************
+
+	w_Msg			= "127.000.000.001"
+	{w_Msg,16}		= w_MSGPortNo
+	{w_Msg,21}		= "1"
+	{w_Msg,22}		= "WU"
+
+	$.RecordToString coaRecord,{w_Msg,24}
+	www.SendMsg "127.0.0.1","1024",w_Msg
+	www.RecvMsg "127.0.0.1",w_MSGPortNo,w_Msg
+
+	if {w_Msg,1,1} != "0"
+		w_Response = "ERROR"
+		RETURN_CODE = 5
+		display.line "[000006]coaFile File System Error"
+	end.if
+	
+END.SUB C_1_1_4_coaDATA
+
+;===============================================================================
+;	General Journal
+;===============================================================================
+BEGIN.SUB C_1_2_GeneralJournal
+END.SUB C_1_2_GeneralJournal
+
+;-------------------------------------------------------------------------------
+;	General Journal Key - get record
+;-------------------------------------------------------------------------------
+BEGIN.SUB C_1_2_1_gjKEY
+END.SUB C_1_2_1_gjKEY
+
+;-------------------------------------------------------------------------------
+;	General Journal - Initialise Record
+;-------------------------------------------------------------------------------
+BEGIN.SUB C_1_2_1_1_InitRecord
+
+	gjDate 			= {w_DateTime,1,8}
+	gjTime 			= {w_DateTime,9,6}
+	gjDRAcctNo		= spaces(1)
+	gjCRAcctNo		= spaces(1)
+	gjDescription	= spaces(1)
+	gjValue			= 0
+	gjNoOfUnits		= 0
+	gjReference		= spaces(1)
+	gjINVTranType	= 0
+	gjINVAcctNo		= spaces(1)
+	gjINVParcelNo	= 0
+	gjINVGrouping	= 0
+	gjFrankedAmt	= 0
+	gjImputedCredit	= 0
+	
+END.SUB C_1_2_1_1_InitRecord 
+
+;-------------------------------------------------------------------------------
+;	General Journal - search
+;-------------------------------------------------------------------------------
+BEGIN.SUB C_1_2_2_gjSEARCH
+END.SUB C_1_2_2_gjSEARCH
+
+;-------------------------------------------------------------------------------
+;	General Journal Data - validate
+;-------------------------------------------------------------------------------
+BEGIN.SUB C_1_2_3_gjVALIDATE
+END.SUB C_1_2_3_gjVALIDATE
+
+;-------------------------------------------------------------------------------
+;	General Journal Data - put record
+;-------------------------------------------------------------------------------
+BEGIN.SUB C_1_2_4_gjDATA
+END.SUB C_1_2_4_gjDATA
+
+;=======================================================================
+;	FINALISATION
+;=======================================================================
+BEGIN.SUB Z_1_Finalise
+
+;	----------------
+;	CLOSE THE SOCKET 
+;	----------------
+	www.close (n_GUIPortNo)
+	
+END.SUB Z_1_Finalise

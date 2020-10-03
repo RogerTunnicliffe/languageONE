@@ -1,0 +1,1347 @@
+%include 'include/BEGIN.PROGRAM'
+
+;	BEGIN.SYNONYMS **************************************
+;		$.			:	WORDS.  
+;		@.			:	INTEGERS.  
+;		#.			:	NUMBERS.  
+;		f.			:	FILES. 
+;		T.			:	TABLES.
+;		xT.			:	XTABLES.
+;		Tbl_Black	:	TblNoOff
+;		Tbl_White	:	TblColour
+;	END.SYNONYMS ****************************************
+
+;=======================================================================
+;		  PROGRAM DATA
+;=======================================================================	      
+
+;-----------------------------------------------------------------------
+;		DICTIONARY
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.DICTIONARY'
+
+	insertword w_PortError,			0024,'Port No cannot be < 1024' 
+	insertword w_ConnectError,		0020,'Cannot create socket'
+
+	insertword w_screen0,			0022,{'html/2-07-screen.html',0x00}			
+	insertword w_Response,			2048,''	
+	
+%include 'include/END.DICTIONARY'
+
+;-----------------------------------------------------------------------
+;		MATRIX
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.MATRIX'
+
+	%define c_Black			01
+	%define c_White 		02
+	%define c_BearingOff	20	
+	
+	%define c_bornOff		26
+	%define c_onBar			01
+
+  ; Common Counters
+	INSERTNUMBER I,						0,'999999'
+	INSERTNUMBER J,						0,'999999'
+	INSERTNUMBER K,						0,'999999'
+	INSERTNUMBER L,						0,'999999'
+	INSERTNUMBER M,						0,'999999'
+
+  ; This programs 
+  
+ 	insertnumber n_PortNo,			 1024,'999999'
+ 
+	insertnumber n_Dice1,				0,'9'
+	insertnumber n_Dice2,				0,'9'
+	insertnumber n_Dice,				0,'9'
+	
+	insertnumber n_StartIdx,			0,'99'
+	insertnumber n_Idx,					0,'999'	
+	insertnumber n_mveUBOUND,			0,'999'
+	
+	insertnumber n_Ctr,					0,'999-'
+	insertnumber n_NoOfMoves,			0,'9'
+	insertnumber n_SaveNoOfMoves,		0,'9'
+	insertnumber n_TotalStat,			0,'999-'
+	insertnumber n_SaveTotalStat,		0,'999-'
+
+	insertnumber n_NoOfBlots,		 	0,'9'
+	insertnumber n_MoveNo,				0,'999'
+	
+	insertnumber z,0,'99-'
+
+%include 'include/END.MATRIX'
+
+;-----------------------------------------------------------------------
+;		FILES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.FILES'
+
+	begin.record 4,TblRecord
+	 	insertnumber		TblNoOff,			00,'99'
+	 	insertnumber		TblColour,			00,'99'
+	end.record TblRecord
+	
+	begin.record 15,MoveRecord
+		insertnumber		mveNoOff,			00,'99'	
+		insertnumber		mveFrom,			00,'99'
+		insertnumber		mveFromBlkStat,		00,'99-'	
+		insertnumber		mveTo,				00,'99'	
+		insertnumber		mveToBlkStat,		00,'99-'
+		insertnumber		mveToWhtStat,		00,'99-'
+	end.record MoveRecord
+
+	begin.record 2,DiceRecord
+	 	insertnumber		Dice1,	00,'9'
+	 	insertnumber		Dice2,	00,'9'
+	end.record DiceRecord
+
+	insertfile c_LF,DICE_FILE,'./V2.07.dice'
+	
+%include 'include/END.FILES'
+	
+;-----------------------------------------------------------------------
+;		TABLES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.TABLES'
+	
+	inserttable Tbl,104			; 04 * 26
+	inserttable Mve,3840		; 15 * 128 * 2
+
+	inserttable Dice,52 ; 02,26
+
+%include 'include/END.TABLES'
+
+;=======================================================================
+;		PROGRAM INSTRUCTIONS
+;		Mainline  
+;=======================================================================
+%include 'include/BEGIN.INSTRUCTIONS'
+
+	$Call A_1_Initial									
+
+	if RETURN_CODE = 0
+		www.process (w_screen0,w_Response,B_1_GET,C_1_POST)	
+		$Call Z_1_Finalise
+	end.if
+
+%include 'include/END.INSTRUCTIONS'
+%include 'include/END.PROGRAM'      
+
+;=======================================================================
+;		PROGRAM PROCEDURES
+;=======================================================================
+
+;-------------------------------------------------------------------------------
+;		INITIALISATION
+;-------------------------------------------------------------------------------
+BEGIN.SUB A_1_Initial
+
+;	-------------------------------
+;	GET PORT NUMBER
+;	-------------------------------
+	numbers.eq (n_PortNo,{w_CommandLine,1,6})
+	
+	if n_PortNo < 1024
+	
+		display.line w_PortError
+		integers.eq(RETURN_CODE,99)
+		exit.sub A_1_Initial
+		
+	else
+	
+	;	OPEN THE SOCKET 
+		www.open (n_PortNo)
+		if RETURN_CODE != 0
+			display.line w_ConnectError
+			integers.eq (RETURN_CODE,99)
+			exit.sub A_1_Initial
+		end.if
+		
+	end.if
+
+;	-------------------------------
+;	BIND TABLES
+;	-------------------------------
+	T.Bind Tbl,TblRecord,26
+	T.Bind Mve,MoveRecord,128,2
+	
+	T.Bind Dice,DiceRecord,26
+		Dice1[1] = 3 | Dice2[1] = 4	
+			Dice1[2] = 6 | Dice2[2] = 5
+;		Dice1[1] = 1 | Dice2[1] = 5
+;			Dice1[2] = 6 | Dice2[2] = 4
+;		Dice1[3] = 6 | Dice2[3] = 1
+;			Dice1[4] = 6 | Dice2[4] = 1
+;		Dice1[5] = 4 | Dice2[5] = 4
+;			Dice1[6] = 2 | Dice2[6] = 3
+;		Dice1[7] = 6 | Dice2[7] = 1
+;			Dice1[8] = 5 | Dice2[8] = 4
+;		Dice1[9] = 3 | Dice2[9] = 6
+;			Dice1[10] = 3 | Dice2[10] = 2
+;		Dice1[11] = 4 | Dice2[11] = 5
+;			Dice1[12] = 5 | Dice2[12] = 2
+	
+	f.open (DICE_FILE,$write+$beginning)
+
+END.SUB A_1_Initial
+
+;-------------------------------------------------------------------------------
+;	GET
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_1_GET
+
+	ERROR_CODE = 0
+	RETURN_CODE = 0
+
+END.SUB B_1_GET
+
+;-------------------------------------------------------------------------------
+;	POST
+;-------------------------------------------------------------------------------
+BEGIN.SUB C_1_POST
+	
+	$.find ({'ROLLDICE',I},w_Response)
+	if I > 1
+	   $Call D_1_RollDice
+	   exit.sub C_1_POST
+	end.if	
+	
+	$.find ({'findmoves:',I},w_Response)
+	if I > 1
+	   $Call E_1_FindMoves
+	   exit.sub C_1_POST
+	end.if		
+	
+END.SUB C_1_POST
+
+;-------------------------------------------------------------------------------
+;	Roll Dice
+;-------------------------------------------------------------------------------
+BEGIN.SUB D_1_RollDice
+
+	repeat _01
+		#.random(1,n_Dice1)
+		@.and(n_Dice1,0x07)
+		.if  n_Dice1 > 0 | .and n_Dice1 < 7 | .end
+			exitRepeat = c_TRUE
+		end.if
+	end.repeat _01
+	
+	repeat _02
+		#.random(1,n_Dice2)
+		@.and(n_Dice2,0x07)
+		.if  n_Dice2 > 0 | .and n_Dice2 < 7 | .end
+			exitRepeat = c_TRUE
+		end.if
+	end.repeat _02
+
+;	z = z + 1
+;	if Dice1[z] > 0
+;		n_Dice1 = Dice1[z]
+;		n_Dice2 = Dice2[z]
+;	end.if
+	
+	w_Response = {n_Dice1,'9'}
+	{w_Response,2,1} = {n_Dice2,'9'}
+	RETURN_CODE = 2
+
+	files $write,DICE_FILE,n_Dice1,',',n_Dice2
+	
+END.SUB D_1_RollDice
+
+;-------------------------------------------------------------------------------
+;	Perform the Move routines
+;-------------------------------------------------------------------------------
+
+BEGIN.SUB E_1_FindMoves
+
+	$Call E_1_1_Initial
+	$Call E_1_2_Move
+	$Call E_1_9_Finalise
+
+	if n_Dice1 = n_Dice2
+		I = -9
+		$Call E_1_1_Initial
+		$Call E_1_2_Move
+		$Call E_1_9_Finalise
+	end.if
+	
+		
+END.SUB E_1_FindMoves
+
+;-------------------------------------------------------------------------------
+;	INITIALISATION
+;-------------------------------------------------------------------------------
+BEGIN.SUB E_1_1_Initial
+
+	n_MoveNo = n_MoveNo + 1
+	
+;	--------------
+;	Grab the board
+;	--------------
+	J = 0 | I = I + 10
+	repeat _03
+		J = J + 1
+		if J > 26 
+			exitRepeat = c_TRUE
+		else
+			TblNoOff[J]		= {w_Response,I,2}
+			I = I + 3
+			TblColour[J]	= {w_Response,I,2}
+			I = I + 3			
+		end.if
+	end.repeat _03 		
+
+;	--------------------------
+;	Initialise the moves table
+;	--------------------------
+	mveNoOff		= 0	
+	mveFrom			= 0
+	mveFromBlkStat	= 0	
+	mveTo			= 0	
+	mveToBlkStat	= 0
+	mveToWhtStat	= 0
+	n_mveUBOUND		= 0		
+	repeat.for I,1,128
+		repeat.for J,1,2
+			T.rput Mve,I,J
+		end.repeat
+	end.repeat
+	
+;	------------------------------
+;	Set the BearOff Flag each time
+;	------------------------------
+	n_StartIdx = 20
+	if Tbl_Black[c_onBar] > 0
+		n_StartIdx = 1
+	else
+		repeat.for I,2,19
+			if TblColour[I] = c_Black
+				n_StartIdx = I
+				exitRepeat = c_TRUE
+			end.if
+		end.repeat
+	end.if
+	
+;	-------------------------
+;	Count the number of blots
+;	-------------------------
+	n_NoOfBlots = 0
+	repeat.for I,1,25
+		.if TblColour[I] = c_Black
+		.and TblNoOff[I] = 1
+		.end
+			n_NoOfBlots = n_NoOfBlots + 1
+		end.if
+	end.repeat	
+
+END.SUB E_1_1_Initial
+
+;-------------------------------------------------------------------------------
+;	MOVE
+;-------------------------------------------------------------------------------
+BEGIN.SUB E_1_2_Move
+
+	if f_0_SpecialMove														; If a special moves
+	else																	; 	else
+		$Call E_1_2_1_BuildTable											; Get all possible moves
+		$Call E_1_2_2_RateMoves												; rate them
+	end.if
+
+;	------------------------
+;	Now select the best move
+;	------------------------
+	$Call E_1_2_4_SelectBestMove											; and select the best one
+
+;	------------------------------
+;	DEBUG : Display the move table
+;	------------------------------
+	$Call E_2_9_DisplayTable
+
+END.SUB E_1_2_Move
+
+;-------------------------------------------------------------------------------
+;	SPECIAL MOVES
+;-------------------------------------------------------------------------------
+BEGIN.FUNCTION f_0_SpecialMove
+
+	%macro $testDice 2
+
+		integers.eq RETURN_CODE,c_FALSE
+		.if  n_Dice1,=,%1 
+		.and n_Dice2,=,%2
+		.end	
+			integers.eq RETURN_CODE,c_TRUE
+		end.if
+	
+		.if n_Dice1,=,%2
+		.and n_Dice2,=,%1
+		.end
+			integers.eq RETURN_CODE,c_TRUE
+		end.if
+	
+	%endmacro
+
+;	----------------------
+;	Only if NOT on the bar
+;	----------------------
+	if TblNoOff[c_onBar] > 0
+		exit.function f_0_SpecialMove
+	end.if
+
+;	---------------------------------
+;	Bearing off is special processing
+;	---------------------------------
+	if f_BearingOff
+		RETURN_CODE = c_TRUE
+		exit.function f_0_SpecialMove
+	end.if
+	
+;	----------
+;	Double 1's - ???????????? needs fixing now we are procvessing twice
+;	----------
+	$testDice(1,1)
+	if RETURN_CODE = c_TRUE
+		.if  TblColour[18] = c_Black		
+		.and TblNoOff[18]  > 1
+		.and TblNoOff[19]  < 2
+		.and TblColour[20] = c_Black
+		.and TblNoOff[20]  > 3
+		.and TblNoOff[21]  < 2
+		.end
+			mveNoOff		= 1
+			mveFrom			= 18
+			mveFromBlkStat	= -1	
+			mveTo			= 19
+			mveToBlkStat	= 3
+			mveToWhtStat	= 0
+			T.rput Mve,1,1
+			mveNoOff		= 1
+			mveFrom			= 20
+			mveFromBlkStat	= 0
+			mveTo			= 21
+			mveToBlkStat	= 3
+			mveToWhtStat	= 0
+			T.rput Mve,1,2
+			exit.function f_0_SpecialMove
+		else
+			RETURN_CODE = c_FALSE
+		end.if
+	end.if
+
+	$testDice(6,5)
+	if RETURN_CODE = c_TRUE
+		.if  TblColour[02] = c_Black		
+		.and TblNoOff[08]  < 2
+		.and TblColour[13] = c_Black
+		.end
+			mveNoOff		= 1
+			mveFrom			= 2
+			mveFromBlkStat	= -1	
+			mveTo			= 8
+			mveToBlkStat	= 0
+			mveToWhtStat	= 0
+			T.rput Mve,1,1
+			mveNoOff		= 1
+			mveFrom			= 8
+			mveFromBlkStat	= 0	
+			mveTo			= 13
+			mveToBlkStat	= 3
+			mveToWhtStat	= 0
+			T.rput Mve,1,2
+			exit.function f_0_SpecialMove
+		else
+			RETURN_CODE = c_FALSE
+		end.if
+	end.if
+
+	$testDice(6,1)
+	if RETURN_CODE = c_TRUE
+		.if  TblColour[13] = c_Black		
+		.and TblNoOff[13]  > 2
+		.and TblColour[18] = c_Black
+		.and TblNoOff[18]  > 2
+		.and TblNoOff[19]  < 2 
+		.end
+			mveNoOff		= 1
+			mveFrom			= 13
+			mveFromBlkStat	= 0	
+			mveTo			= 19
+			mveToBlkStat	= 3
+			mveToWhtStat	= 0
+			T.rput Mve,1,1
+			mveNoOff		= 1
+			mveFrom			= 18
+			mveFromBlkStat	= 0	
+			mveTo			= 19
+			mveToBlkStat	= 3
+			mveToWhtStat	= 0
+			T.rput Mve,1,2
+			exit.function f_0_SpecialMove
+		else
+			RETURN_CODE = c_FALSE
+		end.if
+	end.if
+
+	$testDice(3,1)
+	if RETURN_CODE = c_TRUE
+		.if  TblColour[18] = c_Black		
+		.and TblNoOff[18]  > 2
+		.and TblColour[20] = c_Black
+		.and TblNoOff[20]  > 2
+		.and TblNoOff[21]  < 2 
+		.end
+			mveNoOff		= 1
+			mveFrom			= 18
+			mveFromBlkStat	= 0	
+			mveTo			= 21
+			mveToBlkStat	= 3
+			mveToWhtStat	= 0
+			T.rput Mve,1,1
+			mveNoOff		= 1
+			mveFrom			= 20
+			mveFromBlkStat	= 0	
+			mveTo			= 21
+			mveToBlkStat	= 3
+			mveToWhtStat	= 0
+			T.rput Mve,1,2
+			exit.function f_0_SpecialMove
+		else
+			RETURN_CODE = c_FALSE
+		end.if
+	end.if
+
+END.FUNCTION f_0_SpecialMove
+
+;-------------------------------------------------------------------------------
+;	Bearing Off
+;-------------------------------------------------------------------------------
+BEGIN.FUNCTION f_BearingOff
+
+;	---------------------
+	%macro $GetTheMove 2
+		I = 26 - %2															; Convert to location index
+		J = %2																; Store the dice value
+		K = %1																; Store the table occurence
+		tables.fget Tbl,001,TblNoOff,I  									; Now get the number off at that spot
+		L = TblNoOff														; and save it
+	;-- Conditional Assembly												; **********		
+	%if %1 = 2																;%IF WE ARE COMING IN THE 2ND TIME
+		if n_Dice1 = n_Dice2												; If its the same spot
+			L = L - 1														;	take into account the one we just moved
+		end.if																; end
+	%endif																	;%END
+	;-- Conditional Assembly		
+		$Call GetTheMove													; Make the call
+	%endmacro
+;	--------------------
+
+	if n_StartIdx < 20														; If not bearing off yet
+		exit.function f_BearingOff											; 	then exit
+	else																	; else
+		RETURN_CODE = c_TRUE												;	the function returns true
+	end.if																	; end
+	
+	mveNoOff		= 1														; Set move to 1
+	mveFromBlkStat	= 1														; Set from stat to 1 
+	mveToBlkStat	= 0														; Set to stat to 0
+	mveToWhtStat	= 0														; Set to stat to 0
+	
+	$GetTheMove (1,n_Dice1)													; Make the 1st move
+	$GetTheMove (2,n_Dice2)													; Make the 2nd move
+
+	exit.function f_BearingOff												; and exit
+
+;	********************	
+	BEGIN.SUB GetTheMove
+		if Tbl_White[1] > 0													; If white is on the bar
+			$Call FromTheBack												;	just move from the back
+		else																; else
+			if L > 0				 										; If we have a piece to move
+				mveFrom	= I													;	set the From position
+				mveTo	= 26												; 	set the TO position to 26
+				T.rput Mve,1,K												;	write the move
+			else															; else
+				if TblNoOff[[I - J]] > 1									;	if we can fill this spot
+					mveFrom	= [I - J]										;	set FROM to what we have just found
+					mveTo	= I												;	set TO the dice roll
+					T.rput Mve,1,K											;	write the move
+				else														; else
+					$Call FromTheBack										;	move from the back
+				end.if														; end
+			end.if															; end
+		end.if																; end
+	END.SUB GetTheMove
+;	********************	
+	BEGIN.SUB FromTheBack	
+		repeat.for L,20,25													;	from the back of the 4th quandrant
+			if TblNoOff[L] > 0												;	if we find a piece 
+				if L = mveFrom												;	if we have just moved from here
+					if TblNoOff[L] > 1										;	then we must have 2 
+						exitRepeat = c_TRUE									;		exit the loop
+					end.if													; 	end
+				else														;	else
+					exitRepeat = c_TRUE										;		exit the loop
+				end.if														;	end
+			end.if															; 	end
+		end.repeat															;	END REPEAT
+		mveFrom	= L															;	set FROM to what we have just found
+		mveTo	= [L + J]													;	set TO to FROM plus the dice roll
+		T.rput Mve,1,K														;	write the move
+	END.SUB FromTheBack	
+;	********************	
+
+
+END.FUNCTION f_BearingOff
+
+;-------------------------------------------------------------------------------
+;	1st pass identifies all possible moves
+;-------------------------------------------------------------------------------
+BEGIN.SUB E_1_2_1_BuildTable
+
+	%imacro $f_WeHaveAPieceToMove 2
+		integers.eq n_Idx,%1
+		integers.eq n_Dice,%2
+		Call f_WeHaveAPieceToMove
+	%endmacro	
+	%imacro $WriteMove 3
+		if %1,=,1
+			$Call E_1_2_1_2_IncrementIndex							
+		end.if
+		integers.eq mveNoOff,1
+		integers.eq mveFrom,%2
+		integers.calc mveTo,=,%2,+,%3
+		tables.rput (Mve,n_mveUBOUND,%1)		
+	%endmacro
+	
+;	This works by looping around the table via the 1st dice throw. Within that 
+;	throw an inner loop works around the table via the 2nd dice. This process
+;	incorporates all moves by virtue of the 2nd Dice loop starting at the
+;	beginning of the table.
+
+	n_mveUBOUND = 0															; Initialise the moves tables 1st index			
+
+;	-------------------------
+;	Table all available moves
+;	-------------------------
+	repeat.for I,n_StartIdx,25												; START OUTER LOOP
+
+	;	--------------------
+	;	Same one twice moves
+	;	--------------------
+		.if  I 			 = 1												; If its the 1st itereation
+		.and TblNoOff[1] > 0												; and we are on the bar
+		.end																; then
+			$Call E_1_2_1_1_SameoneTwice									; 	Insert the same one twice moves
+		else																; else
+			if TblColour[I] = c_Black										;	if we are black
+				$Call E_1_2_1_1_SameoneTwice								; 		Insert a same one twice move
+			end.if															;	end
+		end.if																; end
+
+	;	-------------------------
+	;	If we have a move to make
+	;	-------------------------
+		$f_WeHaveAPieceToMove (I,n_Dice1)										; START 1st piece to move
+		if RETURN_CODE = c_TRUE
+
+		;	---------------------------------------
+		;	Populate the 1st move in the move table
+		;	---------------------------------------
+			$WriteMove (1,I,n_Dice1)
+	
+		;	----------------------------------
+		;	Now write all other possible moves
+		;	----------------------------------
+			repeat.for J,n_StartIdx,25										; START INNER LOOP
+
+			;	-------------------------
+			;	If we have a move to make
+			;	-------------------------
+				$f_WeHaveAPieceToMove (J,n_Dice2)							; START 2nd piece to move
+				if RETURN_CODE = c_TRUE
+
+				;	---------------------------------------
+				;	Populate the 2nd move in the move table
+				;	---------------------------------------
+					$WriteMove (2,J,n_Dice2)				
+			
+				;	-----------------------------------------------------
+				;	We go to the next record,repopulate the 1st occurence
+				;	-----------------------------------------------------
+					$WriteMove (1,I,n_Dice1)
+				
+				end.if														; END 2nd piece to move
+		
+			end.repeat														; END INNER LOOP
+
+		;	------------------------------------------
+		;	reset this if we did not find a second one
+		;	------------------------------------------
+			if  mveNoOff[n_mveUBOUND,2] = 0									; If we have not found a 2nd move
+				n_mveUBOUND = n_mveUBOUND - 1								; set the previous move as the last
+			end.if															; end														
+			
+		end.if																; END 1st piece to move	
+		
+	end.repeat																; END OUTER LOOP
+	
+;	----------------------------------------------
+;	Now look over the table to see if 2 moves from
+;	the same spot is valid - this could be done in
+;	the primary loop above but is may prove helpful
+;	coded here
+;	----------------------------------------------
+	repeat.for I,1,n_mveUBOUND												; START REPEAT
+		.if  mveFrom[I,1] 			= mveFrom[I,2]							; If we have 2 moves from the same spot
+		.and TblNoOff[mveFrom[I,1]] < 2										; but we only have 1 to move
+		.end																; then
+			mveNoOff[I,2]  = 0												; 	zero out the entry
+		end.if																; end		
+	end.repeat																; END REPEAT
+
+;	******************************************
+	exit.sub E_1_2_1_BuildTable
+;	******************************************
+	
+;	******************************
+;	Can we move the same one twice
+;	******************************	
+	BEGIN.SUB E_1_2_1_1_SameoneTwice
+
+	%imacro $DoIt 2
+		J = %1
+		K = %2
+		$Call E_1_2_1_1_1_DoIt	
+	%endmacro
+	
+	;	--------------------
+	;	If we are on the bar
+	;	--------------------
+		.If  I 			 = 1												; if we are on the bar
+		.and TblNoOff[1] > 1												; and we still need to come off the bar
+		.end																; then
+			exit.sub E_1_2_1_1_SameoneTwice									;	exit
+		end.if																; end
+
+	;	-------------------------------
+	;	If we are NOT ready to bear off
+	;	-------------------------------		
+		.if [I + n_Dice1 + n_Dice2] > 26									; if our role puts us over 26
+		.and n_StartIdx 			< 20									; and we are NOT bearing off
+		.end																; then
+			exit.sub E_1_2_1_1_SameoneTwice									;	exit
+		end.if																; end
+
+	;	--------------------------------------------
+	;	This looks at moving Dice1 followed by Dice2
+	;	and then Dice2 followed by Dice1
+	;	--------------------------------------------
+		$DoIt (n_Dice1,n_Dice2)												; Do the check with Dice 1 and Dice 2
+		$DoIt (n_Dice2,n_Dice1)												; Do the check with Dice 2 and Dice 1
+
+	;	*******************************
+		exit.sub E_1_2_1_1_SameoneTwice			
+	;	*******************************
+
+	;	*************************************
+	;	Does the check with dice combinations
+	;	*************************************	
+		BEGIN.SUB E_1_2_1_1_1_DoIt
+
+			.if TblColour[[I + J]] = c_Black								; If we have a Black
+			.or TblNoOff[[I + J]]  < 2										; or a White blot
+			.end															; then
+
+				$WriteMove (1,I,J)											; store the move
+				
+				L = I + J
+				.if TblColour[[L + K]] = c_Black							; If we have a Black
+				.or TblNoOff[[L + K]]  < 2									; or a White blot
+				.end														; then
+					$WriteMove (2,L,K)										; 	store the move
+				else														; else
+					n_mveUBOUND = n_mveUBOUND - 1							; 	set the previous move as the last
+				end.if
+			end.if
+		
+		END.SUB E_1_2_1_1_1_DoIt
+
+	END.SUB E_1_2_1_1_SameoneTwice
+
+;	****************************************
+;	Function called to see if we have a move
+;	****************************************
+	BEGIN.FUNCTION f_WeHaveAPieceToMove
+	
+	;	---------------
+	;	SOURCE Position
+	;	---------------
+		.if n_Idx			 = 1											; If we are on the Bar 
+		.and TblNoOff[n_Idx] > 0											; and we have a move
+		.end																; end
+		;	continue														;	continue
+		else																; else
+			if TblColour[n_Idx] = c_Black									; If we are black
+			;	continue													;	continue
+			else															; else
+				exit.function f_WeHaveAPieceToMove							;	exit with false
+			end.if															; end
+		end.if																; end
+
+	;	--------------------
+	;	DESTINATION Position
+	;	--------------------
+		.if n_StartIdx 			> 19										; If we are bearing off
+		.and [n_Idx + n_Dice]	> 26										; and our role puts us over 26
+		.end																; then
+			n_Dice 	   			= 26 - n_Idx								;	massage the dice back to 26
+		end.if																; end
+	
+		.if [n_Idx + n_Dice]			= 26								; If we are bearing off 
+		.or TblColour[[n_Idx + n_Dice]]	= c_Black							; or our destination is black
+		.or TblNoOff[[n_Idx + n_Dice]] 	< 2									; or we will get a hit
+		.end																; then
+		;	continue														;	continue
+		else																; else
+			exit.function f_WeHaveAPieceToMove								;	exit with false		
+		end.if																; end
+
+		RETURN_CODE = c_TRUE												; set return code to true		
+
+	END.FUNCTION f_WeHaveAPieceToMove
+
+;	******************************
+;	Increment the tables 1st index
+;	******************************
+	BEGIN.SUB E_1_2_1_2_IncrementIndex
+
+		n_mveUBOUND = n_mveUBOUND + 1										; Increment for the next move
+		if n_mveUBOUND > 128												; If there has been a boundary error
+			display.line "[0128] - Internal table has been exceede"			;	display error message
+			TERMINATE 128													;	and terminate
+		end.if																; end
+
+	END.SUB E_1_2_1_2_IncrementIndex
+	
+END.SUB E_1_2_1_BuildTable
+
+;-------------------------------------------------------------------------------
+;	Rate the moves
+;-------------------------------------------------------------------------------
+BEGIN.SUB E_1_2_2_RateMoves
+
+	%imacro $f_ClearAhead 1
+		integers.eq K,%1
+		Call f_ClearAhead
+	%endmacro
+
+;	---------------------------------------------
+;	The 1st pass looks at both moves in isolation
+;	---------------------------------------------
+	repeat.for I,1,n_mveUBOUND
+		repeat.for J,1,2					
+
+		;	-------------------
+		;	Not bearing off yet
+		;	-------------------
+			.if  n_StartIdx < 20											; If we are not ready to bear off
+			.and mveTo[I,J] > 25											; and our throw puts us at 26
+			.end															; then
+				mveNoOff[I,J] = 0											; 	we cant do this
+			end.if
+
+
+			if mveNoOff[I,J] > 0
+
+			;	--------------------------------
+			;	Ensure we come off the bar first
+			;	--------------------------------
+				If Tbl_Black[c_onBar] > 0									; If we are on the bar
+					if mveFrom[I,J]  = 1									; if this move is off the bar
+						mveFromBlkStat[I,J] = 49							; then set the stat high
+						.if TblColour[mveTo[I,J]] = c_White					; Bonus points if its a hit
+						.and TblNoOff[mveTo[I,J]] = 1
+						.end
+							mveToBlkStat[I,J] = 49
+						end.if
+					end.if
+				else
+				;	--------------
+				;	Leaving a blot
+				;	--------------
+					$f_ClearAhead mveFrom[I,J]								; Dont care if clear ahead
+					if RETURN_CODE = c_TRUE
+					else													; However
+						.if TblNoOff[mveFrom[I,J]] = 2						; if we are leaving a blot
+						.and mveFrom[I,J] > 2								; but NOT at position 2
+						.end
+							begin.test mveFrom[I,J]							; Grade the hardship depending where
+								when > 19									; we are in the 4th quandrant
+									mveFromBlkStat[I,J] = -6				;	then set the stat to -3
+									if Tbl_White[c_onBar] > 0				; If white on the bar
+										mveToBlkStat[I,J] = -50				;	then set the stat to -50
+									end.if									; end
+
+								wend										;
+								when > 13									; We are in the 3rd quandrant
+									mveFromBlkStat[I,J] = -5				;	then set the stat to -2
+								wend										;	
+								when > 7									; We are in the 2nd quandrant
+									mveFromBlkStat[I,J] = -4				;	then set the stat to -1
+								wend										; 
+								otherwise									; We are in the 1st quandrant
+									mveFromBlkStat[I,J] = -3				;	then we dont care too much
+							end.test										; end
+						else												; else
+							.if TblNoOff[mveFrom[I,J]] = 1					; if we are clearing a blot
+							.and TblNoOff[mveTo[I,J]]  > 0					; but not creating a new one
+							.end
+								mveFromBlkStat[I,J]	  = 3					;	give it a score of 3
+							end.if											; end
+						end.if												; end
+					end.if													; end
+				end.if														; end
+				
+			;	---------------
+			;	Creating a blot
+			;	---------------
+			;	We will massage this score depending on the number of existing blots
+				$f_ClearAhead mveTo[I,J]									; Dont care if clear ahead
+				if RETURN_CODE = c_TRUE
+				else														; However
+					.if TblColour[mveTo[I,J]] = c_White						; A blot from a hit or
+					.or TblNoOff[mveTo[I,J]]  = 0							; Maybe we are creating a blot
+					.end
+						begin.test mveTo[I,J]								; Grade the hardship depending where
+							when > 19										; we are in the 4th quandrant
+								mveToBlkStat[I,J] = -6						;	then set the stat to -3
+								if Tbl_White[c_onBar] > 0					; If white on the bar
+									mveToBlkStat[I,J] = -50					;	then set the stat to -50
+								end.if										; end
+							wend											;
+							when > 13										; We are in the 3rd quandrant
+								mveToBlkStat[I,J] = -5						;	then set the stat to -2
+							wend											;	
+							when > 7										; We are in the 2nd quandrant
+								mveToBlkStat[I,J] = -4						;	then set the stat to -1
+							wend											; 
+							otherwise										; We are in the 1st quandrant
+								mveToBlkStat[I,J] = -3						;	then we dont care too much
+						end.test
+					;	Now multiply the stat by the number of existing blost (calculated in f_ClearAhead)
+					;	plus the one we are creating here
+		;				mveToBlkStat[I,J] = mveToBlkStat[I,J] * [n_NoOfBlots + 1]	
+					end.if
+				end.if
+
+			;	--------------------------------
+			;	Creating or re-enforcing a stack
+			;	--------------------------------
+				if TblColour[mveTo[I,J]] = c_Black							; An existing Black spot
+					if TblNoOff[mveTo[I,J]] = 1								; and there is a blot
+						if mveTo[I,J] > 19									; If we are in the home table
+							mveToBlkStat[I,J] = 30							;	very high prioroty to cover it
+						else												; else
+							mveToBlkStat[I,J] = 6							;	a pretty high prioroty to cover it
+						end.if												; end
+					else													; else
+						if TblNoOff[mveTo[I,J]] < 6							; if we are not creating a mountain
+							mveToBlkStat[I,J] 	 = 2						;	give it a score of 2
+						else												; else
+							mveToBlkStat[I,J] 	 = -2						;	give it a score of -2
+						end.if												; end
+					end.if													; end
+				end.if														; end
+
+			;	-------------
+			;	Getting a hit
+			;	-------------
+				if TblColour[mveTo[I,J]] = c_White							; If we have a hit
+	;				.if J = 2												; If its forming a stack make sure
+	;				.and mveTo[I,1] = mveTo[I,2]								
+	;				.end
+	;				else
+						begin.test mveTo[I,J]								; Grade the bonus depending where
+							when > 19										; we are in the 4th quandrant
+								mveToWhtStat[I,J] = +4						;	then set the stat to 4
+							wend											;
+							when > 13										; We are in the 3rd quandrant
+								mveToWhtStat[I,J] = +5						;	then set the stat to 5
+							wend											;
+							when > 7										; We are in the 2nd quandrant
+								mveToWhtStat[I,J] = +6						;	then set the stat to 6
+							wend											;
+							otherwise										; We are in the 1st quandrant
+								mveToWhtStat[I,J] = +7						;	then set the stat to 7
+						end.test
+	;				end.if
+				end.if
+				
+			end.if
+		end.repeat
+	end.repeat
+
+;	---------------------------------------------
+;	The 2nd pass looks at all moves 
+;	---------------------------------------------
+	repeat.for I,1,n_mveUBOUND
+
+		.if mveNoOff[I,1]  > 0												; There will be nothing to do
+	;	.and mveNoOff[I,2] > 0												; here if one is a null move
+		.or mveNoOff[I,2] > 0												; here if one is a null move
+		.end
+
+		;	--------------------------------
+		;	Ensure we come off the bar first
+		;	--------------------------------
+			If Tbl_Black[c_onBar] > 0										; If we are on the bar
+				If Tbl_Black[c_onBar] = 1									;   
+					.if mveFrom[I,1] != 1									;
+					.and mveFrom[I,2] != 1									;
+					.end													;
+						mveNoOff[I,1] = 0									;	
+						mveNoOff[I,2] = 0									;	
+					end.if													; 	end
+				else														; 	else
+					if mveFrom[I,1] != 1									; 	if this move is NOT off the bar
+						mveNoOff[I,1] = 0									;		ignore it
+					end.if													;	end
+					if mveFrom[I,2] != 1									; 	if this move is NOT off the bar
+						mveNoOff[I,2] = 0									;		ignore it
+					end.if													;	end
+				end.if														; 	end
+			end.if															; end
+				
+		;	-------------------
+		;	Creates a new stack
+		;	-------------------
+			if mveTo[I,1] = mveTo[I,2]										; If moving to the same spot
+				begin.test c_TRUE
+					when TblNoOff[mveTo[I,1]] = 0							; when we create a new stack
+			;			mveToBlkStat[I,1] = 3								;	encourage this
+			;			mveToBlkStat[I,2] = 3								;	encourage this
+						if mveTo[I,1] > 19
+							mveToBlkStat[I,1] = 4								;	encourage this
+							mveToBlkStat[I,2] = 4								;	encourage this
+						else
+							mveToBlkStat[I,1] = 3								;	encourage this
+							mveToBlkStat[I,2] = 3								;	encourage this
+						end.if
+					wend
+					when TblNoOff[mveTo[I,1]] < 4							; as long as we dont over-stack
+						mveToBlkStat[I,1] = 3								;	encourage this
+						mveToBlkStat[I,2] = 3								;	encourage this
+					wend
+					otherwise												; at least it is safe
+						mveToBlkStat[I,1] = 2								;	encourage this
+						mveToBlkStat[I,2] = 2								;	encourage this
+				end.test
+			end.if		
+
+		;	----------------------
+		;	2 moved from same spot
+		;	----------------------
+			if mveFrom[I,1] = mveFrom[I,2]									; if we have moved 2 from the same spot			
+				if TblNoOff[mveFrom[I,1]] = 2								; and there were 2 to move
+					mveFromBlkStat[I,1] = 0									;	set back to zero
+					mveFromBlkStat[I,2] = 0									;	set back to zero
+				end.if														;
+				if TblNoOff[mveFrom[I,1]] = 3								; however if there were 3
+					mveFromBlkStat[I,1] = -1								;	downgrade the move							
+					mveFromBlkStat[I,2] = -1								;	downgrade the move
+				end.if			
+			end.if
+
+		;	--------------------
+		;	Same one moved twice
+		;	--------------------
+			if mveTo[I,1] = mveFrom[I,2]									; if moving same one twice
+				mveToBlkStat[I,1] = 0										; then we have no effect here
+			end.if															;
+			if mveTo[I,2] = mveFrom[I,1]									; If moving the same one twice
+				mveToBlkStat[I,2] = 0										; then we have no effect here 
+			end.if
+			
+		end.if
+	end.repeat
+
+;	----------------------------------------------
+;	The 3rd pass aims to get the stragglers moving 
+;	----------------------------------------------
+	.if n_MoveNo > 5
+	.and Tbl_Black[c_onBar] = 0
+	.end
+		repeat.for I,1,n_mveUBOUND
+			if mveFrom[I,1] < 8
+				mveFromBlkStat[I,1] = mveFromBlkStat[I,1] + 3
+			end.if
+			if mveFrom[I,1] < 14
+				mveFromBlkStat[I,1] = mveFromBlkStat[I,1] + 2
+			end.if
+			if mveFrom[I,2] < 8
+				mveFromBlkStat[I,1] = mveFromBlkStat[I,2] + 3
+			end.if
+			if mveFrom[I,2] < 14
+				mveFromBlkStat[I,2] = mveFromBlkStat[I,2] + 2
+			end.if
+		end.repeat
+ 	end.if
+
+ 	J = 0 | K = 0
+ 	repeat.for I,2,25
+ 		if TblColour[I] = c_White
+ 			J = I
+		end.if
+	end.repeat
+ 	repeat.for I,25,2	
+ 		if TblColour[I] = c_Black
+ 			K = I
+		end.if
+	end.repeat
+	.if K > J 
+	.or [K + n_Dice1] > J
+	.or [K + n_Dice2] > J
+	.end
+		repeat.for I,1,n_mveUBOUND
+			.if mveFrom[I,1] = K
+			.and K < 20
+			.end
+				mveFromBlkStat[I,1] = 50				
+			end.if
+			.if mveFrom[I,2] = K
+			.and K < 20
+			.end
+				mveFromBlkStat[I,2] = 50
+			end.if
+		end.repeat
+	end.if
+		
+
+	exit.sub E_1_2_2_RateMoves
+
+	;****************************************
+	;	Clear Ahead
+	;	*************************************
+	BEGIN.FUNCTION f_ClearAhead
+	
+		RETURN_CODE = c_TRUE
+
+		if Tbl_White[1] > 0													; If white on the bar
+			RETURN_CODE = c_FALSE											; 	then you will not be clear ahead
+			exit.function f_ClearAhead										;	exit
+		end.if																; end		
+
+		if TblColour[mveTo[I,1]] = c_White									; If you are getting a hit
+			RETURN_CODE = c_FALSE											; 	then you will not be clear ahead
+			exit.function f_ClearAhead										;	exit
+		end.if																; end
+		
+	;	--------------------------------
+	;	K will contain our mveFrom value
+	;	--------------------------------
+		repeat.for L,K,25													; running through
+			if TblColour[L] = c_White										; 	if we have any whites ahead of us
+				RETURN_CODE = c_FALSE										;		we want to return false
+			end.if
+		end.repeat
+
+	END.FUNCTION f_ClearAhead
+
+END.SUB E_1_2_2_RateMoves
+
+;-------------------------------------------------------------------------------
+;	Select the best move
+;-------------------------------------------------------------------------------
+BEGIN.SUB E_1_2_4_SelectBestMove
+
+	n_SaveTotalStat	= -999
+	n_SaveNoOfMoves = 0
+	K = 0
+	
+	repeat.for I,1,n_mveUBOUND
+
+		n_TotalStat = 0
+		n_NoOfMoves = 0
+		repeat.for J,1,2
+			T.rget (Mve,I,J)
+			n_TotalStat = n_TotalStat + mveFromBlkStat + mveToBlkStat + mveToWhtStat
+			n_NoOfMoves = n_NoOfMoves + mveNoOff
+		end.repeat
+		
+		.if  n_TotalStat > n_SaveTotalStat
+		.and n_NoOfMoves !< n_SaveNoOfMoves
+		.or  n_NoOfMoves > n_SaveNoOfMoves
+		.end
+			n_SaveTotalStat	= n_TotalStat
+			n_SaveNoOfMoves = n_NoOfMoves
+			K = I
+		end.if
+		
+	end.repeat
+	I = K
+
+	if I > 0
+		$Call E_1_2_4_1_MakeTheMove
+	end.if
+	
+END.SUB E_1_2_4_SelectBestMove
+
+;-------------------------------------------------------------------------------
+;	DO THE MOVE
+;-------------------------------------------------------------------------------
+BEGIN.SUB E_1_2_4_1_MakeTheMove
+	
+	repeat.for J,1,2
+	
+		T.rget (Mve,I,J)
+ 
+		.if  mveNoOff > 0														; If we have a move
+		.and TblNoOff[mveFrom] > 0												; and we have a peice to move
+		.end
+		
+		;	----------
+		;	ON THE BAR
+		;	----------
+			if mveFrom = c_onBar											; If we are on the bar
+				Tbl_Black[c_onBar] = Tbl_Black[c_onBar] - mveNoOff			;	subtract 1 from no on the bar
+			else															; else
+			;	------
+			;	OR NOT
+			;	------
+				TblNoOff[mveFrom]		= TblNoOff[mveFrom] - mveNoOff		; 	subtract 1 from no off
+				if  TblNoOff[mveFrom]	= 0									;	if we have hit zero
+					TblColour[mveFrom]	= 0									;		set colour to none
+				end.if														;	end
+			end.if															; end
+
+		;	---------
+		;	ALL MOVES
+		;	---------
+			.if TblColour[mveTo]	= c_White								; If we have a hit
+			.and mveTo				< 26									; and we are  inplay							
+			.end															; end
+				TblNoOff[mveTo]		= 0										;	set no off to zero
+				TblColour[mveTo]	= 0										;	set colour to none
+				Tbl_White[c_onBar]  = Tbl_White[c_onBar] + 1				;	add 1 to white on the bar
+			end.if															; end
+
+		;	-----------
+		;	BEARING OFF
+		;	-----------
+			if mveTo => c_bornOff											; If we are bearing off
+				Tbl_Black[c_bornOff] = Tbl_Black[c_bornOff] + mveNoOff		;	add 1 to no born off
+			else															; else
+			;	------
+			;	OR NOT
+			;	------
+				TblNoOff[mveTo]		 = TblNoOff[mveTo] + mveNoOff			; 	add 1 to no off
+				TblColour[mveTo] 	 = c_Black								; 	set colour to black
+			end.if															; end
+
+		end.if
+		
+	end.repeat
+	
+END.SUB E_1_2_4_1_MakeTheMove
+
+;-------------------------------------------------------------------------------
+;	Display the moves table
+;-------------------------------------------------------------------------------
+BEGIN.SUB E_2_9_DisplayTable
+
+	n_Ctr = 0
+	repeat.for MoveRecord_NO,1,n_mveUBOUND
+	
+		n_Ctr = n_Ctr + 1
+		n_TotalStat = 0
+		
+		.if mveFrom[n_Ctr,1]  != mveFrom[[n_Ctr - 1],1]
+		.or mveNoOff[n_Ctr,1] != mveNoOff[[n_Ctr - 1],1]
+		.end
+			display LF,LF
+		end.if
+
+		tables.rget (Mve,MoveRecord_NO,1)
+;		if mveNoOff != 0
+			display n_Ctr,">"
+			display "  1] NoOff=",mveNoOff," :From=",mveFrom," :To=",mveTo,	\
+			" :Stat=",mveFromBlkStat," :BStat=",mveToBlkStat," :WStat=",mveToWhtStat,LF
+			n_TotalStat = n_TotalStat + mveFromBlkStat + mveToBlkStat + mveToWhtStat
+;		end.if
+
+		tables.rget (Mve,MoveRecord_NO,2)
+;		if mveNoOff != 0
+			display spaces(5)
+			display "  2] NoOff=",mveNoOff," :From=",mveFrom," :To=",mveTo,	\
+			" :Stat=",mveFromBlkStat," :BStat=",mveToBlkStat," :WStat=",mveToWhtStat,LF
+			n_TotalStat = n_TotalStat + mveFromBlkStat + mveToBlkStat + mveToWhtStat
+;		end.if
+
+		.if mveNoOff[MoveRecord_NO,1] != 0
+		.and mveNoOff[MoveRecord_NO,2] != 0
+		.end
+			display spaces(7),"Combined Status=",n_TotalStat,LF,LF
+		end.if
+		
+	end.repeat
+
+	display.line "============="
+	display.line "SELECTED MOVE"
+	tables.rget (Mve,I,1)
+	display "  1] NoOff=",mveNoOff," :From=",mveFrom," :To=",mveTo,	\
+	" :Stat=",mveFromBlkStat," :BStat=",mveToBlkStat," :WStat=",mveToWhtStat,LF
+	tables.rget (Mve,I,2)
+	display "  2] NoOff=",mveNoOff," :From=",mveFrom," :To=",mveTo,	\
+	" :Stat=",mveFromBlkStat," :BStat=",mveToBlkStat," :WStat=",mveToWhtStat,LF
+	
+	display spaces(5),"Dice1=",n_Dice1,"  Dice2=",n_Dice2,LF
+	display spaces(5),"MoveNo=",n_MoveNo,LF
+	
+END.SUB E_2_9_DisplayTable
+
+;-------------------------------------------------------------------------------
+;	FINALISE
+;-------------------------------------------------------------------------------
+BEGIN.SUB E_1_9_Finalise
+
+;	--------------
+;	Load the board
+;	--------------
+	J = 0 | I = 1
+	repeat _04
+		J = J + 1
+		if J > 26
+			exitRepeat = c_TRUE
+		else
+			{w_Response,I,2} = TblNoOff[J]
+			I = I + 2
+			{w_Response,I,1} = ","
+			I = I + 1
+			{w_Response,I,2} = TblColour[J]
+			I = I + 2
+			{w_Response,I,1} = ","
+			I = I + 1
+		end.if
+	end.repeat _04 		
+
+	RETURN_CODE = 156
+
+;	f.Close(DICE_FILE)
+	
+END.SUB E_1_9_Finalise
+
+
+
+;-------------------------------------------------------------------------------
+;	FINALISATION
+;-------------------------------------------------------------------------------
+BEGIN.SUB Z_1_Finalise
+
+;	-----------------------------------------
+;	CLOSE THE SOCKET 
+;	-----------------------------------------
+	www.close (n_PortNo)
+	
+END.SUB Z_1_Finalise

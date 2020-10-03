@@ -1,0 +1,2 @@
+nasm -f elf64 -e $1.ASM > $1.PRE
+

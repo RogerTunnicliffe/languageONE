@@ -1,0 +1,1770 @@
+	%assign debug 0
+	%include '../include/LMACROS.CPY'
+	%include '../include/IMACROS.CPY'
+	%include '../include/CONSTANTS.INC'
+	%line 5 COMMON.LIB
+
+;	=================================================
+;	GLOBAL ROUTINES/VARIABLES defined in this library
+;	=================================================
+;	Routines
+;	--------
+	global _ENVIRONMENT
+	global _SYSERROR
+	global _DATE
+;V2.13
+;	global _RUN
+	global _RUN_INTERACTIVE
+	global _RUN_BATCH
+;V2.13
+	global _WAIT
+	global _RANDOM
+	global _VALIDATE_SRC
+	global _VALIDATE_DST
+	global _ENDPROGRAM
+	global  No_Assist
+	global _CMPSTR
+	global _MOVESTR
+
+;	------
+;	Fields
+;	------
+	global RETURN_CODE
+	global LF
+	global CHILD_PID
+	global err01
+	global err02
+	global err03
+	global err04
+	global err05
+	global err06
+	global err07
+	global err08
+	global err09
+	global err10
+	global err11
+	global err12
+	global ERROR_CODE	
+	global StackAssist
+	global w_RecordBuffer
+	global w_One
+	global w_SaveAddress
+	global w_Spaces
+	global w_Temp
+	global w_TopOfBSS
+	global w_BottomOfBSS
+	global w_SaveRSP
+	global savedRegisters
+	global SX
+
+;	===============================================
+;	EXTERNAL ROUTINES/VARIABLES used by the library
+;	===============================================
+;	Routines
+;	--------
+	extern _TOALPHA			; NUMBERS
+	extern _FROMALPHA		; NUMBERS
+	extern _COMPARE			; DECISIONS
+	extern b_Result			; DECISIONS
+	
+;	------
+;	Fields
+;	------
+	extern StdOutHandle		; STDIO
+
+;=======================================================================
+;			DATA SEGMENT
+;=======================================================================
+;           Initialised - by program
+;-----------------------------------------------------------------------
+			section .data
+
+;	System error messages. -1 thru -133
+	SysErrorMessages:
+		Offset0 		db '000:languageONE error' 
+						times 64-$+Offset0 db ' '					
+		EPERM			db '001:Operation not permitted'
+						times 64-$+EPERM db ' '
+		ENOENT			db '002:No such file or directory'
+						times 64-$+ENOENT db ' '
+		ESRCH			db '003:No such process'
+						times 64-$+ESRCH db ' '
+		EINTR			db '004:Interrupted system call'					
+						times 64-$+EINTR db ' '
+		EIO				db '005:I/O error'
+						times 64-$+EIO db ' '
+		ENXIO			db '006:No such device or address'
+						times 64-$+ENXIO db ' '							
+		E2BIG			db '007:Argument list too long'
+						times 64-$+E2BIG db ' '		
+		ENOEXEC			db '008:Exec format error'
+						times 64-$+ENOEXEC db ' '			
+		EBADF			db '009:Bad file number'
+						times 64-$+EBADF db ' '		
+		ECHILD			db '010:No child processes'
+						times 64-$+ECHILD db ' '		
+		EAGAIN			db '011:Try again'
+						times 64-$+EAGAIN db ' '		
+		ENOMEM			db '012:Out of memory'
+						times 64-$+ENOMEM db ' '		
+		EACCES			db '013:Permission denied'
+						times 64-$+EACCES db ' '		
+		EFAULT			db '014:Bad address'
+						times 64-$+EFAULT db ' '		
+		ENOTBLK			db '015:Block device required'
+						times 64-$+ENOTBLK db ' '		
+		EBUSY			db '016:Device or resource busy'
+						times 64-$+EBUSY db ' '		
+		EEXIST			db '017:File exists'
+						times 64-$+EEXIST db ' '		
+		EXDEV			db '018:Cross-device link'
+						times 64-$+EXDEV db ' '		
+		ENODEV			db '019:No such device'
+						times 64-$+ENODEV db ' '		
+		ENOTDIR			db '020:Not a directory'
+						times 64-$+ENOTDIR db ' '		
+		EISDIR			db '021:Is a directory'
+						times 64-$+EISDIR db ' '		
+		EINVAL			db '022:Invalid argument'
+						times 64-$+EINVAL db ' '		
+		ENFILE			db '023:File table overflow'
+						times 64-$+ENFILE db ' '		
+		EMFILE			db '024:Too many open files'
+						times 64-$+EMFILE db ' '		
+		ENOTTY			db '025:Not a typewriter'
+						times 64-$+ENOTTY db ' '		
+		ETXTBSY			db '026:Text file busy'
+						times 64-$+ETXTBSY db ' '		
+		EFBIG			db '027:File too large'
+						times 64-$+EFBIG db ' '		
+		ENOSPC			db '028:No space left on device'
+						times 64-$+ENOSPC db ' '		
+		ESPIPE			db '029:Illegal seek'
+						times 64-$+ESPIPE db ' '		
+		EROFS			db '030:Read-only file system'
+						times 64-$+EROFS db ' '		
+		EMLINK			db '031:Too many links'
+						times 64-$+EMLINK db ' '		
+		EPIPE			db '032:Broken pipe'
+						times 64-$+EPIPE db ' '		
+		EDOM			db '033:Math argument out of domain of func'
+						times 64-$+EDOM db ' '		
+		ERANGE			db '034:Math result not representable'
+						times 64-$+ERANGE db ' '		
+		EDEADLK			db '035:Resource deadlock would occur'
+						times 64-$+EDEADLK db ' '		
+		ENAMETOOLONG	db '036:File name too long'
+						times 64-$+ENAMETOOLONG db ' '		
+		ENOLCK			db '037:No record locks available'
+						times 64-$+ENOLCK db ' '		
+		ENOSYS			db '038:Function not implemented'
+						times 64-$+ENOSYS db ' '		
+		ENOTEMPTY		db '039:Directory not empty'
+						times 64-$+ENOTEMPTY db ' '		
+		ELOOP			db '040:Too many symbolic links encountered'
+						times 64-$+ELOOP db ' '		
+		EWOULDBLOCK	db '041:Operation would block'
+						times 64-$+EWOULDBLOCK db ' '		
+		ENOMSG			db '042:No message of desired type'
+						times 64-$+ENOMSG db ' '		
+		EIDRM			db '043:Identifier removed'
+						times 64-$+EIDRM db ' '		
+		ECHRNG			db '044:Channel number out of range'
+						times 64-$+ECHRNG db ' '		
+		EL2NSYNC		db '045:Level 2 not synchronized'
+						times 64-$+EL2NSYNC db ' '		
+		EL3HLT			db '046:Level 3 halted'
+						times 64-$+EL3HLT db ' '		
+		EL3RST			db '047:Level 3 reset'
+						times 64-$+EL3RST db ' '		
+		ELNRNG			db '048:Link number out of range'
+						times 64-$+ELNRNG db ' '		
+		EUNATCH			db '049:Protocol driver not attached'
+						times 64-$+EUNATCH db ' '		
+		ENOCSI			db '050:No CSI structure available'
+						times 64-$+ENOCSI db ' '		
+		EL2HLT			db '051:Level 2 halted'
+						times 64-$+EL2HLT db ' '		
+		EBADE			db '052:Invalid exchange'
+						times 64-$+EBADE db ' '		
+		EBADR			db '053:Invalid request descriptor'
+						times 64-$+EBADR db ' '		
+		EXFULL			db '054:Exchange full'
+						times 64-$+EXFULL db ' '		
+		ENOANO			db '055:No anode'
+						times 64-$+ENOANO db ' '		
+		EBADRQC			db '056:Invalid request code'
+						times 64-$+EBADRQC	 db ' '		
+		EBADSLT			db '057:Invalid slot'
+						times 64-$+EBADSLT db ' '		
+		EDEADLOCK		db '058:Deadlock'
+						times 64-$+EDEADLOCK db ' '		
+		EBFONT			db '059:Bad font file format'
+						times 64-$+EBFONT db ' '		
+		ENOSTR			db '060:Device not a stream'
+						times 64-$+ENOSTR db ' '		
+		ENODATA			db '061:No data available'
+						times 64-$+ENODATA db ' '		
+		ETIME			db '062:Timer expired'
+						times 64-$+ETIME db ' '		
+		ENOSR			db '063:Out of streams resources'
+						times 64-$+ENOSR db ' '		
+		ENONET			db '064:Machine is not on the network'
+						times 64-$+ENONET db ' '		
+		ENOPKG			db '065:Package not installed'
+						times 64-$+ENOPKG db ' '		
+		EREMOTE			db '066:Object is remote'
+						times 64-$+EREMOTE db ' '		
+		ENOLINK			db '067:Link has been severed'
+						times 64-$+ENOLINK db ' '		
+		EADV			db '068:Advertise error'
+						times 64-$+EADV db ' '		
+		ESRMNT			db '069:Srmount error'
+						times 64-$+ESRMNT db ' '		
+		ECOMM			db '070:Communication error on send'
+						times 64-$+ECOMM db ' '		
+		EPROTO			db '071:Protocol error'
+						times 64-$+EPROTO db ' '		
+		EMULTIHOP		db '072:Multihop attempted'
+						times 64-$+EMULTIHOP db ' '		
+		EDOTDOT			db '073:RFS specific error'
+						times 64-$+EDOTDOT db ' '		
+		EBADMSG		db '074:Not a data message'
+						times 64-$+EBADMSG db ' '		
+		EOVERFLOW		db '075:Value too large for defined data type'
+						times 64-$+EOVERFLOW db ' '		
+		ENOTUNIQ		db '076:Name not unique on network'
+						times 64-$+ENOTUNIQ db ' '		
+		EBADFD			db '077:File descriptor in bad state'
+						times 64-$+EBADFD db ' '		
+		EREMCHG		db '078:Remote address changed'
+						times 64-$+EREMCHG db ' '		
+		ELIBACC			db '079:Can not access a needed shared library'
+						times 64-$+ELIBACC db ' '		
+		ELIBBAD			db '080:Accessing a corrupted shared library'
+						times 64-$+ELIBBAD db ' '		
+		ELIBSCN			db '081:.lib section in a.out corrupted'
+						times 64-$+ELIBSCN db ' '		
+		ELIBMAX			db '082:Attempting to link in too many shared libraries'
+						times 64-$+ELIBMAX db ' '		
+		ELIBEXEC			db '083:Cannot exec a shared library directly'
+						times 64-$+ELIBEXEC db ' '		
+		EILSEQ			db '084:Illegal byte sequence'
+						times 64-$+EILSEQ db ' '		
+		ERESTART		db '085:Interrupted system call should be restarted'
+						times 64-$+ERESTART db ' '		
+		ESTRPIPE			db '086:Streams pipe error'
+						times 64-$+ESTRPIPE db ' '		
+		EUSERS			db '087:Too many users'
+						times 64-$+EUSERS db ' '		
+		ENOTSOCK		db '088:Socket operation on non-socket'
+						times 64-$+ENOTSOCK db ' '		
+		EDESTADDRREQ	db '089:Destination address required'
+						times 64-$+EDESTADDRREQ db ' '		
+		EMSGSIZE		db '090:Message too long'
+						times 64-$+EMSGSIZE db ' '		
+		EPROTOTYPE		db '091:Protocol wrong type for socket'
+						times 64-$+EPROTOTYPE db ' '		
+		ENOPROTOOPT	db '092:Protocol not available'
+						times 64-$+ENOPROTOOPT db ' '		
+		EPROTONOSUPPORT	db '093:Protocol not supported'
+						times 64-$+EPROTONOSUPPORT db ' '		
+		ESOCKTNOSUPPORT	db '094:Socket type not supported'
+						times 64-$+ESOCKTNOSUPPORT db ' '		
+		EOPNOTSUPP		db '095:Operation not supported on transport endpoint'
+						times 64-$+EOPNOTSUPP db ' '		
+		EPFNOSUPPORT	db '096:Protocol family not supported'
+						times 64-$+EPFNOSUPPORT db ' '		
+		EAFNOSUPPORT	db '097:Address family not supported by protocol'
+						times 64-$+EAFNOSUPPORT db ' '		
+		EADDRINUSE		db '098:Address already in use'
+						times 64-$+EADDRINUSE db ' '		
+		EADDRNOTAVAIL	db '099:Cannot assign requested address'
+						times 64-$+EADDRNOTAVAIL db ' '		
+		ENETDOWN		db '100:Network is down'
+						times 64-$+ENETDOWN db ' '		
+		ENETUNREACH		db '101:Network is unreachable'
+						times 64-$+ENETUNREACH db ' '		
+		ENETRESET		db '102:Network dropped connection because of reset'
+						times 64-$+ENETRESET db ' '		
+		ECONNABORTED	db '103:Software caused connection abort'
+						times 64-$+ECONNABORTED db ' '		
+		ECONNRESET		db '104:Connection reset by peer'
+						times 64-$+ECONNRESET db ' '		
+		ENOBUFS			db '105:No buffer space available'
+						times 64-$+ENOBUFS db ' '		
+		EISCONN			db '106:Transport endpoint is already connected'
+						times 64-$+EISCONN db ' '		
+		ENOTCONN		db '107:Transport endpoint is not connected'
+						times 64-$+ENOTCONN db ' '		
+		ESHUTDOWN		db '108:Cannot send after transport endpoint shutdown'
+						times 64-$+ESHUTDOWN db ' '		
+		ETOOMANYREFS	db '109:Too many references: cannot splice'
+						times 64-$+ETOOMANYREFS db ' '		
+		ETIMEDOUT		db '110:Connection timed out'
+						times 64-$+ETIMEDOUT db ' '		
+		ECONNREFUSED	db '111:Connection refused'
+						times 64-$+ECONNREFUSED db ' '		
+		EHOSTDOWN		db '112:Host is down'
+						times 64-$+EHOSTDOWN db ' '		
+		EHOSTUNREACH	db '113:No route to host'
+						times 64-$+EHOSTUNREACH db ' '		
+		EALREADY		db '114:Operation already in progress'
+						times 64-$+EALREADY db ' '		
+		EINPROGRESS		db '115:Operation now in progress'
+						times 64-$+EINPROGRESS db ' '		
+		ESTALE			db '116:Stale file handle'
+						times 64-$+ESTALE db ' '		
+		EUCLEAN			db '117:Structure needs cleaning'
+						times 64-$+EUCLEAN db ' '		
+		ENOTNAM			db '118:Not a XENIX named type file'
+						times 64-$+ENOTNAM db ' '		
+		ENAVAIL			db '119:No XENIX semaphores available' 
+						times 64-$+ENAVAIL db ' '		
+		EISNAM			db '120:Is a named type file'
+						times 64-$+EISNAM db ' '		
+		EREMOTEIO		db '121:Remote I/O error'
+						times 64-$+EREMOTEIO db ' '		
+		EDQUOT			db '122:Quota exceeded'
+						times 64-$+EDQUOT db ' '		
+		ENOMEDIUM		db '123:No medium found'
+						times 64-$+ENOMEDIUM db ' '		
+		EMEDIUMTYPE		db '124:Wrong medium type'
+						times 64-$+EMEDIUMTYPE db ' '		
+		ECANCELED		db '125:Operation Canceled'
+						times 64-$+ECANCELED db ' '		
+		ENOKEY			db '126:Required key not available'
+						times 64-$+ENOKEY db ' '		
+		EKEYEXPIRED		db '127:Key has expired'
+						times 64-$+EKEYEXPIRED db ' '		
+		EKEYREVOKED		db '128:Key has been revoked'
+						times 64-$+EKEYREVOKED db ' '		
+		EKEYREJECTED	db '129:Key was rejected by service'
+						times 64-$+EKEYREJECTED db ' '		
+		EOWNERDEAD		db '130:Owner died'
+						times 64-$+EOWNERDEAD db ' '		
+		ENOTRECOVERABLE	db '131:State not recoverable'
+						times 64-$+ENOTRECOVERABLE db ' '		
+		ERFKILL			db '132:Operation not possible due to RF-kill'
+						times 64-$+ERFKILL db ' '		
+		EHWPOISON		db '133:Memory page has hardware error'
+						times 64-$+EHWPOISON db ' '	
+
+	languageONEErrorMessages:
+		err01			db 'NUMBERS[error]:- non numeric field'
+						times 80-$+err01 db ' '
+		err02			db 'NUMBERS[error]:- result has exceeded its range'
+						times 80-$+err02 db ' '
+		err03			db 'NUMBERS[error]:- use WORDS to convert number to text'
+						times 80-$+err03 db ' '
+		err04			db 'NUMBERS[error]:- use $equals to convert a word to a number'
+						times 80-$+err04 db ' '
+		err05			db 'NUMBERS[error]:- Entered field has exceeded its range'
+						times 80-$+err05 db ' '	
+		err06			db 'NUMBERS[error]:- Result field must have a defined picture'
+						times 80-$+err06 db ' '	
+		err07			db 'WORDS[error]:- use NUMBERS to convert text to number'
+						times 80-$+err07 db ' '
+		err08			db 'DECISIONS[error]:- Error comparing Alpha and Numeric field'
+						times 80-$+err08 db ' '
+		err09			db 'TABLES[error]:- You have not passed a valid table'
+						times 80-$+err09 db ' '
+		err10			db 'TABLES[error]:- Cannot SORT/SEARCH a multiDimensional table'
+						times 80-$+err10 db ' '
+		err11			db 'FILES[error]:- a filename has been found that exceeds the system limit'
+						times 80-$+err11 db ' '
+		err12			db 'NUMBERS[error]:- receiving (ALPHA) too small. Literals default pic is 26'
+						times 80-$+err12 db ' '
+												
+	insertword			LF,				01,0x0A
+
+	insertnumber 		RETURN_CODE,	0,'9999-'
+	insertnumber 		ERROR_CODE,		0,'99'
+	insertnumber		CHILD_PID,		0,'999999'	
+	INSERTNUMBER 		w_One,			1,'9'
+	INSERTWORD 			w_Spaces,		128,' '
+	INSERTWORD			w_Temp,			128,' '
+	INSERTWORD 			w_TempWord,		128,' '
+	insertnumber		x_NULL,			0x00
+	
+;	Fields for DATE routines
+	insertnumber 		w_9Year,		0,'9999'
+	insertnumber 		w_9Month,		0,'99'
+	insertnumber 		w_9Day,			0,'99'
+	insertword 			w_XYear,		4,' '
+	insertword 			w_XMonth,		2,' '
+	insertword 			w_XDay,			2,' '
+	MonthTable			db 31,28,31,30,31,30,31,31,30,31,30,31
+
+;	environment variables for RUN_INTERACTIVE
+	env_displayNo		db "DISPLAY=:0",0x00
+
+	%define c_RandomNoBufferSize 4096
+	w_RandomNoIdx	dq c_RandomNoBufferSize		; Used No's offset
+	
+;=======================================================================				
+;           SKIP STACK
+;=======================================================================
+
+;-----------------------------------------------------------------------				
+;           UN Initialised - zero filled when loaded
+;-----------------------------------------------------------------------													  
+			section .bss
+
+savedRegisters	  times 384 resq 1
+SX							resq 1
+													
+							resb 1										; BEGIN.INSTRUCTIONS will set to 'X'	
+							resq 1										; Will be set each time it is used
+w_RecordBuffer				resb 655356									; Reserve 64k
+
+w_SaveAddress				resq 1										; General purpose
+
+w_SaveRSP					resq 1										; StackPointer on entry
+w_TopOfBSS					resq 1										; Start of $getmem area
+w_BottomOfBSS				resq 1										; End of $getmem area
+
+w_ProgramName				resq 256									; Used in _RUN
+w_pipe_fd:
+	w_pipe_read				resd 1										; File Handle for reading
+	w_pipe_write			resd 1										; File Handle for writing	
+	
+w_RandomNoBuffer			resb 4096									; Buffer for Random Numbers
+
+
+
+;=======================================================================				
+;           CONSTANTS
+;=======================================================================	
+
+;=======================================================================
+;			CODE SEGMENT
+;=======================================================================				
+			section .text	
+			
+;=======================================================================
+;			ROUTINRS TO ASSIST LMACRO.CPY
+;=======================================================================
+;	This is here to help the Numbers macro. Within the rep preprocessor macro we
+;	need to determine if the operand is alpha or numeric. Having decided a jump 
+;	would be required which would cause a duplicate label when there are more than
+;	one operand. 
+;	Note here that we cannot pop values off the stack (pushed by %extract) cuz the
+;	call to this routine has pushed the return address. Therefore we address the
+;	values directly and pop the stack after returning from this routine
+;=======================================================================
+No_Assist:
+
+			cmp @fieldIndicator(r_nSrcAddress),'X'						; Alpha or Number source
+				je .AlphaSrc
+
+		;	NUMERIC SOURCE
+	.1If:	cmp r15,1
+				jng .1EndIf
+				mov r_nSrcPicAddress,[RSP+8]							; Grab the Picture address						
+				mov r_nSrcPicLength,[r_nSrcPicAddress-8]				; 	Picture Length
+	.1EndIf:jmp No_Assist_Exit
+			
+		;	ALPHA SOURCE
+	.AlphaSrc:														
+			mov r_nSrcStart,w_One										; (Default) address of start position
+			mov r_nSrcLength,r_nSrcAddress								; (Default) address of No Of Bytes
+			sub r_nSrcLength,8											; its the string length	
+	.2If:	cmp r15,2
+				jl .2EndIf									
+				mov r_nSrcStart,[RSP+8]
+			cmp r15,3
+				jl .2EndIf
+				mov r_nSrcLength,[RSP+16]	
+	.2EndIf:	
+	
+			mov r_nSrcStart,[r_nSrcStart]								; by value
+			mov r_nSrcLength,[r_nSrcLength]								; by value	
+
+No_Assist_Exit:
+	ret
+
+;=======================================================================			
+;           ENVIRONMENT routine - move env variable to a destination
+;=======================================================================
+;-----------------------------------------------------------------------
+;			+--------------------------+
+;			|  0X0000000000000000      |
+;			+--------------------------+
+;			|  Address of environment  | Envirionment Variable is NULL terminated
+;			+--------------------------+
+;			|  Address of environment  | Envirionment Variable is NULL terminated
+;			+--------------------------+
+;			|  0X0000000000000000      |
+;			+--------------------------+  
+;			|  Address of Last Arg     |
+;			+--------------------------+ RBP + 24
+;			|  Address of Arg 1        |
+;			+--------------------------+ RBP + 16
+;			|  Address of program path |
+;			+--------------------------+ RBP + 8  
+;			|  Arg count               |
+;			+--------------------------+ RBP (Base Pointer)
+;			This is the stack when the program is started
+;			+--------------------------+ 
+;			|  RETURN ADDRESS		   |
+;			+--------------------------+ 
+;			|  Save RBP				   |
+;			+--------------------------+ RSP (Stack Pointer)		
+;-----------------------------------------------------------------------	
+_ENVIRONMENT:
+;	NOTE:-
+;		BEGIN.INSTRUCTIONS save RSP (at program startup) in w_SaveRSP
+;		Never destroy it.		
+
+	section .data
+		d_SaveDstAddress		dq 0
+		d_SaveValueAddress		dq 0		
+	section .text
+
+
+			PUSH RBP													; NEVER CHANGE RBP
+			MOV RBP,QWORD[w_SaveRSP]									; for this routine only
+				
+			mov qword[d_SaveDstAddress],r_DstAddress					; Save Destination
+			
+			$EndOfWord r_SrcAddress,r_SrcStart,r_SrcLength				; Get end of word
+			mov qword[w_TempWord-8],rcx									; to setup w_TempWord length
+									
+		  ; START from here - Jump over program parameters to Environment variables
+			mov rax,[RBP]												; Get NoOfParameters from stack
+			inc rax														; plus 1 (address of program path)
+			imul rax,8													; multiply rax by 8 (qword)									
+			add RBP,rax													; and add to RBP
+		
+		;	START OUTER LOOP--------------------------------------------
+		;	ADD RBP,8	** fixed in V2.05								; JUMP OVER SAVED RBP
+	ol:		add RBP,8													; Next environment variable
+			cmp qword[RBP], 0x00										; End of Environment variables
+				je _ENVIRONMENT_EXIT									;	we're done
+
+		;	COPY EACH ENVIRONMENT VARIABLE TO w_TempWord to compare
+			mov RSI,[RBP]												; setup the source address
+			$initialise w_TempWord										; Init our receiving field
+			mov RDI,w_TempWord											; set up the destination				
+			xor rcx,rcx													; we need to count the number of bytes						
+			
+			cld
+		;	start inner loop ------------------	
+	load1:	lodsb														; load each byte
+			cmp  al, '='												; Do we have an equals
+				je compare												; 	then we have the variable, go and test it
+			stosb														; store the byte 
+			inc rcx														; count the bytes
+			jmp load1													; and loop
+		;	end inner loop --------------------
+				
+	compare:mov qword[d_SaveValueAddress],RSI							; Save the Value Address
+			cmp qword[w_TempWord-8],rcx									; If they are different lengths then they are not equal
+				jne ol
+			
+		;	INTERNAL CALL---------------------
+			$SetupCompare r_SrcAddress,Equals,w_TempWord
+			Call _COMPARE
+;			cmp r15, c_TRUE	** fixed in V2.05
+			cmp qword[b_Result],c_TRUE
+				jne ol								 	
+		;	END OUTER LOOP----------------------------------------------
+		  			
+		  ; Load the result and return. RSI will be sitting just after the '='s
+			mov RSI,qword[d_SaveValueAddress]							; Restore the value address
+			mov RDI,qword[d_SaveDstAddress]								; Restore destination address
+
+			cld
+	load2:	lodsb														; load each byte
+			cmp  al, 0x00												; If NULL
+				je _ENVIRONMENT_EXIT									; 	then we are done			
+			stosb														; store the byte
+			jmp load2	
+	
+_ENVIRONMENT_EXIT:
+			POP RBP														; RESTORE RBP
+			ret
+				
+;=======================================================================
+;			Produce System Error and terminate
+;			Error code is in RAX
+;			Application Error Message in R14
+;=======================================================================				
+_SYSERROR:
+		section .data
+			msg1			db 'System Error is '
+			c_LightRedFG	db 27, '[91m'
+		section .text	
+
+		;	Set output to red
+		PUSH RAX
+			mov rax,1													; sys_write (1) syscall
+			mov rdi,qword[StdOutHandle]									; stdout
+			mov rsi,c_LightRedFG										; Literal address
+			mov rdx,5													; Literal length
+			syscall
+		POP RAX
+  
+		;	LanguageONE error
+			cmp rax,0													; Check for Linux error
+				je .L1
+
+		;	Linux error				
+			neg rax														; Sys error is always -ve
+		PUSH RAX														; Save error code
+
+		;	Write System Code literal
+			mov rax,1													; sys_write (1) syscall
+			mov rdi,1													; stdout
+			mov rsi,msg1												; Literal address
+			mov rdx,16													; Literal length
+			syscall
+			
+		;	Write System error literal
+		POP RAX															; Restore error code
+			imul rax,64													; Multiply error code by message length
+			mov rsi,rax													; and set rsi with the result
+			add rsi,SysErrorMessages									; Get start message address 
+			mov rax,1													; sys_write (1) syscall
+			mov rdi,1													; stdout
+			mov rdx,64													; Message length
+			syscall
+
+		;	and LineFeed
+			mov rax,1													; sys_write (1) syscall
+			mov rdi,1													; stdout
+			mov rsi,LF													; Line Feed
+			mov rdx,1													; length = 1
+			syscall
+
+			jmp .Exit
+						
+		;	languageONE error'
+	.L1:	cmp r14,0													; Check for languageONE error
+				je .Exit
+
+		;	Write languageONE literal
+			mov rax,1													; sys_write (1) syscall
+			mov rdi,1													; stdout
+			add rsi,SysErrorMessages									; 1st message address is languageONE error 
+			mov rdx,80													; Message length
+			syscall
+
+		;	and LineFeed
+			mov rax,1													; sys_write (1) syscall
+			mov rdi,1													; stdout
+			mov rsi,LF													; Line Feed
+			mov rdx,1													; length = 1
+			syscall
+
+		;	Write languageONE error message
+		;	Error message address passed in r14
+			mov rax,1													; sys_write (1) syscall
+			mov rdi,1													; stdout
+			mov rsi,r14													; add start message address 
+			mov rdx,80													; Message length
+			syscall
+
+		;	and LineFeed
+			mov rax,1													; sys_write (1) syscall
+			mov rdi,1													; stdout
+			mov rsi,LF													; Line Feed
+			mov rdx,1													; length = 1
+			syscall
+			
+		;	End program							
+	.Exit:	mov rax,60
+			mov rdi,1
+			syscall
+
+_SYSERROR_EXIT:
+			ret
+
+;=======================================================================				
+;           Validate and correct SOURCE/DESTINATION calling parameters
+;=======================================================================			
+;-----------------------------------------------------------------------
+;			+-------------------+
+;			|  Replace/Find     |
+;			+-------------------+ r15	
+;			|  Zero             | 		
+;			+-------------------+ r14 	
+;			|  DestinationStart |		
+;			+-------------------+ r13 	 	
+;			|  Destination      |	   For Number to Alpha		
+;			+-------------------+ r12 +-------------------+
+;			|  No Of Bytes      |	  |  Picture Length   |
+;			+-------------------+ r11 +-------------------+
+;			|  SourceStart      |	  |  Picture Address  |
+;			+-------------------+ r10 +-------------------+
+;			|  Source1          |
+;			+-------------------+ r9  
+;			|  Function         |
+;			+-------------------+ r8  1st Parameter
+;-----------------------------------------------------------------------
+
+_VALIDATE_SRC:
+		
+;-----------------------------------------------------------------------			                  
+;           Validate the Source Parameters
+;-----------------------------------------------------------------------
+		;	Validate source is only for an Alpa source
+		;	It will not be called when the source is numeric
+			cmp @fieldIndicator(r9),'9'
+				je _VALIDATE_SRC_EXIT
+							
+;           START
+	ss1:	cmp r_SrcStart,0											; Compare the SourceStart to 0 
+				jne ss2
+				mov r_SrcStart,1										; Reset to 1
+				
+	ss2:	cmp r_SrcStart,65536										; Limit string size to 65535 - this will also filter out -ve
+				jb ss3
+			    mov r_SrcStart,1										; Reset to 1		
+
+	ss3:	cmp r_SrcStart,@fieldLength(r_SrcAddress)					; Compare the SourceStart to length of string	
+				jbe se1
+				mov r_SrcStart,@fieldLength(r_SrcAddress)				; Reset to length of string 
+
+;           NO OF BYTES						
+	se1:	cmp r_SrcLength,0											; Compare the Source No Of Bytes to 0
+				jg  se2
+				mov r_SrcLength,@fieldLength(r_SrcAddress)				; length of string
+				sub r_SrcLength,r_SrcStart								;	less start
+				inc r_SrcLength											;	+ 1
+	
+	se2:	cmp r11,65536												; Limit string size to 65535 - this will also filter out -ve
+				jb  se3
+				mov r_SrcLength,1
+				
+	se3:	mov rax,r_SrcStart											; Compare the Source start
+			add rax,r_SrcLength											;	plus No of bytes
+			dec rax														;	less 1
+			cmp rax,@fieldLength(r_SrcAddress)					
+				jbe _VALIDATE_SRC_EXIT
+				mov r_SrcLength,@fieldLength(r_SrcAddress)				; Reset to length of string			
+				sub r_SrcLength,r_SrcStart								;	less start
+				inc r_SrcLength											;	+ 1
+
+_VALIDATE_SRC_EXIT:
+			ret
+						
+;-----------------------------------------------------------------------			
+;           Validate the Destination Parameters
+;-----------------------------------------------------------------------
+_VALIDATE_DST:
+
+	ds1:	cmp	r_DstStart,0											; Compare the DestinationStart to 0 
+				jg ds2
+				mov r_DstStart,1										; Reset to 1  
+
+	ds2:	cmp r_DstStart,65536										; Destination start
+				jb ds3
+				mov r_DstStart,1										; Reset to 1
+							
+	ds3:	cmp r_DstStart,@fieldLength(r_DstAddress)					; Compare the DestinationStart to length of string	
+				jbe ds4
+				mov r_DstStart,@fieldLength(r_DstAddress)				; Reset to length of string
+				sub r_DstStart,r_SrcLength								;	less No Of Bytes
+				inc r_DstStart											;	+ 1  
+				 		
+	ds4:
+_VALIDATE_DST_EXIT:
+			ret
+
+;=======================================================================				
+;           Date routines
+;			DATE_TO_DAYS (Number,String*10) This where Validation is done
+;			DAYS_TO_DATE (Number,String*10)
+;=======================================================================
+
+;		Unix time (also known as POSIX time or Epoch time) is a system 
+;		for describing instants in time, defined as the number of seconds 
+;		that have elapsed since 00:00:00 Coordinated Universal Time (UTC), 
+;		Thursday, 1 January 1970
+
+;		In the Gregorian calendar, a normal year consists of 365 days.
+;		Because the actual length of a sidereal year (the time required for the
+;		Earth to revolve once about the Sun) is actually 365.25635 days, 
+;		a "leap year" of 366 days is used once every four years to eliminate
+;		the error caused by three normal (but short) years. 
+;		Any year that is evenly divisible by 4 is a leap year: 
+;		for example, 1988, 1992, and 1996 are leap years.
+
+;		However, there is still a small error that must be accounted for. 
+;		To eliminate this error, the Gregorian calendar stipulates that a year 
+;		that is evenly divisible by 100 (for example, 1900) is a leap year only 
+;		if it is also evenly divisible by 400.
+
+;		For this reason, the following years are not leap years:
+;		1700, 1800, 1900, 2100, 2200, 2300, 2500, 2600
+;		This is because they are evenly divisible by 100 but not by 400.
+
+;		The following years are leap years: 1600, 2000, 2400
+;		This is because they are evenly divisible by both 100 and 400. 
+;
+;		**** OTHER THAN DIVIDING BY 4 WE DONT CARE AS THE NEXT ADJUSTMENT
+;		**** IS DUE IN 2100. (Year 2K bug all over again !!!!!!)
+
+
+
+;-----------------------------------------------------------------------
+;		DATE mainline
+;-----------------------------------------------------------------------				
+_DATE:
+		%define r_NoOfDays	 r9
+		%define r_DateString r10
+				
+		;	------------------------------
+		;	Just get Seconds
+		;	------------------------------
+			cmp r_Function,-1
+				jne _Timer
+			mov rax,201         										; system call 0xC9(201) = sys_time
+			xor rdi,rdi         										; ensures seconds are returned in rax
+			syscall                  									; make Linux system call	
+			mov qword[r9],rax
+			jmp _DATE_EXIT				
+
+		;	------------------------------
+		;	Just get Seconds/Milliseconds
+		;	------------------------------
+		[section .bss]
+			tv:
+				sec 	resq 1
+				msec 	resq 1
+			tz   		resq 2
+		[section .text]
+	_Timer:	
+			cmp r_Function,3
+				jne _DateFunctions
+			mov rax,96													; system call 0x60(96) - sys_gettimeofday
+			mov rdi,tv													; TimeValue structure
+			mov rsi,tz													; Timezone
+			syscall														; make the Linux system call
+			push qword[sec]												; get the seconds
+			pop  qword[r9]												; and return it
+			push qword[msec]											; grab the milliseconds
+			pop qword[r10]												; and store it
+			jmp _DATE_EXIT				
+						
+		;	-------------------------------
+		;	DATE Functions
+		;	-------------------------------
+	_DateFunctions:
+			cmp r_Function,1														
+				jb .GetDate												; Get Date
+				je .Date												; Days To Date
+				ja .Days												; Date To Days
+			
+	.GetDate:	Call _GETDATE											; Get the number of days and fall thru
+
+	.Date:		Call _DATEFROMDAYS										; Convert Days to Date
+				jmp .Exit
+								
+	.Days:		Call _DAYSFROMDATE										; Convert Date to Daye
+				jmp .Exit
+			
+	.Exit:		mov byte[MonthTable+1],28								; Reset February
+	
+_DATE_EXIT:
+		ret
+					
+;-----------------------------------------------------------------------
+;		GET SYSTEM TIME
+;		returned as seeconds from the Linux epoch	
+;		Linux epoch starts at =	Thursday, 1 January 1970 @ 00:00:00
+;-----------------------------------------------------------------------					
+_GETDATE:
+
+			mov rax,201         										; system call 0xC9(201) = sys_time
+			xor rdi,rdi         										; ensures seconds are returned in rax
+			syscall                  									; make Linux system call
+
+			mov rbx,86400												; No Of Seconds in a Day 			
+			xor rdx,rdx													; NOT cqo as not signed
+			div rbx														; Convert To Days
+			mov [r_NoOfDays],rax										; always return no of days
+			
+	.Exit:	
+_GETDATE_EXIT:
+		ret
+
+;-----------------------------------------------------------------------
+;		CONVERT DAYS TO DATE
+;		Linux epoch starts at 
+;		Thursday, 1 January 1970 @ 00:00:00
+;-----------------------------------------------------------------------
+_DATEFROMDAYS:		
+
+	%define r_Year		 r12
+	%define r_Month		 r13
+	%define r_Day		 r14
+		
+			mov r_Year,1970												; Start Count at 1970
+			mov rax,[r_NoOfDays]										; Grab the No Of Days
+			mov rbx,2													; count the leapyears from 1970
+		;	---------------------------------------
+	.YearLoop:
+		;	---------------------------------------
+			cmp rax,367													; If we are at 365 or 366
+				jb .YearLoopExit										; 	then exit the loop
+				
+			cmp rbx,4													; If we have hit a leapyear
+				je .Leap												;	then jmp to process it
+			sub rax,365													; ELSE subtract 365 days 
+			jmp .Cont													;	and jump to continue
+	.Leap:	sub rax,366													; Subtract 366 days
+			xor rbx,rbx													; and restart the leap year count
+	.Cont:	inc r_Year													; INCREMENT the Year
+			inc rbx														; INCREMENT the Leap Year counter
+			jmp .YearLoop												;  and loop
+		;	----------------------------------------
+	.YearLoopExit:
+		;	----------------------------------------
+		;	ARE WE CURRENTLY IN A LEAP YEAR
+	.1if:	cmp rbx,4													; If NOT LeapYear
+				jne .1else												;	then jump over
+				mov byte[MonthTable+1],29								; Else set Feb to 29
+				jmp .1endif
+	.1else:	cmp rax,366													; If we havent hit 366
+			jb .1endif													;	then exit
+				inc r_Year												; ELSE flicked over a year
+				mov rax,1												;	set remaining days to 1				
+	.1endif:				
+		
+			xor r_Month,r_Month											; Count No of Months
+			xor rdx,rdx													; Zero the month no
+		;	----------------------------------------
+	.MonthLoop:
+		;	----------------------------------------
+			mov dl,byte[MonthTable+r_Month]								; Grab the No Of Days in the month
+			inc r_Month													; Go to the next month			
+			cmp rax,rdx													; If we done
+				jb .MonthLoopExit										;	then exit loop
+			sub rax,rdx													; Subtract the No Of Days in the month	
+			jmp .MonthLoop												;	and loop
+		;	-----------------------------------------
+	.MonthLoopExit:
+		;	-----------------------------------------
+
+		;	And the days are left over
+			inc rax														; ????????????????????????????????
+			mov r_Day,rax												; Store the remainder as No Of Days
+			Call _DATETOALPHA											; and Load the date inti the alpha field
+
+_DATEFROMDAYS_EXIT:
+		ret       		
+
+
+;-----------------------------------------------------------------------
+;		LOAD THE EXTRACTED DATE INTO TH ALPHA FIELD
+;-----------------------------------------------------------------------
+_DATETOALPHA:
+
+		;	Store the passed fields
+			PUSH R9
+			push R10													
+			
+		;	Store the Day/Month/Year values in languageONE numeric fields	
+			mov qword[w_9Year], r_Year
+			mov qword[w_9Month],r_Month
+			mov qword[w_9Day],  r_Day			
+		;	Setup registers appropriately for call to _TOALPHA	
+			xor r10,r10
+			xor r11,r11
+			xor r14,r14
+			xor r15,r15
+			mov r13,1
+		;	Convert Years(number) to Years(alpha)	
+			mov r9,w_9Year
+			mov r12,w_XYear
+			xor r10,r10
+			xor r11,r11
+	mov r15,c_FALSE					; No need to resize			
+			Call _TOALPHA
+		;	Convert Months(number) to Years(alpha)
+			mov r9,w_9Month
+			mov r12,w_XMonth
+			xor r10,r10
+			xor r11,r11
+	mov r15,c_FALSE					; No need to resize
+			Call _TOALPHA
+		;	Convert Days(number) to Days(alpha)
+			mov r9,w_9Day
+			mov r12,w_XDay
+			xor r10,r10
+			xor r11,r11
+	mov r15,c_FALSE					; No need to resize			
+			Call _TOALPHA
+
+		;	RestStore the passed fields
+			POP R10
+			POP R9	
+			cld
+						
+		;	Now concatenate individual fields into one
+			mov RSI,w_XYear												; Setup source address			
+			mov RDI,r10													; Setup destination address
+			mov rcx,4													; CCYY to move
+	.l1:	movsb														; and do it
+			loop .l1
+
+		;	Add a forward slash
+			inc RDI														; Next character
+			mov byte[RDI],'/'											; move the slash
+			
+		;	Now do the months	
+			mov RSI,w_XMonth											; Reset the source address
+			mov rcx,2													; MM to move
+	.l2:	movsb														; and do it
+			loop .l2
+
+		;	And add a forward slash
+			inc RDI														; Next character
+			mov byte[RDI],'/'											; move the slash
+			
+		;	And finally the days	
+			mov RSI,w_XDay												; Reset the source address		
+			mov rcx,2													; DD to move
+	.l3:	movsb														; and do it
+			loop .l3
+
+_DATETOALPHA_EXIT:
+		ret
+		
+;-----------------------------------------------------------------------
+;		CONVERT DATE TO DAYS
+;		Linux epoch starts at 
+;		Thursday, 1 January 1970 @ 00:00:00
+;-----------------------------------------------------------------------	 
+_DAYSFROMDATE:
+
+			Call _ALPHATODATE
+	
+		;	Validate
+			cmp r_Year,1970												; < 1970. Outside of epoch
+				jb .Error
+			cmp r_Month,1												; < 1. Invalid month
+				jb .Error
+			cmp r_Month,12												; > 12. Invalid month
+				ja .Error
+			cmp r_Day,1													; < 1. Invalid Month
+				jb .Error
+								
+			mov rax,r_Year												; Grab the year
+			mov rbx,4													; To divide by 4
+			xor rdx,rdx													; Clear rdx
+			div rbx														; and divide
+			cmp rdx,0													; No remainder then no leap year
+				jne .day												; So jump
+			mov byte[MonthTable+1],29									; Set Feb as 29 days
+	.day:	xor rcx,rcx
+			mov cl,byte[MonthTable+r_Month-1]							; Do the compare
+			cmp r_Day,rcx												; and error if too many days
+				ja .Error
+
+
+		;	Calculate days in year
+			xor rdx,rdx													; For counting the no of days
+			mov rax,1970												; Start Count at 1970
+			mov rbx,2													; count the leapyears from 1970
+		;	---------------------------------------
+	.YearLoop:
+		;	---------------------------------------
+			cmp rax,r_Year												; If we have done all the years
+				je .YearLoopExit										; 	then exit the loop
+				
+			cmp rbx,4													; If we have hit a leapyear
+				je .Leap												;	then jmp to process it
+			add rdx,365													; ELSE add 365 days 
+			jmp .Cont													;	and jump to continue
+	.Leap:	add rdx,366													; add 366 days
+			xor rbx,rbx													; and restart the leap year count
+	.Cont:	inc rax														; INCREMENT the Year
+			inc rbx														; INCREMENT the Leap Year counter
+			jmp .YearLoop												;  and loop
+		;	----------------------------------------
+	.YearLoopExit:
+
+
+			mov rcx,r_Month												; Loop counter
+			dec rcx														; less 1
+			mov rsi,MonthTable											; Month Offset
+		;	----------------------------------------
+	.MonthLoop:
+		;	----------------------------------------
+			xor r15,r15													; Clear r15
+			mov r15b,byte[rsi]											; Grab the No Of Days in the month
+			add rdx,r15													; Add the No Of Days in the month	
+			inc rsi														; Go to the next month
+			loop .MonthLoop												;	and loop
+		;	-----------------------------------------
+		;	-----------------------------------------
+
+		;	Calculating the no of days between two dates ie 1970/01/01 and a future date
+		;	then we dont include the future day - so dec rdx (no Of Days)
+			add rdx,r_Day												; Add the days
+			dec rdx														; less 1
+			mov qword[r_NoOfDays],rdx									; move to output
+			jmp _DAYSFROMDATE_EXIT										; and exit
+
+		;	-----------------------------------------
+		;	ERROR
+		;	-----------------------------------------
+	.Error:	mov QWORD[ERROR_CODE],1
+			
+_DAYSFROMDATE_EXIT:
+		ret
+
+;-----------------------------------------------------------------------
+;		LOAD THE ALPHA DATE INTO NUMERIC FIELDS
+;-----------------------------------------------------------------------
+_ALPHATODATE:
+			cld
+			
+		;	Extract date into individual fields
+			mov RSI,r_DateString										; Setup source address			
+			mov RDI,w_XYear												; Setup destination address
+			mov rcx,4													; CCYY to move
+	.l1:	movsb														; and do it
+			loop .l1
+
+		;	Skip forward slash
+			inc RSI														; Next character
+			
+		;	Now do the months	
+			mov RDI,w_XMonth											; Reset the destination address
+			mov rcx,2													; MM to move
+	.l2:	movsb														; and do it
+			loop .l2
+
+		;	Skip forward slash
+			inc RSI														; Next character
+			
+		;	And finally the days	
+			mov RDI,w_XDay												; Reset the destination address		
+			mov rcx,2													; DD to move
+	.l3:	movsb														; and do it
+			loop .l3
+
+		;	Store the passed fields
+			PUSH R9														
+			PUSH R10													
+																
+		;	Store the Day/Month/Year values in languageONE numeric fields				
+		;	Setup registers appropriately for call to _FROMALPHA
+			mov r9,w_9Year
+			xor r10,r10
+			xor r11,r11
+			mov r12,w_XYear
+			mov r13,1
+			mov r14,4
+		;	Convert Years(number) to Years(alpha)	
+			Call _FROMALPHA			
+		;	Convert Months(number) to Years(alpha)
+			mov r9,w_9Month
+			mov r12,w_XMonth
+			mov r14,2
+			Call _FROMALPHA
+		;	Convert Days(number) to Days(alpha)
+			mov r9,w_9Day
+			mov r12,w_XDay
+			Call _FROMALPHA
+
+		;	RestStore the passed fields
+			POP R10
+			POP R9	
+
+		;	move languageONE fields to registers
+			mov r_Year, qword[w_9Year]
+			mov r_Month,qword[w_9Month]
+			mov r_Day,  qword[w_9Day]						
+			
+_ALPHATODATE_EXIT:
+		ret
+
+;=======================================================================				
+;           External Call Routines
+;			sys_pipe
+;			sys_fork
+;			sys_execve
+;			sys_wait4
+;=======================================================================
+
+;=======================================================================				
+;           External Call Routines
+;			sys_pipe
+;			sys_fork
+;			sys_execve
+;			sys_wait4
+;=======================================================================
+
+;-----------------------------------------------------------------------
+;		RUN_INTERACTIVE
+;           Passed program path/name in r9
+;-----------------------------------------------------------------------
+;		Requires a 0x00 terminated program path/name in rdi
+;		Requires an address of a 0x00 terminated table of addresses of 
+;			0x00 terminated parameters in rsi
+;		This can be best handled by using the stack
+;		In memory it would look like
+;				
+;	ProgramName					db '/usr/bin/xterm',0x00
+;	ProgramParameters			db '/usr/bin/nasm',0x00,'-f',0x00,'eLF64',0x00,'V1.15a.ASM',0x00
+;	TableOfParameterAddresses	dq Parameters
+;								dq Parameters+9
+;								dq Parameters+12
+;								dq Parameters+18
+;								dq 0x00
+;
+;		On the stack it looks like
+;
+;			+--------------------------+
+;			|  0X0000000000000000      |
+;			+--------------------------+ RSP + 40 
+;			|  Address of Last Arg     |
+;			+--------------------------+ RSP + 32
+;			|  Address of Arg 5        |
+;			+--------------------------+ RSP + 24
+;			|  Address of Arg 3        |
+;			+--------------------------+ RSP + 16
+;			|  Address of Arg 2		   |
+;			+--------------------------+ RSP + 8  
+;			|  Address of Arg 1        | Always Program Name
+;			+--------------------------+ RSP = (ADDRESS of TableOfParameterAddresses) 
+;
+;-----------------------------------------------------------------------
+_RUN_INTERACTIVE:
+
+
+		;	------------------------
+		;	Fork			
+		;	------------------------
+		;	To debug either parent or child then use the following gdb command prior to the fork
+		;		set follow-fork-mode parent
+		;		set follow-fork-mode child
+			mov rax,57													; sys_fork
+			syscall			
+			mov [CHILD_PID],rax
+
+	.If0:	cmp qword[CHILD_PID],0										; If PID = 0					
+			je .CHILD													;	then we are child
+
+.PARENT:
+		jmp .Exit
+
+.CHILD:
+
+	;	-----------------------------------
+	;	NOW SET UP THE COMMAND AND EXEC IT
+	;	-----------------------------------
+
+		%define r_Length r15
+
+		;	--------------------------------------------------------------
+		;	Working backwards Copy the input and 0x00 terminate each field
+		;	Store the length
+		;	--------------------------------------------------------------
+			mov RSI,r9													; Grab the source address
+			add RSI,@fieldLength(r9)									; add field length
+			dec RSI														; less 1
+			
+			mov RDI,w_RecordBuffer										; using record_buffer for destination
+			add RDI,@fieldLength(r9)									; add field length
+			dec RDI														; less 1
+			
+			mov rcx,@fieldLength(r9)									; field length to counter
+			xor r_Length,r_Length										; zero string length counter
+			std															; and moving backwards
+			
+	.l0:	lodsb														; grab a byte
+	
+	.if1:	cmp al,' '													; if a space
+			je .else1													;	jump to 0x00
+				
+	.if2:	cmp r_Length,0												; Have we set the length yet
+			jne .endif1													; if YES then exit if
+					
+			mov r_Length,rcx											; Grab the length
+			jmp .endif1													; and exit
+				
+	.else1:	mov al,0x00													; replace space with 0x00
+	
+	.endif1:		
+			stosb														; store it 
+			loop .l0													; and loop back
+
+		;	---------------------
+		;	Grab the program name
+		;	---------------------
+			cld															; Clear direction flag
+			$copyBytes w_RecordBuffer,w_ProgramName,r_Length
+			
+		;	------------------------------------------
+		;	Again working backwards Get the parameters
+		;	------------------------------------------	
+			push 0x00													; Mark the end of the parameter addresses list
+			
+			mov RSI,w_RecordBuffer										; using record_buffer for destination
+			add RSI,r_Length											; from the end
+			mov RDI,w_RecordBuffer										; work backwrds until the beginning
+			
+	.if3:	dec RSI														; Next byte down
+			cmp RSI,RDI													; are we done
+				jb .progName											; then go and get the program name
+			cmp byte[RSI],0x00											; Have we got a null
+				jne .if3												;	then keep working back
+						
+			inc RSI														; up 1
+			push RSI													; store the address on the stack
+			dec RSI														; back down 1
+			
+	.l1:	cmp byte[RSI],0x00											; Are the anymore nulls											
+				jne .if3												;	NO - then back to main loop
+			dec RSI														; ELSE back down 1
+			jmp .l1														; and cycle thru them
+
+ .progName:	push w_ProgramName											; This is progname by convention
+		
+		;	-----------------------------------------
+		;	and make the call
+		;	-----------------------------------------	
+			mov rax,59													; sys_execve
+			mov rdi,w_ProgramName										; Program Name
+			mov rsi,rsp													; Array of Address of Parameters
+		;	mov rdx,x_NULL												; NULL to to indicate No environment
+		;	requiers at least the display no
+			push 0x00													; end of environment variables
+			push env_displayNo											; the display number
+			mov rdx,rsp													; and pass the address
+			syscall
+			cmp rax,0
+
+		;	Will Not return if successful
+			mov qword[ERROR_CODE],rax
+
+	.Exit:
+
+_RUN_INTERACTIVE_EXIT:
+			ret
+
+;-----------------------------------------------------------------------
+;		RUN_BATCH
+;           Passed program path/name in r9
+;			Passed R10 to receive read handle
+
+;-----------------------------------------------------------------------
+;		Requires a 0x00 terminated program path/name in rdi
+;		Requires an address of a 0x00 terminated table of addresses of 
+;			0x00 terminated parameters in rsi
+;		This can be best handled by using the stack
+;		In memory it would look like
+;				
+;	ProgramName					db '/usr/bin/nasm',0x00
+;	ProgramParameters			db '/usr/bin/nasm',0x00,'-f',0x00,'eLF64',0x00,'V1.15a.ASM',0x00
+;	TableOfParameterAddresses	dq Parameters
+;								dq Parameters+9
+;								dq Parameters+12
+;								dq Parameters+18
+;								dq 0x00
+;
+;		On the stack it looks like
+;
+;			+--------------------------+
+;			|  0X0000000000000000      |
+;			+--------------------------+ RSP + 40 
+;			|  Address of Last Arg     |
+;			+--------------------------+ RSP + 32
+;			|  Address of Arg 5        |
+;			+--------------------------+ RSP + 24
+;			|  Address of Arg 3        |
+;			+--------------------------+ RSP + 16
+;			|  Address of Arg 2		   |
+;			+--------------------------+ RSP + 8  
+;			|  Address of Arg 1        | Always Program Name
+;			+--------------------------+ RSP = (ADDRESS of TableOfParameterAddresses) 
+;
+;-----------------------------------------------------------------------
+_RUN_BATCH:
+
+		;	-----------
+		;	OPEN A PIPE
+		;	-----------
+			mov rax,22													; open a pipe 
+			mov rdi,w_pipe_fd
+			syscall
+
+		;	------------------------
+		;	Fork			
+		;	------------------------
+		;	To debug either parent or child then use the following gdb command prior to the fork
+		;		set follow-fork-mode parent
+		;		set follow-fork-mode child
+			mov rax,57													; sys_fork
+			syscall			
+			mov [CHILD_PID],rax
+
+	.If0:	cmp qword[CHILD_PID],0										; If PID = 0					
+			je .CHILD													;	then we are child
+
+.PARENT:
+		mov rax,3														; Close the write end of the pipe
+		mov edi,dword[w_pipe_write]
+		syscall
+		mov eax,dword[w_pipe_read]										; Return the Read Handle
+		mov qword[r10],rax												; to the parent
+		jmp .Exit
+
+.CHILD:
+		mov rax,3														; Close the read end of the pipe
+		mov edi,dword[w_pipe_read]
+		syscall
+		mov rax,33														; duplicate stdout to pipe write
+		mov edi,dword[w_pipe_write]		
+		mov rsi,1
+		syscall
+		mov rax,33														; duplicate stderr to pipe write												
+		mov edi,dword[w_pipe_write]
+		mov rsi,2
+		syscall
+
+	;	-----------------------------------
+	;	NOW SET UP THE COMMAND AND EXEC IT
+	;	-----------------------------------
+
+		%define r_Length r15
+
+		;	--------------------------------------------------------------
+		;	Working backwards Copy the input and 0x00 terminate each field
+		;	Store the length
+		;	--------------------------------------------------------------
+			mov RSI,r9													; Grab the source address
+			add RSI,@fieldLength(r9)									; add field length
+			dec RSI														; less 1
+			
+			mov RDI,w_RecordBuffer										; using record_buffer for destination
+			add RDI,@fieldLength(r9)									; add field length
+			dec RDI														; less 1
+			
+			mov rcx,@fieldLength(r9)									; field length to counter
+			xor r_Length,r_Length										; zero string length counter
+			std															; and moving backwards
+			
+	.l0:	lodsb														; grab a byte
+	
+	.if1:	cmp al,' '													; if a space
+			je .else1													;	jump to 0x00
+				
+	.if2:	cmp r_Length,0												; Have we set the length yet
+			jne .endif1													; if YES then exit if
+					
+			mov r_Length,rcx											; Grab the length
+			jmp .endif1													; and exit
+				
+	.else1:	mov al,0x00													; replace space with 0x00
+	
+	.endif1:		
+			stosb														; store it 
+			loop .l0													; and loop back
+
+		;	---------------------
+		;	Grab the program name
+		;	---------------------
+			cld															; Clear direction flag
+			$copyBytes w_RecordBuffer,w_ProgramName,r_Length
+			
+		;	------------------------------------------
+		;	Again working backwards Get the parameters
+		;	------------------------------------------	
+			push 0x00													; Mark the end of the parameter addresses list
+			
+			mov RSI,w_RecordBuffer										; using record_buffer for destination
+			add RSI,r_Length											; from the end
+			mov RDI,w_RecordBuffer										; work backwrds until the beginning
+			
+	.if3:	dec RSI														; Next byte down
+			cmp RSI,RDI													; are we done
+				jb .progName											; then go and get the program name
+			cmp byte[RSI],0x00											; Have we got a null
+				jne .if3												;	then keep working back
+						
+			inc RSI														; up 1
+			push RSI													; store the address on the stack
+			dec RSI														; back down 1
+			
+	.l1:	cmp byte[RSI],0x00											; Are the anymore nulls											
+				jne .if3												;	NO - then back to main loop
+			dec RSI														; ELSE back down 1
+			jmp .l1														; and cycle thru them
+
+ .progName:	push w_ProgramName											; This is progname by convention
+		
+		;	-----------------------------------------
+		;	and make the call
+		;	-----------------------------------------	
+			mov rax,59													; sys_execve
+			mov rdi,w_ProgramName										; Program Name
+			mov rsi,rsp													; Array of Address of Parameters
+			mov rdx,x_NULL												; NULL to to indicate No environment
+			syscall
+			cmp rax,0
+
+		;	Will Not return if successful
+			mov qword[ERROR_CODE],rax
+
+	.Exit:
+
+_RUN_BATCH_EXIT:
+			ret
+
+;-----------------------------------------------------------------------
+;		WAIT
+;-----------------------------------------------------------------------
+_WAIT:
+
+		mov rax,61															; sys_wait4
+		mov rdi,qword[r9]
+		mov rsi,ERROR_CODE
+		xor rdx,rdx	
+		xor r10,r10		
+		syscall
+
+	;	------------														; A system error is held in
+	;	System Error														; 1st 8 buts
+	;	------------
+		cmp byte[ERROR_CODE],0
+			je .exitcode
+			xor rax,rax
+			mov al,byte[ERROR_CODE]											; error code is not -ve ?	
+			neg rax														
+			call _SYSERROR
+
+	;	-------------------													; program return code held in
+	;	program return code													; 2nd 8 bits
+	;	-------------------
+	.exitcode:
+		shr qword[ERROR_CODE],8
+
+_WAIT_EXIT:
+			ret
+
+;-----------------------------------------------------------------------
+;		GET A RANDOM NUMBER
+;		Although this would be best in NUMBERS.LIB, by having it here
+;		I do not have to split NUMBERS.LIB into OS versions
+;-----------------------------------------------------------------------
+_RANDOM:;***************** V2.12 Tuning Modifications ******************
+
+		mov rax,qword[w_RandomNoIdx]										; Grab the Index
+		mov rbx,qword[r9]													; get Byte/Word/DWord/QWord
+		add rax,rbx															; Add offset to Index
+		cmp rax,c_RandomNoBufferSize										; Are we at the end of the buffer
+			jng .FromBuffer													; No ? - then jump
+			
+		mov rax,318															; sys_getrandom
+		mov rdi,w_RandomNoBuffer											; Buffer address
+		mov rsi,c_RandomNoBufferSize										; grab 4K bytes
+	;	GRND_NONBLOCK	0x0001
+	; 	GRND_RANDOM		0x0002
+		mov rdx,0x0001														; NONBlk else wont return 4K
+			syscall															; make the call
+			
+		mov word[w_RandomNoIdx],0											; set index to zero 
+			
+	.FromBuffer:
+		mov r15,w_RandomNoBuffer											; Grab the buffer address
+		add r15w,word[w_RandomNoIdx]										; and add the offset
+		.byte:
+			cmp rbx,1
+				jne .word
+				
+			mov al,byte[r15]
+			mov qword[r10],rax
+			inc qword[w_RandomNoIdx]	
+			jmp .Exit
+			
+		.word:
+			cmp rbx,2
+				jne .dword
+				
+			mov ax,word[r15]
+			mov qword[r10],rax
+			add qword[w_RandomNoIdx],2	
+			jmp .Exit
+			
+		.dword:
+			cmp rbx,4
+				jne .qword
+				
+			mov eax,dword[r15]
+			add qword[w_RandomNoIdx],4	
+			jmp .Exit
+						
+		.qword:
+			mov rax,qword[r15]
+			mov qword[r10],rax
+			add qword[w_RandomNoIdx],8	
+			jmp .Exit		
+				
+	.Exit:
+_RANDOM_EXIT:
+			ret
+
+;-----------------------------------------------------------------------
+;		STRING COMPARE
+;-----------------------------------------------------------------------
+_CMPSTR:;***************** V2.12 Tuning Modifications ******************
+
+;	----------
+;	QUAD WORDS
+;	----------
+	.quad:
+		cmp rcx,8
+			jl .double
+			
+		mov rax,qword[rsi]
+		bswap rax
+		mov rbx,qword[rdi]
+		bswap rbx
+		cmp rax,rbx
+			jne _CMPSTR_EXIT
+		
+		add rsi,8
+		add rdi,8
+		sub rcx,8
+		jmp .quad
+
+;	------------
+;	DOUBLE WORDS
+;	------------		
+	.double:
+		cmp rcx,4
+			jl .word
+
+		mov eax,dword[rsi]
+		bswap eax
+		mov ebx,dword[rdi]
+		bswap ebx
+		cmp eax,ebx
+			jne _CMPSTR_EXIT
+			
+		add rsi,4
+		add rdi,4
+		sub rcx,4
+		jmp .double
+		
+;	-----
+;	WORDS
+;	-----			
+	.word:
+		cmp rcx,2
+			jl .byte
+
+		mov ax,word[rsi]
+		xchg ah,al
+		mov bx,word[rdi]
+		xchg bh,bl
+		cmp ax,bx
+			jne _CMPSTR_EXIT
+			
+		add rsi,2
+		add rdi,2
+		sub rcx,2
+		jmp .word
+		
+;	-----
+;	BYTES
+;	-----
+;	When you are here you maybe looking at the last byte OR you are finished and have equality.
+;	In the 2nd case you do not want to destroy the compare result so we step back to the last
+;	byte to make sure we do another compare
+	.byte:			
+		cmp rcx,1
+			je .setFlag
+		dec rsi
+		dec rdi
+	.setFlag:		
+		mov ah,byte[rsi]
+		mov al,byte[rdi]
+		cmp ah,al
+
+_CMPSTR_EXIT:
+	ret
+
+;-----------------------------------------------------------------------
+;		STRING MOVE
+;-----------------------------------------------------------------------
+_MOVESTR:;***************** V2.12 Tuning Modifications ******************
+
+;	----------
+;	QUAD WORDS
+;	----------
+	.quad:
+		cmp rcx,8
+			jl .double
+			
+		mov rax,qword[rsi]
+		mov qword[rdi],rax
+		
+		add rsi,8
+		add rdi,8
+		sub rcx,8
+		jmp .quad
+
+;	------------
+;	DOUBLE WORDS
+;	------------		
+	.double:
+		cmp rcx,4
+			jl .word
+
+		mov eax,dword[rsi]
+		mov dword[rdi],eax
+			
+		add rsi,4
+		add rdi,4
+		sub rcx,4
+		jmp .double
+		
+;	-----
+;	WORDS
+;	-----			
+	.word:
+		cmp rcx,2
+			jl .byte
+
+		mov ax,word[rsi]
+		mov word[rdi],ax
+			
+		add rsi,2
+		add rdi,2
+		sub rcx,2
+		jmp .word
+		
+;	-----
+;	BYTES
+;	-----	
+	.byte:
+		cmp rcx,1
+			jl _MOVESTR_EXIT
+			
+		mov ah,byte[rsi]
+		mov byte[rdi],ah
+
+
+_MOVESTR_EXIT:
+	ret
+	
+;-----------------------------------------------------------------------
+;		END PROGRAM
+;-----------------------------------------------------------------------
+_ENDPROGRAM:
+
+			mov rax,60
+			mov rdi,qword[ERROR_CODE]
+			syscall
+
+_ENDPROGRAM_EXIT:
+			ret

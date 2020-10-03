@@ -1,0 +1,1245 @@
+	%assign debug 0	
+	%include '../include/LMACROS.CPY'
+	%include '../include/IMACROS.CPY'
+	%include '../include/CONSTANTS.INC'
+	%line 5 TABLES.LIB
+
+;	=================================================
+;	GLOBAL ROUTINES/VARIABLES defined in this library
+;	=================================================
+;	Routines
+;	--------
+	global _TABLES
+
+;	===============================================
+;	EXTERNAL ROUTINES/VARIABLES used by the library
+;	===============================================
+;	Routines
+;	--------
+	extern _TOALPHA				; NUMBERS
+	extern _FROMALPHA			; NUMBERS
+	extern _SYSERROR			; NUMBERS
+	extern _CMPSTR				; COMMON
+	
+;	------
+;	Fields
+;	------
+	extern ERROR_CODE			; COMMON	
+	extern err09				; COMMON
+	extern err10				; COMMON
+	extern w_One				; COMMON
+	extern w_Temp				; COMMON
+	extern w_RecordBuffer		; COMMON
+
+;=======================================================================
+;			Call parameters for _TABLES
+;=======================================================================
+;-----------------------------------------------------------------------
+; 	TableStatus		Dimension Value	 								Table Indicator									 
+;	+---+---+---+---+---+---+---+---+---+---+---+---+---------------+---+---------+------+---+---+---+---+---+---+---+---+	     
+;	|'9'|Len|Val|Pic|Idx|Idx|Idx|Idx|Idx|Idx|Idx|Idx|Record Address	|'t'|NoOfBytes| NAME |Idx|Idx|Idx|Idx|Idx|Idx|Idx|Idx|	
+;	+---+---+---+---+---+---+---+---+---+---+---+---+---------------+---+---------+------+---+---+---+---+---+---+---+---+ 
+;			-91	    -81 -73	-65	-57	-49	-41	-33	-25	-17			   -9	-8		   0	  No Of Bytes +
+;															       						  8  16  24  32  40  48  56  64  72
+;
+;		INSERTTABLE WorkTable,A01_Record_Length*Idx*Idx*Idx*Idx*Idx*Idx*Idx*Idx
+;-----------------------------------------------------------------------
+;				   R8	R9		  R10		 R11
+;			TABLES bind,WorkTable,A01_Record,Idx,Idx,Idx..
+;			TABLES rget,WorkTable,Idx,Idx,Idx..
+;			TABLES rput,WorkTable,Idx,Idx,Idx..
+;			TABLES sort,WorkTable,Start,End
+;			TABLES search,Worktable,Start,End,SearchItem,Index
+;				   R8		R9		  R11	  R12
+;			TABLES fget,	WorkTable,FieldNo,Fieldname,Idx,Idx,Idx..
+;			TABLES fput,	WorkTable,FieldNo,Fieldname,Idx,Idx,Idx..
+;-----------------------------------------------------------------------
+	%define @tableSize(x)		qword[x-8]
+	%define @recordAddress(x)	qword[x-17]
+	%define @tableStatus(x)		qword[x-91]
+
+
+;=======================================================================
+;			CODE SEGMENT
+;=======================================================================				
+			section .text	
+
+_TABLES:
+			cld
+			
+;-----------------------------------------------------------------------
+;			BIND
+;-----------------------------------------------------------------------			
+	.bind:	cmp r8,$bind
+				jne .functions						
+			Call _BIND
+			jmp _TABLES_EXIT
+
+	.functions:
+		.1If:cmp @fieldIndicator(r_Table) ,'t'							; Must be a 't'able
+				je .sort
+				xor rax,rax												
+				mov r14,err09											; err09 to languageONE error
+				Call _SYSERROR											; and call it
+		.1EndIf:			
+										
+;-----------------------------------------------------------------------
+;			SORT
+;-----------------------------------------------------------------------						
+	.sort:	cmp r8,$sort
+				jne .find
+		;	V2.11
+		;	Call _SORT
+		;	V2.11
+			Call _QUICKSORT
+			jmp _TABLES_EXIT
+
+;-----------------------------------------------------------------------
+;			SEARCH
+;-----------------------------------------------------------------------						
+	.find:	cmp r8,$search
+				jne .offs						
+			Call _SEARCH
+			jmp _TABLES_EXIT
+
+;-----------------------------------------------------------------------
+;			OFFSET - Calc offset from indexes
+;-----------------------------------------------------------------------						
+	.offs:	Call _OFFSET	
+			cmp @tableStatus(r_Table),0
+				jne _TABLES_EXIT					
+
+;-----------------------------------------------------------------------
+;			rPUT
+;-----------------------------------------------------------------------			
+	.rput:	cmp r8,$rput		
+				jne .rget
+			Call _FROMRECORD
+			jmp _TABLES_EXIT
+
+;-----------------------------------------------------------------------
+;			rGET
+;-----------------------------------------------------------------------								
+	.rget:	cmp r8,$rget	
+				jne .fput
+			Call _TORECORD	
+			jmp _TABLES_EXIT
+
+;-----------------------------------------------------------------------
+;			fPUT
+;-----------------------------------------------------------------------			
+	.fput:	cmp r8,$fput		
+				jne .fget
+			Call _FPUT
+			jmp _TABLES_EXIT
+
+;-----------------------------------------------------------------------
+;			fGET
+;-----------------------------------------------------------------------								
+	.fget:	cmp r8,$fget
+				jne _TABLES_EXIT
+			Call _FGET	
+	  	
+_TABLES_EXIT:
+			ret
+
+;-----------------------------------------------------------------------
+;      		(BIND) Setup TABLE data structure
+;-----------------------------------------------------------------------
+; 		TableStatus		Dimension Value	 								Table Indicator									 
+;	+---+---+---+---+---+---+---+---+---+---+---+---+---+---------------+---+---------+------+---+---+---+---+---+---+---+---+	     
+;	| 1	|'9'|Len|Val|Pic|Idx|Idx|Idx|Idx|Idx|Idx|Idx|Idx|Record Address	|'t'|NoOfBytes| NAME |Idx|Idx|Idx|Idx|Idx|Idx|Idx|Idx|	
+;	+---+---+---+---+---+---+---+---+---+---+---+---+---+---------------+---+---------+------+---+---+---+---+---+---+---+---+ 
+;	-108-100-99	-91	    -81 -73	-65	-57	-49	-41	-33	-25	-17			   -9	-8		   0	  No Of Bytes +
+;															       						 	 8  16  24  32  40  48  56  64  72
+;
+;		INSERTTABLE WorkTable,A01_Record_Length*Idx*Idx*Idx*Idx*Idx*Idx*Idx*Idx
+;-----------------------------------------------------------------------
+;				   R8	R9		  R10		 
+;			TABLES bind,WorkTable,A01_Record,Idx,Idx,Idx...
+;-----------------------------------------------------------------------
+;		The idea here.
+;		The bind call will receive parameters describing the tables dimensions
+;		ie.:- TABLES bind,WorkTable,A01_Record,2,3,4,5,(1)-System supplied
+;		The code will convert (and replace) the dimension sizes into a value to be used
+;		to multiply the GET/PUT indexes and thus produce a linear offset into the table.
+;		It does this by multiplying Idx+1 by Idx+2 by Idx+3 etc and storing the answer
+;		in Idx. It then moves on to the next index.
+;		eg.
+;			2,	3,	4,	5,(1) will be replaced by
+;			60,	20,	5,	1
+;			where 60=3*4*5*1
+;			where 20=4*5*1
+;			where 4=5*1
+;			where 1=1*1
+;
+;		the indexes than supplied in the GET/PUT will have 1 subtracted from
+;		them and multiplied by the derived values above. eg:-
+;
+;		2,3,4,5 = 1*60+2*20+3*5+4*1 = 119 or the last element in a table
+;		defined by 2,3,4,5. Remembering the starting address is calced as zero.
+;
+;-----------------------------------------------------------------------
+_BIND:
+		;	The BIND process fills in the Table values cuz Tables are 
+		;	defined in BSS section and therefore cannot have values.
+
+		; 	Identify as a table
+			mov @fieldIndicator(r_Table),'t'							; Set Table identifier
+
+		;	Table Status
+			mov qword[r_Table-108],1									; Table status is integer
+			mov  byte[r_Table-100],'9'									; Indicates numeric data structure
+			mov qword[r_Table-099],2									; 2 characters long
+			mov qword[r_Table-091],0									; Table Status
+			mov  word[r_Table-083],'99'									; 2 Byte picture
+
+		;	Record Address
+			mov @recordAddress(r_Table),r_Record						; Get Record Address				
+
+		;	No Of Bytes
+			mov rax,@fieldLength(r_Record)								; Get length
+			mov rcx,8													; set counter to 8
+			LEA RSI,[r_Table-89]
+			
+		;	START LOOP -------------------------------------------------
+	.loop:	add RSI,8													;	and add 8
+			cmp qword[RSI],0x00											; End Of Dimensions
+				je .done												;	then go and store it
+			mul qword[RSI]												; Multiply rax (record length)
+			loop .loop													;	by each index
+		;	END LOOP ---------------------------------------------------			
+	.done:	mov @tableSize(r_Table),rax									; Store Table size (in bytes)
+												
+		;	Init Dimension values
+			mov rcx,8													; Set counter to 8
+			LEA RDI,[r_Table-81]
+			
+		;	START LOOP---------------
+	.init1:	mov qword[RDI],0											; Set to zero
+			loop .init1
+		;	END LOOP ----------------
+			
+		;	Init Index values
+			mov rcx,8													; Set counter to 8
+			LEA RDI,[r_Table+8]
+		;	START LOOP --------------
+	.init2:	mov qword[RDI],0											; Set to zero
+			loop .init2
+		;	END LOOP ----------------			
+
+		;	Now calculated the Dimension values 
+		;	as described in the comments
+			LEA RDI,[r_Table-89]
+			
+		;	START OUTER LOOP -------------------------------------------
+	.Oloop:	add RDI,8													; Next Slot
+			cmp qword[RDI],1											; Exit on last one							
+				je _BIND_EXIT
+				
+			LEA RSI,[RDI+8]
+						
+			mov	rax,1													; Initialise rax
+		;	START INNER LOOP ----------------------------
+	.Iloop:	mul qword[RSI]												; Multiply by slot value							
+			add RSI,8													; Next slot
+			cmp qword[RSI],0											; are we done - then drop thru						
+				jne .Iloop												;	else loop
+		;	END INNER LOOP ------------------------------
+				
+			mov qword[RDI],rax											; Store value
+			jmp .Oloop													; Get next Dimension value	
+		;	END OUTER LOOP ---------------------------------------------	
+			
+_BIND_EXIT:
+			ret
+
+;-----------------------------------------------------------------------
+;      		(SHELL SORT)
+;-----------------------------------------------------------------------
+;	******** REPLACED BY QUICK SORT **********
+;-----------------------------------------------------------------------
+; 		TableStatus		Dimension Value	 								Table Indicator									 
+;	+---+---+---+---+---+---+---+---+---+---+---+---+---+---------------+---+---------+------+---+---+---+---+---+---+---+---+	     
+;	| 1	|'9'|Len|Val|Pic|Idx|Idx|Idx|Idx|Idx|Idx|Idx|Idx|Record Address	|'t'|NoOfBytes| NAME |Idx|Idx|Idx|Idx|Idx|Idx|Idx|Idx|	
+;	+---+---+---+---+---+---+---+---+---+---+---+---+---+---------------+---+---------+------+---+---+---+---+---+---+---+---+ 
+;	-108-100-99	-91	    -81 -73	-65	-57	-49	-41	-33	-25	-17			   -9	-8		   0	  No Of Bytes +
+;															       						 	 8  16  24  32  40  48  56  64  72
+;-----------------------------------------------------------------------
+;				   R8	R9		  		 
+;			TABLES bind,WorkTable,(Idx1)Start,(Idx2)End
+;-----------------------------------------------------------------------
+;	Don't muck around with this too much cuz it was pretty hard to understand
+;	******** 	THE EXPLANATION FOR THIS SORT IS CODED IN languageONE IN 
+;				V0.06a
+;-----------------------------------------------------------------------
+;%imacro $getAddress 2
+;			mov %1,r9								; Start of Table to RSI/RDI
+;			mov rax,%2								; Lower/Upper to RAX
+;			dec rax									;	less 1
+;			mul r8									; Multiply by Record Length
+;			add %1,rax								; add offset to RSI/RDI
+;%endmacro
+;
+;%imacro $calcSpan 0
+;			mov rax, r_Span							; Grab the span
+;			imul rax,10								; Scale it up by 10
+;			cqo										; sign extend
+;			idiv qword[d_divisor]					; Divide 13 (1.3 unscaled)
+;			mov  r_Span,rax							; and store it
+;%endmacro
+;
+;_SORT:
+;	;	Passed parameters
+;		%define r_startPos		r10				
+;		%define r_noOfBytes		r11				
+;	;	Used in this routine
+;		%define r_recordLength	r8
+;		%define r_Lower			r10
+;		%define r_Upper			r11
+;		%define r_Swapped		r12
+;		%define r_Empty			r13
+;		%define r_Span			r14
+;		%define r_Ubound		r15
+;		
+;
+;	[section .data]
+;		d_divisor				dq 13	; 1.3 scaled to 13 for integer maths
+;		d_startPos				dq 0
+;		d_noOfBytes				dq 0
+;		d_gap					dq 0
+;	[section .text]
+;	
+;	
+;		;	ERROR - You can only SORT/SEARCH a 1 dimensional table
+;	.1If:	cmp qword[r_Table-65],0										; Are there more than 1 dimensions
+;				je .1EndIf
+;				xor rax,rax												; If not then 0 rax (Not Linux error)
+;				mov r14,err10											; err10 to languageONE error
+;				Call _SYSERROR											; and call it
+;	.1EndIf:			
+;
+;		;	(DO THIS 1ST SO r10,r11 are available Get start offset and No Of Bytes 
+;			mov qword[d_noOfBytes],r_noOfBytes							; and save it
+;			dec r_startPos												; decrement the offset by 1
+;			mov qword[d_startPos],r_startPos							; and save it
+;
+;		;	Get upper boundary
+;			mov	rax,@tableSize(r_Table)									; Get table size
+;			mov r_recordLength,@recordAddress(r_Table)					; Get Record Address
+;			mov r_recordLength,@fieldLength(r_recordLength)				; Get record Length	
+;			cqo															; Clear rdx/sign extend
+;			idiv r_recordLength											; Divide table size by record length
+;			mov r_Ubound,rax											; and store upper boundary in r15
+;					
+;		;	Setup the span
+;			mov  r_Span,r_Ubound										; start with upper boundary
+;			$calcSpan
+;			
+;		;	-------------------------------------
+;		;	LOOP 1					
+;		;	-------------------------------------
+;	.Loop1:	cmp  r_Span,1 												; Loop until span 1
+;				jb .Exit
+;			
+;			mov qword[d_gap],r_Span										; get the gap
+;			dec qword[d_gap]
+;
+;		;	We will run from the calculated upper to the top of the table	
+;			mov r_Upper,r_Span
+;			dec r_Upper
+;		;	---------------------------------------
+;		;	LOOP 2
+;		;	---------------------------------------	
+;	.Loop2:	inc r_Upper
+;			cmp r_Upper,r_Ubound
+;				ja .EndLoop2
+;
+;		;	Start indexes at upper value
+;			mov r_Lower,r_Upper
+;			sub r_Lower,qword[d_gap]									;	less the gap
+;			mov r_Empty,r_Upper											; Save empty slot
+;			xor r_Swapped,r_Swapped										; Set swap flag to false
+;
+;		;	Save upper sort key
+;			$getAddress RSI,r_Upper										; Get Upper
+;			add RSI,qword[d_startPos]									;	+ start position				
+;			mov RDI,w_RecordBuffer										; Save in w_RecordBuffer (Convenient)
+;			mov rcx,qword[d_noOfBytes]									; No Of Bytes
+;		.l1:movsb
+;			loop .l1
+;		
+;		;	Loop while Lower is > than 0
+;		;	---------------------------------------
+;		;	LOOP 3
+;		;	---------------------------------------
+;	.Loop3:	cmp r_Lower,1
+;				jl .EndLoop3
+;			
+;		;	Setup compare
+;			$getAddress RSI,r_Lower										; Get Lower		
+;			add RSI,qword[d_startPos]
+;			mov RDI,w_RecordBuffer										; Get saved		
+;			mov rcx,qword[d_noOfBytes]									; No Of Bytes
+;			
+;		;	Is the Lower > Saved (Upper)
+;		.l2:cmpsb
+;			ja .swap													; So swap them
+;			jb .EndLoop3												; No swap required
+;			loop .l2
+;			
+;			jmp .EndLoop3												; They are equal
+;						
+;		;	Write the lower to the upper
+;	.swap:	mov r_Swapped,c_TRUE
+;
+;			$getAddress RSI,r_Lower										; Get Lower					
+;			$getAddress RDI,r_Empty										; Get Empty
+;			mov rcx,r_recordLength										; Record Length
+;			$copyQwords			
+;												
+;			mov r_Empty,r_Lower											; save new empty slot
+;			sub r_Lower,qword[d_gap]									; and drop lower by the gap 
+;
+;			jmp .Loop3
+;	
+;		;	-----------------------------------
+;	.EndLoop3:	;	END LOOP 3
+;		;	------------------------------------			
+;		;	Have we done a swap
+;			cmp r_Swapped,c_TRUE
+;				jne .Loop2
+;				
+;		;	Write the saved to the empty slot				
+;			mov RSI,w_RecordBuffer										; Get saved
+;			$getAddress RDI,r_Empty										; Get the empty slot
+;			mov rcx,r_recordLength										; Record Length
+;			$copyQwords
+;
+;			jmp .Loop2
+;		;	-------------------------------------	
+;	.EndLoop2:	;	END LOOP 2		
+;		;	-------------------------------------
+;			$calcSpan													; Get the new span
+;			jmp .Loop1													; and loop
+;		;	-------------------------------------	
+;	.EndLoop1:	;	END LOOP 3
+;		;	--------------------------------------
+;
+;	.Exit:
+;_SORT_EXIT:
+;			ret
+
+;-----------------------------------------------------------------------
+;      		(QUICK SORT)
+;-----------------------------------------------------------------------
+;	******** REPLACES SHELL SORT **********
+;-----------------------------------------------------------------------
+
+	%imacro $getAddress 2
+		mov %1,r_Table													; Start of Table to RSI/RDI
+		mov rax,%2														; Lower/Upper to RAX
+		mul r_recordLength												; Multiply by Record Length
+		add %1,rax														; add offset to RSI/RDI
+	%endmacro
+
+	%define r_recordLength	r8
+	%define r_startPos		r10				
+	%define r_noOfBytes		r11
+	%define r_Ubound		r15
+
+	%define @left 			r10
+	%define @right 			r11
+	%define @pivotValue		r12
+	%define @prevLeft 		r13
+	
+	[section .bss]
+		d_startPos			resq 1
+		d_noOfBytes			resq 1		
+		pivotValue			resb 128									; This gives tha max sortkey size
+		LeftAddress			resq 1
+		RightAddress		resq 1
+	[section .text]	
+
+_QUICKSORT:
+
+;	ERROR - You can only SORT/SEARCH a 1 dimensional table
+	.1If:	cmp qword[r_Table-65],0										; Are there more than 1 dimensions
+				je .1EndIf
+				xor rax,rax												; If not then 0 rax (Not Linux error)
+				mov r14,err10											; err10 to languageONE error
+				Call _SYSERROR											; and call it
+	.1EndIf:			
+
+;	DO THIS 1ST so r10,r11 are available Get start offset and No Of Bytes 
+	mov qword[d_noOfBytes],r_noOfBytes									; and save it
+	dec r_startPos														; decrement the offset by 1
+	mov qword[d_startPos],r_startPos									; and save it
+
+;	Get upper boundary
+	mov	rax,@tableSize(r_Table)											; Get table size
+	mov r_recordLength,@recordAddress(r_Table)							; Get Record Address
+	mov r_recordLength,@fieldLength(r_recordLength)						; Get record Length	
+	cqo																	; Clear rdx/sign extend
+	idiv r_recordLength													; Divide table size by record length
+	mov r_Ubound,rax													; and store upper boundary in r15
+	dec r_Ubound
+
+;	Call the recursive SORT
+	push 0																; Push the 1st Left
+	push r_Ubound														; Push the 1st Right
+	Call _QSort
+	pop rax
+	pop rax
+
+	.Exit:	
+_QUICKSORT_EXIT:
+			ret
+
+;-----------------------------------------------------------------------
+;	Recursive Sort
+;-----------------------------------------------------------------------
+_QSort:
+
+	mov @left,qword[rsp+16]												; get the Left Index
+	mov @right,qword[rsp+8]												; get the Right Index
+	
+;	if  left >= right													; Exit when Left is not < Right
+	cmp @left,@right
+		jnl .Exit
+
+;	pivotValue = RandomNo[ [ left + right / 2 ] ]						; CALCULATE pivotValue
+	mov rax,@left														; Grab the left
+	add rax,@right														; add the right
+	shr rax,1															; and divide by 2
+	$getAddress RSI,rax													; get the address of this slot
+	$copyBytes RSI,pivotValue,qword[d_noOfBytes]						; and copy it to pivotValue
+	
+	
+;	prevLeftIdx = [moveThem]
+	push @left															; preserve the Left index
+	push @right															; preserve the Right index
+	call _moveThem														; do the moves
+	pop @right															; restore the Right index
+	pop @left															; restore the Left index														
+	mov @prevLeft,rax													; and save the returned value
+	
+;	-------------------------------------
+;	Recursive Call - (left, prevLeft - 1)
+;	-------------------------------------
+	push @left															; preserve the Left index
+	push @right															; preserve the Right index
+	push @left															; push the 1st parameter (Left)
+	mov rax,@prevLeft													; get the previous left
+	dec rax																; minus 1
+	push rax															; push the 2nd parameter
+	Call _QSort															; Call yourself 	
+	pop rax																; Junk this
+	pop rax																; Junk this
+	pop @right															; restore the Right index
+	pop @left															; restore the Left index
+	
+;	----------------------------------
+;	Recursive Call - (prevLeft, right)	
+;	----------------------------------
+	push @left															; preserve the Left index
+	push @right															; preserve the Right index
+	push @prevLeft														; push the 1st parameter (previous left
+	push @right															; push the 2nd parameter (Right0
+	Call _QSort															; Call yourself
+	pop rax																; Junk this
+	pop rax																; Junk this
+	pop @right															; restore the Right index
+	pop @left															; restore the Left index
+	
+	.Exit:
+_QSort_EXIT:
+	ret
+	
+_moveThem:
+
+;	repeat.while (left <= right)
+	cmp @left,@right													; Compare Left to Right Index
+		jg .Exit														; exit if Left is > Right
+
+;	repeat.while (Key[left] < pivotValue)
+;			left 	= left + 1
+;	end.repeat
+	.start1:$getAddress RSI,@left										; Get the Start of the record 
+			add RSI,qword[d_startPos]									; add the requested starting position
+			mov qword[LeftAddress],RSI									; and save it
+			mov RDI,pivotValue											; Get the start of the pivotValue
+			mov rcx,qword[d_noOfBytes]									; Grab the length (LOOP Ctr)
+		Call _CMPSTR
+			jnl .cont1													; If result not < than exit While Loop											
+			inc @left													; get the next table slot
+			jmp .start1													; and repeat
+	.cont1:
+
+	cmp @left,@right													; Compare Left to Right Index
+		jg .Exit														; exit if Left is > Right
+		
+;	repeat.while (Key[right]> pivotValue)
+;		right 	= right - 1
+;	end.repeat
+	.start2:$getAddress RSI,@right										; Get the Start of the record 
+			add RSI,qword[d_startPos]									; add the requested starting position
+			mov qword[RightAddress],RSI									; and save it
+			mov RDI,pivotValue											; Get the start of the pivotValue 
+			mov rcx,qword[d_noOfBytes]									; Grab the length (LOOP Ctr)
+		Call _CMPSTR
+			jng .cont2													; If result not > than exit While Loop	
+			dec @right													; get the previous table slot
+			jmp .start2													; and repeat
+	.cont2:
+
+	cmp @left,@right													; Compare Left to Right Index
+		jg .Exit														; exit if Left is > Right
+		jl .DoTheMove													; Do the move if less than
+	
+	;	No need to do the move if left = right
+		inc @left														; increment the left 
+		jmp .Exit														; and head for the exit
+		
+
+;	if left <= right - SWAP left and right data
+.DoTheMove:
+	mov RSI,qword[LeftAddress]											; grab the Left address
+	mov RDI,qword[RightAddress]											; grab the Right address		
+	mov rcx,r_recordLength												; and grab the record length
+	.start3:cmp rcx,8													; Have we still got 8 bytes to move
+				jb .start4												; If not go and pick up the last few bytes
+			mov rax,qword[RSI]											; grab the left 8 bytes										
+			mov rbx,qword[RDI]											; grab the right 8 bytes
+			mov qword[RDI],rax											; put the right 8 bytes to the left
+			mov qword[RSI],rbx											; put the left 8 bytes to the right 
+			add RSI,8													; setup RSI for the next 8 bytes
+			add RDI,8													; setup RDI for the next 8 bytes													
+			sub rcx,8													; take 8 away from the counter
+			jmp .start3													; and loop around
+			
+	.start4:cmp rcx,0													; Have we still got anything to move
+				jna .cont4												; If not we are done			
+			mov ah,byte[RSI]											; grab the left byte											
+			mov al,byte[RDI]											; grab the right byte
+			mov byte[RDI],ah											; put the right byte to the left
+			mov byte[RSI],al											; put the left byte to the right
+			add RSI,1													; setup RSI for the next byte
+			add RDI,1													; setup RDI for the next bytes
+			sub rcx,1													; take 1 away from the counter
+			jmp .start4													; and loop around
+	.cont4:
+	
+	inc @left															; Next Left
+	dec @right															; Previous Right
+	jmp _moveThem														; Back to the Start
+		
+.Exit:	
+	mov rax,@left														; Return the Left value
+
+_moveThem_EXIT:
+	ret
+
+;-----------------------------------------------------------------------
+;      		Search
+;-----------------------------------------------------------------------
+;	AS Passed by macro call
+;			r_Function			r8
+;			r_Table				r9
+;	Used here (and reused)
+	%define r_StartKey			r10
+	%define r_EndKey			r11
+	%define r_KeyAddress		r12
+	%define r_Index				r13
+	
+;	AS used in this routine
+	%define r_recordLength		r8
+	%define r_Pivot				r11
+	%define r_LowestRecordNo	r14
+	%define r_HighestRecordNo	r15
+
+_SEARCH:
+
+;	[section .data]
+;		d_StartKey				dq 0									; Save the start key
+;		d_KeyLength				dq 0									; and the key length
+;	[section .text]
+	%define r_KeyLength			rbx
+			
+		;	------------------------------------------------------
+		;	ERROR - You can only SORT/SEARCH a 1 dimensional table
+		;	------------------------------------------------------
+	.0If:	cmp qword[r_Table-65],0										; Are there more than 1 dimensions
+				je .0EndIf
+				xor rax,rax												; If not then 0 rax (Not Linux error)
+				mov r14,err09											; err09 to languageONE error
+				Call _SYSERROR											; and call it
+	.0EndIf:			
+
+		;	--------------------------------------------------------
+		;	PROCESS
+		;	--------------------------------------------------------
+		;	Get the key length
+			sub r_EndKey,r_StartKey										; Subtract the start key position from the end key position
+			inc r_EndKey												; add 1
+			mov r_KeyLength,r_EndKey									; and store it
+		;	r11(r_EndKey) can now be reused
+					
+		;	Get recordLength/HighestRecordNo/LowestRecordNo
+			mov rax,@tableSize(r_Table)									; Get Table size
+			mov r_recordLength,@recordAddress(r_Table)					; Get Record Address
+			mov r_recordLength,[r_recordLength-8]						; Get the record length
+			cqo															; Clear rdx/sign extend
+			idiv r_recordLength											; divide the table size by the record length
+			mov r_HighestRecordNo,rax									; Store the HighestRecordNo
+			mov r_LowestRecordNo,1										; and set lowest to 1
+			
+		;	---------------------------------------------
+		;	1st Pivot Point
+		;	---------------------------------------------
+		;		r_HighistRecordNo is in rax - see previous instructions
+			dec rax														; less the lowest record no (1 in this case)	
+			shr rax,1													; divide by 2			
+			mov r_Pivot,rax												; and store it
+
+		;	----------------------------------------------
+		;	Set Address's up
+		;	----------------------------------------------
+	.Oloop:	mov RSI,r_KeyAddress										; key address to RSI
+			mov RDI,r_Table												; table address to RDI
+			mov rax,r_Pivot												; Grab the Pivot point
+			mul r_recordLength											; times the record length
+			sub rax,r_recordLength										;	less 1 record
+			add RDI,rax													; add that to RDI
+			add RDI,r_StartKey											; add the start key
+			dec RDI														;	less 1
+
+		;	-----------------------------------------
+		;	COMPARE LOOP
+		;	-----------------------------------------
+			mov rcx,r_KeyLength											; loop thru the length of the key
+			xor rdx,rdx 												; Use rdx to move to each byte
+	.Iloop:	mov  al,byte[RSI+rdx]										; grab the key
+			cmp  al,byte[RDI+rdx]										; compare to table
+				ja .above												; jump above
+				jb .below												; jump below
+
+			dec rcx														; drop the byte counter
+			cmp rcx,0													; if we have 0 then
+				je .Found												;	we have found a match
+			inc rdx														; ELSE	move along one byte
+			jmp .Iloop													; and loop
+			
+		;	---------------------------------------------
+		;	ABOVE
+		;	---------------------------------------------
+	.above:	cmp r_Pivot,r_HighestRecordNo								; If we have just processed the highest Record
+				je .NotFound											;	then we have not found it
+			cmp r_Pivot,r_LowestRecordNo								; If we have just processed the lowest Record
+				je .NotFound											;	then we have not found it
+				
+			mov r_LowestRecordNo,r_Pivot								; set lowest record to pivot point	
+			mov rax,r_HighestRecordNo									; Grab the high end
+			sub rax,r_Pivot												; subtract the pivot point
+	.1If:	cmp rax,1													; If we are 1 away from the highest
+				jne .1Else												;	we cant divide by 2 (or else we get 0) so
+				inc r_Pivot												;	move pivot to highest no
+				jmp .Oloop												;	jump to the outer loop
+	.1Else:	shr rax,1													; bisect the two points (divide by 2)
+			add r_Pivot,rax												; and add it to the pivet point
+			jmp .Oloop													; jump to the outerloop
+	.1EndIf:
+
+		;	---------------------------------------------
+		;	BELOW
+		;	---------------------------------------------
+	.below:	cmp r_Pivot,r_LowestRecordNo								; If we have just processed the lowest record
+				je .NotFound											;	then we have not found it
+			cmp r_Pivot,r_HighestRecordNo								; If we have just processed the highest Record
+				je .NotFound											;	then we have not found it
+				
+			mov r_HighestRecordNo,r_Pivot								; set the highest record to the pivet point
+			mov rax,r_Pivot												; Grab the high end
+				sub rax,r_LowestRecordNo								; subtract the lowest record
+		.2If:	cmp rax,1												; if we are 1 away from the lowest
+				jne .2Else												;	we cant divide by (or else we get 0) so
+				dec r_Pivot												;	move pivot to Lowest No
+				jmp .Oloop												;	jump to outer loop
+	.2Else:	shr rax,1													; bisect the two points (divide by 2)
+			sub r_Pivot,rax												; and subtract it from the pivet point				
+			jmp .Oloop													; jump to outer loop
+	.2EndIf:
+
+		;	---------------------------
+	.NotFound:
+		;	----------------------------
+			mov @tableStatus(r_Table),23								; Set status to INVALIDKEY
+			jmp .Exit
+			
+		;	-----------------------------	
+	.Found:
+		;	-----------------------------
+			mov @tableStatus(r_Table),0									; Set table status to zero
+			
+			call _DUPLICATES											; find first occurence (if duplicates)
+			mov qword[r_Index],r_Pivot									; Pass back index	
+			
+		;	get record - _TORECORD uses rbx for record offset
+			mov rax,r_Pivot												; Grab the Pivot point
+			mul r_recordLength											; times the record length
+			sub rax,r_recordLength										;	less 1 record
+			mov rbx,rax													; Store in rbx for _TORECORD
+			call _TORECORD
+											
+	.Exit:
+_SEARCH_EXIT:
+			ret
+
+;-----------------------------------------------------------------------
+;			Called from SEARCH
+;-----------------------------------------------------------------------
+_DUPLICATES:
+			cmp r_Pivot,1												; Dont go below the start of the table
+				je .Exit
+
+		;	Set Address's up
+			mov RSI,r_KeyAddress										; key address to RSI
+			mov RDI,r_Table												; table address to RDI
+			mov rax,r_Pivot												; Grab the Pivot point
+			dec rax														; and look for the previous one
+			mul r_recordLength											; times the record length
+			sub rax,r_recordLength										;	less 1 record
+			add RDI,rax													; add that to RDI
+			add RDI,r_StartKey											; add the start key
+			dec RDI														;	less 1
+			
+		;	-------------------------------------------
+		;	SEARCH LOOP
+		;	-------------------------------------------
+			mov rcx,r_KeyLength											; loop thru the length of the key
+			xor rdx,rdx 												; Use rdx to move to each byte
+	.Iloop:	mov  al,byte[RSI+rdx]										; grab the key
+			cmp  al,byte[RDI+rdx]										; compare to table
+				jne .Exit
+
+			dec rcx														; drop the byte counter
+			cmp rcx,0													; if we have 0 then
+				je .Found												;	we have found a match
+			inc rdx														; ELSE	move along one byte
+			jmp .Iloop													; and loop
+
+		;	-----------------------------
+		;	FOUND
+		;	-----------------------------
+	.Found:	mov @tableStatus(r_Table),22								; set status as duplicates 
+			dec r_Pivot													; Now look for the 1st occurence
+			cmp r_Pivot,1												; Dont go below the start of the table
+				je .Exit
+			sub RDI,r_recordLength										; Now look for the 1st occurence															
+			mov rcx,r_KeyLength											; reset the key length
+			xor rdx,rdx													; zero offset counter
+			jmp .Iloop
+
+	.Exit:
+_DUPLICATES_EXIT:
+			ret
+			
+;-----------------------------------------------------------------------
+;      		Calculate Offset from Indexes
+;-----------------------------------------------------------------------
+;-----------------------------------------------------------------------
+; 		TableStatus		Dimension Value	 								Table Indicator									 
+;	+---+---+---+---+---+---+---+---+---+---+---+---+---+---------------+---+---------+------+---+---+---+---+---+---+---+---+	     
+;	| 1	|'9'|Len|Val|Pic|Idx|Idx|Idx|Idx|Idx|Idx|Idx|Idx|Record Address	|'T'|NoOfBytes| NAME |Idx|Idx|Idx|Idx|Idx|Idx|Idx|Idx|	
+;	+---+---+---+---+---+---+---+---+---+---+---+---+---+---------------+---+---------+------+---+---+---+---+---+---+---+---+ 
+;	-108-100-99	-91	    -81 -73	-65	-57	-49	-41	-33	-25	-17			   -9	-8		   0	  No Of Bytes +
+;															       						 	 8  16  24  32  40  48  56  64  72
+;-----------------------------------------------------------------------
+;RETURNS:	RBX = Offset
+;-----------------------------------------------------------------------
+_OFFSET:
+			mov @tableStatus(r_Table),0									; Set Table Status to zero
+			
+			LEA RSI,[r_Table-81]
+
+			LEA RDI,[r_Table+8]
+			add RDI,@tableSize(r_Table)
+			
+			xor rbx,rbx													; Prepare to store offset
+			mov rcx,8													; loop 8 times	
+		;	START LOOP -------------------------------------------------			
+	.loop:	cmp qword[RDI],0											; End of Index values
+				je .vet
+	
+			mov rax,qword[RSI]											; Get Dimension value
+			dec qword[RDI]												; Index = Index - 1
+			mul qword[RDI]												; Multiply by Index
+			add rbx,rax													; Add to offset
+			
+			add RSI,8													; Next slot
+			add RDI,8													; Next slot
+			loop .loop
+		;	END LOOP ---------------------------------------------------
+
+		;	Validate indexes
+	.vet:	mov r15,@recordAddress(r_Table)								; Get record address
+			mov r15,@fieldLength(r15)									;	then length of record
+			mov rax,r15													; Get ready to multiply
+			mul rbx														; Multiply by offset
+			mov rbx,rax
+
+			mov rax,@tableSize(r_Table)									; No Of Bytes
+			sub rax,r15													;	less record length
+			cmp rbx,rax													; Are we asking for a slot past 
+				jna _OFFSET_EXIT										; the end of the table
+			mov @tableStatus(r_Table),23								; Set status to INVALIDKEY
+			
+	.Exit:		
+_OFFSET_EXIT:
+			ret
+
+;-----------------------------------------------------------------------
+;      		(PUT) Move RECORD to TABLE
+;-----------------------------------------------------------------------
+;-----------------------------------------------------------------------
+; 		TableStatus		Dimension Value	 								Table Indicator									 
+;	+---+---+---+---+---+---+---+---+---+---+---+---+---+---------------+---+---------+------+---+---+---+---+---+---+---+---+	     
+;	| 1	|'9'|Len|Val|Pic|Idx|Idx|Idx|Idx|Idx|Idx|Idx|Idx|Record Address	|'T'|NoOfBytes| NAME |Idx|Idx|Idx|Idx|Idx|Idx|Idx|Idx|	
+;	+---+---+---+---+---+---+---+---+---+---+---+---+---+---------------+---+---------+------+---+---+---+---+---+---+---+---+ 
+;	-108-100-99	-91	    -81 -73	-65	-57	-49	-41	-33	-25	-17			   -9	-8		   0	  No Of Bytes +
+;															       						 	 8  16  24  32  40  48  56  64  72
+;-----------------------------------------------------------------------
+; Record Indicator
+;	+---+				RecordNo	 			 			+-----
+;	+---+---+-----------+----------+-------------+---------+|	     
+;	|'R'|'9'|Length(dq) |Value(dq) |Picture(9b)  + RecLength|NAME
+;	|	+---+-----------+----------+-------------| 			|
+;	+---+				 						 +----------+-----
+;	-25 -24 -33			-25			-17			 -08		0
+;-----------------------------------------------------------------------
+;				   R8	R9
+;			TABLES put, WorkTable,Idx,Idx,Idx
+;-----------------------------------------------------------------------
+			
+_FROMRECORD:
+
+			mov RSI,@recordAddress(r_Table)								; Get source (record address)
+			add RSI,17													; Go to start of word/number
+			LEA RDI,[r_Table+rbx]
+
+		;	START LOOP -------------------------------------------------
+			$fromRecord
+;
+;	NOT A BAD IDEA TO LEAVE THIS FOR THE MOMENT FOR DEBUGGING
+;			
+;	.loop:	cmp @fieldIndicator(RSI),0x00								; Loop Here - ARE WE DONE
+;				je _FROMRECORD_EXIT
+;
+;			cmp @fieldIndicator(RSI),'9'								; If the field is a number then
+;				je .nos													;	Do Number
+;
+;		;---WORDS ****	
+;			mov rcx,@fieldLength(RSI)									; Grab the length of the field
+;	.X:		movsb														; move the bytes
+;			loop .X														;
+;			add RSI,17													; Next Word
+;			jmp .loop													; and jump to end of field process
+;		;	END LOOP for Alpha -----------------------------------------
+;					
+;		;---NUMBERS ****	
+;		;	Convert the binary number to ascii (LEFT to RIGHT)
+;	.nos:	$pushAll r8,r9,r10,r11,r12,r13,r14,r15,rsi,rdi				; Save everything											
+;			mov r9,RSI													; Setup source (number)	
+;			xor r10,r10													; Clear picture override
+;			xor r11,r11													; Clear picture override
+;			mov r12,w_Temp												; Using w_Temp
+;			mov r13,[w_One]												; Start at 1
+;			mov r15,c_TRUE												; Tell _TOALPHA to Set length of Destination
+;			Call _TOALPHA												; Make the call
+;			$popAll rdi,rsi,r15,r14,r13,r12,r11,r10,r9,r8				; Restore everything
+;
+;			PUSH RSI
+;			mov RSI,w_Temp												; Reset the source to w_Temp
+;			mov rcx,@fieldLength(w_Temp)								; Grab the length of the field
+;	.9:		movsb														; move the bytes
+;			loop .9									
+;			POP RSI
+;			
+;		;	Jump over stuff
+;			mov rax,RSI													; Address of Number
+;			add rax,8													; 	jump over no
+;			add rax,@fieldLength(RSI)									;	add length of picture
+;			add rax,17													;	add 17 (number)
+;			mov RSI,rax													; store the new offset
+;			jmp .loop
+;		;	END LOOP for Number ----------------------------------------
+							
+_FROMRECORD_EXIT:
+			ret
+
+;-----------------------------------------------------------------------
+; 		TableStatus		Dimension Value	 								Table Indicator									 
+;	+---+---+---+---+---+---+---+---+---+---+---+---+---+---------------+---+---------+------+---+---+---+---+---+---+---+---+	     
+;	| 1	|'9'|Len|Val|Pic|Idx|Idx|Idx|Idx|Idx|Idx|Idx|Idx|Record Address	|'T'|NoOfBytes| NAME |Idx|Idx|Idx|Idx|Idx|Idx|Idx|Idx|	
+;	+---+---+---+---+---+---+---+---+---+---+---+---+---+---------------+---+---------+------+---+---+---+---+---+---+---+---+ 
+;	-108-100-99	-91	    -81 -73	-65	-57	-49	-41	-33	-25	-17			   -9	-8		   0	  No Of Bytes +
+;															       						 	 8  16  24  32  40  48  56  64  72
+;-----------------------------------------------------------------------
+; Record Indicator
+;	+---+				RecordNo	 			 			+-----
+;	+---+---+-----------+----------+-------------+---------+|	     
+;	|'R'|'9'|Length(dq) |Value(dq) |Picture(9b)  + RecLength|NAME
+;	|	+---+-----------+----------+-------------| 			|
+;	+---+				 						 +----------+-----
+;	-25 -24 -33			-25			-17			 -08		0		
+;-----------------------------------------------------------------------
+;				   R8	R9
+;			TABLES get, WorkTable,Idx,Idx,Idx
+;-----------------------------------------------------------------------
+;      		(GET) Move TABLE to RECORD
+;-----------------------------------------------------------------------		
+_TORECORD:
+
+		;	INVALID KEY
+	.1If:	cmp byte[r_Table+rbx],0x0									; Is slot full of nulls
+				ja .1EndIf
+				mov @tableStatus(r_Table),23							; Set status to INVALIDKEY
+				jmp _TORECORD_EXIT
+	.1EndIf:		
+
+		;	Setup Source (Table)	
+			LEA RSI,[r_Table+rbx]
+			mov RDI,@recordAddress(r_Table)								; Get record address
+			add RDI,17													; Go to start of word/number
+
+		;	START LOOP -------------------------------------------------
+			$toRecord
+		
+;
+;	NOT A BAD IDEA TO LEAVE THIS FOR THE MOMENT FOR DEBUGGING
+;			
+;	.loop:	cmp @fieldIndicator(RDI),0x00								; Loop Here - ARE WE DONE
+;				je _TORECORD_EXIT
+;					
+;			cmp @fieldIndicator(rdi),'9'								; If the field is a number then
+;				je .nos													;	Do Number
+;
+;		;---WORDS	
+;			mov rcx,@fieldLength(RDI)									; Grab the length of the field
+;	.X:		movsb														; move the bytes
+;			loop .X						
+;			add RDI,17													; Next Word
+;			jmp .loop													; and loop back to get next field
+;		;	END LOOP for ALPHA -----------------------------------------
+;							
+;		;---NUMBERS	
+;		;	Convert the ascii number to binary (RIGHT to LEFT)		
+;	.nos:	$pushAll r8,r9,r10,r11,r12,r13,r14,r15,rsi,rdi				; Save everything											
+;			mov r9,RDI													; Set destination (binary)
+;			xor r10,r10													; Clear picture override
+;			xor r11,r11													; Clear picture override
+;			mov r12,RSI													; Set source (alpha)
+;			mov r13,[w_One]												; start at 1
+;			mov r14,[r9-8]												; Length (destination length)
+;			Call _FROMALPHA												; Make the call
+;			$popAll rdi,rsi,r15,r14,r13,r12,r11,r10,r9,r8				; Restore everything
+;
+;		;	Jump over stuff
+;			add RSI,@fieldLength(RDI)									; Advance source by picture length
+;			mov rax,RDI													; Address of Number
+;			add rax,8													; 	jump over no
+;			add rax,@fieldLength(RDI)									;	add length of picture
+;			add rax,17													;	add 17 (number)
+;			mov RDI,rax													; store the new offset	
+;				
+;			jmp .loop
+;		;	END LOOP for Number ----------------------------------------
+	
+_TORECORD_EXIT:
+			ret
+
+;=======================================================================
+;      		(fGET) Move TABLE FIELD to FIELD
+;=======================================================================
+;-----------------------------------------------------------------------
+;			Receives RBX as record offset
+;-----------------------------------------------------------------------
+;
+;	NOTE:-	_FGET and _FPUT (below) are near identical.
+;			_FGET goes from table to field
+;			_FPUT goes field to table
+;	Almost just a case of swapping RSI/RDI (but not quite)
+;
+;	NOTE:-	This code is copied from XTABLES and is identical except that
+;			that the offset is received from _OFFSET in RBX.
+;			XTABLES uses RAX. In future combine these into a single copy
+
+	%define r_FieldNo			r11
+	%define r_FieldAddress		r12
+
+_FGET:
+	; V2.12 - This will fail when infering something like n_No[1] = n_No[2]
+;	; V2.05 -----------------------------------
+;		;	INVALID KEY
+;	.1If:	cmp byte[r_Table+rbx],0x0									; Is slot full of nulls
+;				ja .1EndIf
+;				mov @tableStatus(r_Table),23							; Set status to INVALIDKEY
+;				jmp _FGET_EXIT
+;	.1EndIf:		
+;	; V2.05 -----------------------------------
+	; V2.12 - This will fail when infering something like n_No[1] = n_No[2]	
+	
+		;	GRAB the START OF THE TABLE ROW		
+			lea RSI,[r_Table+rbx]										; offset into table
+
+		;	GRAB the START of the RECORD
+			mov RDI,@recordAddress(r_Table)								; Get record address
+
+		;	NOW CYCLE THRU THE RECORD TO THE REQUIRED FIELD
+			xor rdx,rdx													; Used to accumulate the offset
+			mov rcx,r_FieldNo											; Field No 
+			dec rcx														; less 1 
+			cmp rcx,0													; Offset is 0
+				je .move												;	then nothing to do
+
+	.step:	add RDI,17													; Go to start of word/number
+			add rdx,qword[RDI-8]										; And accumulate the size
+
+			mov al,@fieldIndicator(RDI)									; Save the field Indicator
+			add RDI,qword[RDI-8]										; add length of field				
+			cmp al,'X'													; If alpha field
+				je .both												;	small jump
+			add RDI,8													; ELSE add 64 bit No itself 
+	.both:	loop .step													; and loop
+
+			add RSI,rdx													; add offset to table address
+			
+	;	------------------------
+	;	EXTRACTED FROM $toRecord
+	;	------------------------
+	.move:	mov RDI,r_FieldAddress										; setup the field address
+			cmp @fieldIndicator(RDI),'9'								; If the field is a number then
+				je .nos													;	Do Number
+
+		;---WORDS	
+			mov rcx,@fieldLength(RDI)									; Grab the length of the field
+	.X:		movsb														; move the bytes
+			loop .X						
+			jmp _FGET_EXIT 
+							
+		;---NUMBERS	
+		;	Convert the ascii number to binary (RIGHT to LEFT)		
+	.nos:	
+		;	$pushAll r8,r9,r10,r11,r12,r13,r14,r15,rsi,rdi				; Save everything											
+			mov r9,RDI													; Set destination (binary)
+			xor r10,r10													; Clear picture override
+			xor r11,r11													; Clear picture override
+			mov r12,RSI													; Set source (alpha)
+			mov r13,[w_One]												; start at 1
+			mov r14,[r9-8]												; Length (destination length)
+			Call _FROMALPHA												; Make the call
+	;		$popAll rdi,rsi,r15,r14,r13,r12,r11,r10,r9,r8				; Restore everything
+	;	------------------------
+	;	EXTRACTED FROM $toRecord
+	;	------------------------
+
+_FGET_EXIT:
+			ret
+
+;=======================================================================
+;      		(fPUT) Move FIELD to TABLE
+;=======================================================================
+;-----------------------------------------------------------------------
+;			Receives RBX as record offset
+;-----------------------------------------------------------------------
+;
+;	NOTE:-	_FPUT and _FGET (above) are near identical.
+;			_FGET goes from table to field
+;			_FPUT goes field to table
+;	Almost just a case of swapping RSI/RDI (but not quite)
+;
+;	NOTE:-	This code is copied from XTABLES and is identical except that
+;			that the offset is received from _OFFSET in RBX.
+;			XTABLES uses RAX. In future combine these into a single copy
+
+_FPUT:
+	
+		;	GRAB the START OF THE TABLE ROW		
+			lea RDI,[r_Table+rbx]										; offset into table
+
+		;	GRAB the START of the RECORD
+			mov RSI,@recordAddress(r_Table)								; Get record address
+
+		;	NOW CYCLE THRU THE RECORD TO THE REQUIRED FIELD
+			xor rdx,rdx													; Used to accumulate the offset
+			mov rcx,r_FieldNo											; Field No 
+			dec rcx														; less 1 
+			cmp rcx,0													; Offset is 0
+				je .move												;	then nothing to do
+
+	.step:	add RSI,17													; Go to start of word/number
+			add rdx,qword[RSI-8]										; And accumulate the size
+
+			mov al,@fieldIndicator(RSI)									; Save the field Indicator
+			add RSI,qword[RSI-8]										; add length of field				
+			cmp al,'X'													; If alpha field
+				je .both												;	small jump
+			add RSI,8													; ELSE add 64 bit No itself 
+	.both:	loop .step													; and loop
+
+			add RDI,rdx													; add offset to table address
+			
+	;	--------------------------
+	;	EXTRACTED FROM $fromRecord
+	;	--------------------------
+	;	It is a wee bit different because the record field does not 
+	;	have to be used. For the put, a literal may be used, however
+	;	you must use a picture over-ride because the default picture
+	;	for a literal is 26 chars, probably bigger than associated
+	;	record field.
+ 
+	.move:	mov RSI,r_FieldAddress										; setup the field address
+			cmp @fieldIndicator(RSI),'9'								; If the field is a number then
+				je .nos													;	Do Number
+
+		;---WORDS
+			cmp r13,0													; If it Is not qualified
+				je .X													;	then just do it
+			add RSI,r13													; ELSE add the starting position
+			dec RSI
+	
+			mov rcx,@fieldLength(RSI)									; Grab the length of the field
+			cmp r14,0													; If it does not have a NoOfBytes
+				je .X													;	then just do it
+			mov rcx,r14													; ELSE over-write counter (rcx)		
+
+	.X:		movsb														; move the bytes
+			loop .X						
+			jmp _FPUT_EXIT 
+							
+		;---NUMBERS	
+		;	Convert the binary number to ascii (LEFT to RIGHT)		
+	.nos:	
+		;	$pushAll r8,r9,r10,r11,r12,r13,r14,r15,rsi,rdi				; Save everything
+			push RDI											
+			mov r9,RSI													; Setup source (number)	
+			mov r10,r13													; picture override (Address)
+			mov r11,r14													; picture override (Length)
+			mov r12,w_Temp												; Using w_Temp
+			mov r13,[w_One]												; Start at 1
+			mov r15,c_TRUE												; Tell _TOALPHA to Set length of Destination
+			Call _TOALPHA												; Make the call
+		;	$popAll rdi,rsi,r15,r14,r13,r12,r11,r10,r9,r8				; Restore everything
+			pop RDI
+
+			mov RSI,w_Temp												; Reset the source to w_Temp
+			mov rcx,@fieldLength(w_Temp)								; Grab the length of the field
+	.9:		movsb														; move the bytes
+			loop .9									
+	;	------------------------
+	;	EXTRACTED FROM $fromRecord
+	;	------------------------
+
+_FPUT_EXIT:
+			ret
+			

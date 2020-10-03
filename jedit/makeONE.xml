@@ -1,0 +1,28 @@
+<?xml version="1.0" ?>
+
+<!DOCTYPE COMMANDO SYSTEM "commando.dtd">
+
+<COMMANDO>
+	<UI>
+		<CAPTION LABEL="Make">
+			<ENTRY LABEL="File name" VARNAME="file" EVAL="buffer.getName()" />		
+		</CAPTION>
+		<CAPTION LABEL="Options">
+			<TOGGLE LABEL="Generate debug info" VARNAME="debug" DEFAULT="FALSE" />
+		</CAPTION>
+	</UI>
+
+	<COMMANDS>
+		<COMMAND SHELL="System">
+			buffer.save(view,null,true);
+			sourceWithoutExt = (file).replaceFirst("[.][^.]+$", "");
+			if (debug)
+				buf = new StringBuffer("./l.makeONE -dl "+sourceWithoutExt);			
+			else
+				buf = new StringBuffer("./l.makeONE "+sourceWithoutExt);
+
+		//	return value
+			buf;
+		</COMMAND>
+	</COMMANDS>
+</COMMANDO>

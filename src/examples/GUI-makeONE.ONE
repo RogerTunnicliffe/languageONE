@@ -1,0 +1,489 @@
+%include 'include/BEGIN.PROGRAM'
+
+;		  languageONE GUI-makeONE
+;		  The languageONE GUI make utility
+
+;	BEGIN.SYNONYMS **************************************
+;		$.	:	WORDS.  
+;		@.	:	INTEGERS.  
+;		#.	:	NUMBERS.  
+;		f.	:	FILES. 
+;	END.SYNONYMS ****************************************
+
+	%define c_Standard 0
+	%define c_TinyCore 1
+			%assign DIRS c_TinyCore ; <----- This is what you change
+			
+;=======================================================================
+;		  PROGRAM DATA
+;=======================================================================	      
+
+;-----------------------------------------------------------------------
+;		DICTIONARY
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.DICTIONARY'
+
+	insertword w_PortError,		0024,'Port No cannot be < 1024' 
+	insertword w_ConnectError,	0020,'Cannot create socket'
+
+;	[START] System differences
+%if DIRS = c_Standard
+	insertword w_Screen0,		0030,{'html/GUI-makeONE-screen0.html',0x00}
+%endif
+%if DIRS = c_TinyCore
+	insertword w_Screen0,		0025,{'GUI-makeONE-screen0.html',0x00}
+%endif	
+;	[END] System differences
+	
+	insertword w_Response,		2048,''	
+	insertword w_Buffer,		0256,''
+	insertword w_Command,		0256,''
+	insertword w_Out,			0256,''
+	insertword w_Enter,			0001,''
+		
+%include 'include/END.DICTIONARY'
+
+;-----------------------------------------------------------------------
+;		MATRIX
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.MATRIX'
+
+  ; Common Counters
+	INSERTNUMBER I,					0,'999999'
+	INSERTNUMBER J,					0,'999999'
+	INSERTNUMBER K,					0,'999999'
+
+  ; This programs 	
+  	insertnumber n_PortNo,		 1024,'999999'
+	insertnumber j_start,			0,'999999'
+	insertnumber k_NoOfBytes,		0,'999999'
+	insertnumber srcLen,			0,'9999'
+	insertnumber dstPosition,		0,'9999'
+
+	insertnumber b_Translate,		c_FALSE
+	insertnumber b_Assemble,		c_FALSE
+	insertnumber b_Link,			c_FALSE
+	insertnumber b_linkCommon,		c_FALSE
+	insertnumber b_linkWords,		c_FALSE
+	insertnumber b_linkNumbers,		c_FALSE
+	insertnumber b_linkDecisions,	c_FALSE
+	insertnumber b_linkStdio,		c_FALSE
+	insertnumber b_linkFiles,		c_FALSE
+	insertnumber b_linkTables,		c_FALSE
+	insertnumber b_linkXTables,		c_FALSE
+	insertnumber b_linkWWW,			c_FALSE
+	insertnumber b_Debug,			c_FALSE
+	
+%include 'include/END.MATRIX'
+
+;-----------------------------------------------------------------------
+;		FILES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.FILES'
+
+	insertfile c_LF,linkLibraries,'linkLibraries'
+	
+	insertfile c_LF,RSP_FILE,'GUI-makeONE.rsp'
+	insertfile c_LF,ERR_FILE,'GUI-makeONE.err'
+	
+;	[START] System differences
+%if DIRS = c_Standard
+	insertfile c_LF,HTM_FILE,'html/GUI-makeONE.htm'
+%endif
+%if DIRS = c_TinyCore
+	insertfile c_LF,HTM_FILE,'GUI-makeONE.htm'
+%endif
+;	[END] System differences
+
+%include 'include/END.FILES'
+
+;=======================================================================
+;		PROGRAM INSTRUCTIONS
+;		Mainline  
+;=======================================================================
+%include 'include/BEGIN.INSTRUCTIONS'
+
+	$Call A_1_Initial
+
+	if RETURN_CODE = 0
+		www.process (w_Screen0,w_Response,B_1_GET,C_1_POST)	
+		$Call Z_1_Finalise
+	end.if
+
+%include 'include/END.INSTRUCTIONS'
+%include 'include/END.PROGRAM'      
+
+;=======================================================================
+;		PROGRAM PROCEDURES
+;=======================================================================
+
+;-------------------------------------------------------------------------------
+;		INITIALISATION
+;-------------------------------------------------------------------------------
+BEGIN.SUB A_1_Initial
+
+%if DIRS = c_TinyCore
+	display.line "===================================================================="
+	display.line "If you are running on a TinyCore system you must first copy the html"
+	display.line "files  from  /usr/local/share/languageONE/html/GUI-makeONE.*  to the"
+	display.line "directory where this program is being run"
+	display.line "===================================================================="
+	display.line "Press <ENTER> to continue, Ctrl-C to exit."
+	display.line "This message may be removed when editing this program"
+	acceptline w_Response
+%endif
+	
+;	-------------------------------
+;	GET PORT NUMBER
+;	-------------------------------
+	#.eq (n_PortNo,{w_CommandLine,1,6})
+	
+	if n_PortNo < 1024
+	
+		display.line w_PortError
+		RETURN_CODE = 99
+		exit.sub A_1_Initial
+		
+	else
+	
+	;	OPEN THE SOCKET 
+		www.open (n_PortNo)
+		if RETURN_CODE != 0
+			display.line w_ConnectError
+			RETURN_CODE = 99
+			exit.sub A_1_Initial
+		end.if
+		
+	end.if
+
+;	-------------------------------
+;	GRAB STDOUT
+;	-------------------------------
+	begin.assembler												; Close STDIO
+		mov rax,3
+		mov rdi,1
+		syscall
+	end.assembler
+	f.open (RSP_FILE,write+beginning)							; and replace 
+
+;	-------------------------------
+;	GRAB STDERR
+;	-------------------------------
+	begin.assembler												; Close STDERR
+		mov rax,3
+		mov rdi,2
+		syscall
+	end.assembler
+	f.open (ERR_FILE,write+beginning)							; and replace 
+	
+END.SUB A_1_Initial
+
+;-------------------------------------------------------------------------------
+;	GET
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_1_GET
+END.SUB B_1_GET
+
+;-------------------------------------------------------------------------------
+;	POST
+;-------------------------------------------------------------------------------
+BEGIN.SUB C_1_POST
+	
+;	---------------------------
+;	GRAB OPTIONS
+;	---------------------------
+	$Call C_1_1_GetOptions
+	if RETURN_CODE != 0
+		exit.sub C_1_POST
+	end.if
+	
+;	@.eq(RETURN_CODE,0)
+	RETURN_CODE = 0
+
+;	---------------------------
+;	TRANSLATE
+;	---------------------------
+;	[TinyCore] run('/usr/local/bin/languageONE -d ProgramName)
+
+	if b_Translate > 0
+
+		$Call C_1_2_TranslateCommand	
+		
+		run (w_Command)
+		wait(CHILD_PID)
+		
+	end.if
+
+;	---------------------------
+;	ASSEMBLE
+;	---------------------------	
+;	run('/usr/bin/nasm -f elf64 -F dwarf ProgramName.ASM')
+
+	if b_Assemble  > 0
+  _and RETURN_CODE = 0
+
+		$Call C_1_3_AssembleCommand		
+
+		run (w_Command)
+		wait(CHILD_PID)
+		
+	end.if
+
+;	---------------------------
+;	LINK
+;	---------------------------	
+;	run('/usr/bin/ld -o ProgramName.o Libraries.o')
+
+	if b_Link > 0
+  _and RETURN_CODE = 0
+  
+		$Call C_1_4_LinkCommand	
+	
+		run (w_Command)
+		wait(CHILD_PID)
+		
+	end.if
+
+;	---------------------------
+;	FORMAT OUTPUT
+;	---------------------------	
+	$Call C_1_5_FormatOutput
+		
+END.SUB C_1_POST
+
+;-------------------------------------------------------------------------------
+;	Get ENTERED OPTIONS
+;------------------------------------------------------------------------------
+BEGIN.SUB C_1_1_GetOptions
+
+;	-----------
+;	CANCEL
+;	-----------	
+	$.find ({'&CANCEL=CANCEL',I},w_Response)
+	if I > 0
+		RETURN_CODE = 999999
+		exit.sub C_1_1_GetOptions
+	end.if
+
+;	------------
+;	PROGRAM NAME
+;	------------
+	$.find ({'PROGRAMNAME=',I},w_Response)
+	j_start = I + 12
+	k_NoOfBytes = j_start
+	$.find ({'&',k_NoOfBytes},w_Response)
+	k_NoOfBytes = k_NoOfBytes - j_start
+	
+;	-----------
+;	FLAGS
+;	-----------
+	$.find ({'&TRANSLATE=on',	b_Translate},		w_Response)
+	$.find ({'&ASSEMBLE=on',	b_Assemble},		w_Response)
+	$.find ({'&LINK=on',		b_Link},			w_Response)
+	$.find ({'&COMMON=on',		b_linkCommon},		w_Response)
+	$.find ({'&WORDS=on',		b_linkWords},		w_Response)
+	$.find ({'&NUMBERS=on',		b_linkNumbers},		w_Response)
+	$.find ({'&DECISIONS=on',	b_linkDecisions},	w_Response)
+	$.find ({'&STDIO=on',		b_linkStdio},		w_Response)
+	$.find ({'&FILES=on',		b_linkFiles},		w_Response)
+	$.find ({'&TABLES=on',		b_linkTables},		w_Response)
+	$.find ({'&XTABLES=on',		b_linkXTables},		w_Response)
+	$.find ({'&WWW=on',			b_linkWWW},			w_Response)
+	$.find ({'&DEBUG=on',		b_Debug},			w_Response)
+
+END.SUB C_1_1_GetOptions
+
+;-------------------------------------------------------------------------------
+;	FORM TRANSLATE COMMAND LINE
+;-------------------------------------------------------------------------------
+BEGIN.SUB C_1_2_TranslateCommand
+
+;	Command Line
+%if DIRS = c_Standard
+	w_Command = './bin/languageONE'
+	dstPosition = 19
+%endif
+%if DIRS = c_TinyCore
+	w_Command = '/usr/local/bin/languageONE'
+	dstPosition = 28
+%endif
+
+	if b_Debug > 0
+		{w_Command,dstPosition} = '-d'
+		dstPosition = dstPosition + 3
+	end.if
+	{w_Command,dstPosition} =  {w_Response,j_start,k_NoOfBytes}
+	
+;	HTML Display
+	srcLen = k_NoOfBytes + dstPosition
+	$Call X_1_Display
+	
+END.SUB C_1_2_TranslateCommand
+
+;-------------------------------------------------------------------------------
+;	FORM ASSEMBLE COMMAND LINE
+;-------------------------------------------------------------------------------
+BEGIN.SUB C_1_3_AssembleCommand
+
+;	Command Line
+%if DIRS = c_Standard
+	w_Command = '/usr/bin/nasm -f elf64'
+	dstPosition = 24
+%endif
+%if DIRS = c_TinyCore
+	w_Command = '/usr/local/bin/nasm -f elf64'
+	dstPosition = 30
+%endif
+		
+	if b_Debug > 0
+		{w_Command,dstPosition} = '-F dwarf' 
+		dstPosition = dstPosition + 9
+	end.if	
+	{w_Command,dstPosition} = {w_Response,j_start,k_NoOfBytes} 
+	dstPosition = dstPosition + k_NoOfBytes
+	{w_Command,dstPosition} = '.ASM'
+	I = I + 4
+
+;	HTML Display
+	srcLen = k_NoOfBytes + dstPosition
+	$Call X_1_Display
+
+END.SUB C_1_3_AssembleCommand
+
+;-------------------------------------------------------------------------------
+;	FORM LINK COMMAND LINE
+;-------------------------------------------------------------------------------
+BEGIN.SUB C_1_4_LinkCommand
+
+;	Command Line
+%if DIRS = c_Standard
+	w_Command = '/usr/bin/ld -o'
+	dstPosition = 16
+%endif
+%if DIRS = c_TinyCore
+	w_Command = '/usr/local/bin/ld -o'
+	dstPosition = 22
+%endif
+	
+	{w_Command,dstPosition} = {w_Response,j_start,k_NoOfBytes}	
+	dstPosition = dstPosition + k_NoOfBytes + 1
+	{w_Command,dstPosition} = {w_Response,j_start,k_NoOfBytes} 
+	dstPosition = dstPosition + k_NoOfBytes	
+	{w_Command,dstPosition} = '.o' 
+	dstPosition = dstPosition + 3 
+
+%if DIRS = c_Standard
+	{w_Command,dstPosition} = 'lib/languageONE.a'
+	dstPosition = dstPosition + 17
+%endif
+%if DIRS = c_TinyCore
+	{w_Command,dstPosition} = '/usr/local/lib/languageONE.a'
+	dstPosition = dstPosition + 28
+%endif
+	
+;	HTML Display
+	srcLen = dstPosition
+	$Call X_1_Display
+	
+END.SUB C_1_4_LinkCommand
+
+;-------------------------------------------------------------------------------
+;	FORMAT OUTPUT
+;-------------------------------------------------------------------------------
+BEGIN.SUB C_1_5_FormatOutput
+
+;	----------------------
+;	CLOSE/OPEN FILES
+;	----------------------
+	f.close (RSP_FILE)
+	f.close (ERR_FILE)	
+	f.open  (RSP_FILE,read)	
+	f.open  (ERR_FILE,read)		
+	f.open  (HTM_FILE,write+beginning)
+
+;	-----------------------
+;	RESPONSE FILE
+;	-----------------------
+	files $read,RSP_FILE,w_Buffer
+	repeat.while RSP_FILE_STATUS = 0
+
+		I = RSP_FILE_READLENGTH	
+		$Call C_1_5_1_FormatLineOut
+
+		files $write,HTM_FILE,{w_Out,1,I}
+		files $read,RSP_FILE,w_Buffer
+		
+	end.repeat
+	
+;	-----------------------
+;	ERROR FILE
+;	-----------------------
+	files $read,ERR_FILE,w_Buffer
+	repeat.while ERR_FILE_STATUS = 0
+		
+		I = RSP_FILE_READLENGTH
+		$Call C_1_5_1_FormatLineOut
+
+		files $write,HTM_FILE,{w_Out,1,I}
+		files $read,ERR_FILE,w_Buffer
+		
+	end.repeat
+		
+;	----------------------
+;	CLOSE FILES
+;	----------------------
+	f.close (RSP_FILE)
+	f.close (ERR_FILE)	
+	f.close (HTM_FILE)		
+	
+END.SUB C_1_5_FormatOutput
+
+;-------------------------------------------------------------------------------
+;	FORMAT OUTPUT LINE
+;-------------------------------------------------------------------------------
+BEGIN.SUB C_1_5_1_FormatLineOut
+
+	w_Out = '<p>'
+	{w_Out,4} = {w_Buffer,1,I}
+	I = I + 4	
+	{w_Out,I} = '</p>'
+	I = I + 3
+
+END.SUB C_1_5_1_FormatLineOut
+
+;-------------------------------------------------------------------------------
+;	DISPLAY COMMANDS
+;-------------------------------------------------------------------------------
+BEGIN.SUB X_1_Display
+
+	dstPosition = 1
+	w_Out = '<p style="color:blue;">'
+
+	dstPosition = 24
+	{w_Out,dstPosition} = {w_Command,1,srcLen}
+
+	dstPosition = dstPosition + srcLen - 1
+	{w_Out,dstPosition} = '</p>'
+
+	dstPosition = dstPosition + 4
+ 
+	if dstPosition > 150												; Sometine the linked libs
+		dstPosition = 155												; van be a bit too long
+		{w_Out,150} = '.....'
+	end.if
+
+	display.line ({w_Out,1,dstPosition})	
+
+END.SUB X_1_Display
+
+;-------------------------------------------------------------------------------
+;	FINALISATION
+;-------------------------------------------------------------------------------
+BEGIN.SUB Z_1_Finalise
+
+;	-----------------------------------------
+;	CLOSE THE SOCKET 
+;	-----------------------------------------
+	www.close (n_PortNo)
+	
+END.SUB Z_1_Finalise

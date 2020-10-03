@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+	<style>
+	
+		body									{ height: 100%;
+														width: 95%;
+														font-family:	Arial;					
+														font-size:		12px					}
+	/*	-------------- */
+	/*	Style for TABs */
+	/*	-------------- */
+													/*Style the tab */
+		.tab									{ overflow: 	hidden;
+	 	 												border: 1px solid #c0c0c0;
+	 	 												background-color: #f1f1f1; 	}
+
+	 	 											/*Style the buttons inside the tab */
+	 	.tab button 					{	background-color: inherit;
+    												float: 			left;
+    												border:		 	none;
+    												outline: 		none;
+    												cursor: 		pointer;
+    												padding: 		14px 16px;
+    												transition: .5s;	 					}
+
+    											/*Change background color of buttons on hover */
+    .tab button:hover 		{ background-color: #b0b0b0; 	}
+
+ 													/*Create an active/current tablink class */
+ 		.tab button.active		{ background-color: #707070; 	}
+
+													/*Style the tab key */
+		.keys 								{ display: 		none;
+    												padding: 6px 12px;
+    												border: 1px solid #c0c0c0;
+    												border-top: none;
+    												animation: fadeEffect 4s; 	}
+
+													/*Style the tab data */
+		.data 								{ display: 		none;
+    												padding: 6px 12px;
+    												border: 1px solid #c0c0c0;
+    												border-top: none;
+    												animation: fadeEffect 4s; 	}
+    												
+    											/*The @keyframes rule specifies the animation code. */
+    @keyframes fadeEffect { from {opacity: 0;}
+														to	 {opacity: 1;} 					}
+
+												
+	</style>
+	
+</head>
+
+<body onload="loadAcctSearches()">
+
+	<!-- ================-->
+	<!-- TAB Descriptions-->
+	<!-- ================-->
+	<div class="tab">
+  	<button class="tablinks" id="menu1" onclick="MenuSelection(event,'coaKEY')">Chart Of Accounts</button>
+  	<button class="tablinks" id="menu2" onclick="MenuSelection(event,'gjKEY')">General Journal</button>
+  	<button class="tablinks" id="menu3" onclick="MenuSelection(event,'aeKEY')">Account Enquiry</button>
+  	<button class="tablinks" id="menu4" onclick="MenuSelection(event,'repKEY')">Reports</button>
+  	<button class="tablinks" id="menu5" onclick="MenuSelection(event,'gdKEY')">Generate Depreciation</button> 
+  	<button class="tablinks" id="menu6" onclick="MenuSelection(event,'EXIT')">EXIT</button>  	
+  </div>
+
+
+	<!--------------------->
+	<!-- coa KEY ---------->
+	<!--------------------->  
+  <div id="coaKEY" class="keys">
+  	<form name='ChartOfAccountsKey' id='ChartOfAccountsKey' action='' method='' target='' 
+  			  onkeypress='return event.keyCode != 13;'> 
+
+  		<fieldset><legend>Key</legend>
+
+  			<table>
+  				<tr>
+  					<td>Account No</td>
+  					<td><input type="text" id="coaACCTNO" name="coaACCTNO" size="5" maxlength="5"></td> 
+  					<td><select size='1' Id='coaACCTSEARCH' name='coaACCTSEARCH' onchange='f_SelectFromSearch(1);'><td>
+  					<td>
+  						<input type='BUTTON' value='Accept' id='coaKEY_A' name='coaKEY_A' onclick='return f_ChartOfAccounts(this.id);'/>	
+  						<input type='BUTTON' value='Exit'   id='coaKEY_X' name='coaKEY_X' onclick='return f_ChartOfAccounts(this.id);'/>		
+  					</td>
+  				</tr>
+  			</table>
+  		</fieldset>
+  	</form>
+  </div>
+
+	<!--------------------->
+	<!-- coa DATA --------->
+	<!--------------------->    
+  <div id="coaDATA" class="data">
+  	<form name='ChartOfAccountsData' id='ChartOfAccountsData' action='' method='' target='' 
+  			  onkeypress='return event.keyCode != 13;'>
+  			
+  		<fieldset><legend>Data</legend>
+
+  			<table>
+  			
+  				<tr>
+  					<td width="100" align="left">Descripton</td>
+  					<td><input type="text" id="coaDESCRIPTION" name="coaDESCRIPTION" size="31" maxlength="64"></td>
+  				</tr>
+  				
+  				<tr>
+  					<td width="100" align="left">Flag 1</td>
+  					<td>
+  						<select size='1' Id='coaFLAG1' name='coaFLAG1' onchange='f_SelectFromOption(0);'>
+  								<option value='A '>A</option>
+  								<option value='X '>X</option>
+  								<option value='T '>T</option>
+  								<option value='C '>C</option>
+  								<option value='AB'>AB</option>
+  								<option value='CA'>CA</option>
+  								<option value='PA'>PA</option>
+  								<option value='BA'>BA</option>
+  								<option value='PL'>PL</option>
+  								<option value='DA'>DA</option>
+  								<option value='AS'>AS</option>
+  								<option value='TO'>TO</option>
+  								<option value='TC'>TC</option>
+  							</select>  					
+  					
+  						&nbspFlag 2
+  						<select size='1' Id='coaFLAG2' name='coaFLAG2' onchange='f_SelectFromOption(0);'>
+  								<option value='1'>1</option>
+  								<option value='2'>2</option>
+  								<option value='3'>3</option>
+  								<option value='4'>4</option>
+  							</select>  					
+  						
+  						&nbspFlag 3
+  						<select size='1' Id='coaFLAG3' name='coaFLAG3' onchange='f_SelectFromOption(0);'>
+  								<option value='1'>1</option>
+  								<option value='2'>2</option>
+  								<option value='3'>3</option>
+  								<option value='4'>4</option>
+  							</select>  					
+  							
+  						&nbspFlag 4
+  						<select size='1' Id='coaFLAG4' name='coaFLAG4' onchange='f_SelectFromOption(0);'>
+  								<option value='1'>1</option>
+  								<option value='2'>2</option>
+  								<option value='3'>3</option>
+  								<option value='4'>4</option>
+  							</select>  					
+  					</td>
+  				</tr>
+
+  				<tr>
+  					<td width="100" align="left">Balance Indicator</td>
+  					<td><select size='1' Id='coaBALANCEINDICATOR' name='coaBALANCEINDICATOR' onchange='f_SelectFromOption(0);'>
+  								<option value='DR'>DR</option>
+  								<option value='CR'>CR</option>
+  							</select>
+  					</td>
+  				</tr>
+
+  				<tr>
+  					<td width="100" align="left">Control Account</td>
+  					<td><input type="text" id="coaCONTROLACCTNO" name="coaCONTROLACCTNO" size="5" maxlength="5">
+  						  <select size='1' Id='coaCONTROLACCTSEARCH' name='coaCONTROLACCTSEARCH' onchange='f_SelectFromSearch(2);'><td>
+  				</tr>
+
+  				<tr>
+  					<td width="100" align="left">Depreciation</td>
+  					<td><input type="text" id="coaDEPRECIATION" name="coaDEPRECIATION" size="3" maxlength="3"> %</td>
+  				</tr>
+
+  				<tr>
+  					<td width="100" align="left">Unit Price</td>
+  					<td><input type="text" id="coaUNITPRICE" name="coaUNITPRICE" size="9" maxlength="9"></td>
+  				</tr>
+
+  				<tr>	
+  					<td width="100" align="left"></td>  					
+  					<td>
+  						<input type='BUTTON' value='Accept' id='coaDATA_A' name='coaDATA_A' onclick='return f_ChartOfAccounts(this.id);'/>	
+  						<input type='BUTTON' value='Delete' id='coaDATA_D' name='coaDATA_D' onclick='return f_ChartOfAccounts(this.id);'/>
+  						<input type='BUTTON' value='Exit'   id='coaDATA_X' name='coaDATA_X' onclick='return f_ChartOfAccounts(this.id);'/>
+  					</td>
+  				</tr>
+  				
+  			</table>
+  		</fieldset>
+  	</form>
+  </div>
+
+	<!-------------------->
+	<!-- gj KEY ---------->
+	<!-------------------->  
+  <div id="gjKEY" class="keys">
+  	<form name='GeneralJournalKey' id='GeneralJournalKey' action='' method='' target=''
+  			  onkeypress='return event.keyCode != 13;'>
+
+  		<fieldset><legend>Key</legend>
+
+  			<table>
+  				<tr>
+  					<td>Transaction Date</td>
+  					<td><input type="date" id="gjDATE" name="gjDATE" size="" maxlength=""></td> 
+  					<td><input type="hidden" id="gjTIME" name="gjTIME" size="" maxlength=""></td> 
+  					<td><select size='1' Id='gjTRANSEARCH' name='gjTRANSEARCH' onchange='f_SelectFromSearch(3);'><td>
+  					<td>
+  						<input type='BUTTON' value='Accept' id='gjKEY_A' name='gjKEY_A' onclick='return f_GeneralJournal(this.id);'/>
+  						<input type='BUTTON' value='Exit'   id='gjKEY_X' name='gjKEY_X' onclick='return f_GeneralJournal(this.id);'/>		
+  					</td>
+  				</tr>
+  			</table>
+  		</fieldset>
+  	</form>
+  </div>
+  
+	<!-------------------->
+	<!-- gj DATA --------->
+	<!-------------------->    
+  <div id="gjDATA" class="data">
+  	<form name='GeneralJournalData' id='GeneralJournalData' action='' method='' target=''
+  			  onkeypress='return event.keyCode != 13;'>
+  
+  		<fieldset><legend>Data</legend>
+	
+				<fieldset><legend>General</legend>
+  			<table>
+
+  				<tr>
+  					<td width="100" align="left">Debit Account</td>
+  					<td><input type="text" id="gjDRACCTNO" name="gjDRACCTNO" size="5" maxlength="5">
+  						  <select size='1' Id='gjDRACCTSEARCH' name='gjDRACCTSEARCH' onchange='f_SelectFromSearch(4);'><td>
+  				</tr>
+
+  				<tr>
+  					<td width="100" align="left">Credit Account</td>
+  					<td><input type="text" id="gjCRACCTNO" name="gjCRACCTNO" size="5" maxlength="5">
+  						  <select size='1' Id='gjCRACCTSEARCH' name='gjCRACCTSEARCH' onchange='f_SelectFromSearch(5);'><td>
+  				</tr>
+
+  				<tr>
+  					<td width="100" align="left">Descripton</td>
+  					<td><input type="text" id="gjDESCRIPTION" name="gjDESCRIPTION" size="31" maxlength="64"></td>
+  				</tr>
+
+  				<tr>
+  					<td width="100" align="left">Value</td>
+  					<td><input type="text" id="gjVALUE" name="gjVALUE" size="9" maxlength="9"></td>
+  				</tr>
+  				
+  				<tr>
+  					<td width="100" align="left">No Of Units</td>
+  					<td><input type="text" id="gjNOOFUNITS" name="gjNOOFUNITS" size="9" maxlength="9"></td>
+  				</tr>
+
+  				<tr>
+  					<td width="100" align="left">Reference</td>
+  					<td><input type="text" id="gjREFERENCE" name="gjREFERENCE" size="10" maxlength="10"></td>
+  				</tr>
+  				
+  			</table>
+  			</fieldset>
+  			
+  			<fieldset><legend>Investment</legend>
+  			<table>
+  			
+  				<tr>
+  					<td width="100" align="left">INV Tran Type</td>
+  					<td>
+  						<select size='1' Id='gjINVTRANTYPE' name='gjINVTRANTYPE' onchange='f_SelectFromOption(1);'>
+  								<option value='0'>None</option>  						
+  								<option value='1'>Purchase</option>
+  								<option value='2'>ReInvested Income</option>
+  								<option value='3'>Revaluation</option>
+  								<option value='4'>Sale</option>
+  								<option value='5'>Income</option>
+  								<option value='6'>Expense</option>
+  								<option value='7'>Capital Gain/Loss</option>
+  								<option value='8'>Tax</option>
+  							</select>  					
+  					
+  				<tr>
+  					<td width="100" align="left">INV Account</td>
+  					<td><input type="text" id="gjINVACCTNO" name="gjINVACCTNO" size="5" maxlength="5">
+  						  <select size='1' Id='gjINVACCTSEARCH' name='gjINVACCTSEARCH' onchange='f_SelectFromSearch(6);'><td>
+  				</tr>
+
+  				<tr>
+  					<td width="100" align="left">Parcel No</td>
+  					<td><input type="text" id="gjINVPARCELNO" name="gjINVPARCELNO" size="3" maxlength="3"></td>
+  					</td>
+  				</tr>
+
+  				<tr>
+  					<td width="100" align="left">Grouping</td>
+  					<td><input type="text" id="gjINVGROUPING" name="gjINVGROUPING" size="3" maxlength="3"></td>
+  				</tr>
+  				
+  			</table>
+  			</fieldset>
+  			
+  			<fieldset><legend>Dividends</legend>
+  			<table>
+  			
+  				<tr>
+  					<td width="100" align="left">Franked Amt</td>
+  					<td><input type="text" id="gjFRANKEDAMT" name="gjFRANKEDAMT" size="10" maxlength="10"></td>
+  				</tr>
+
+  				<tr>
+  					<td width="100" align="left">Inputed Credit</td>
+  					<td><input type="text" id="gjIMPUTEDCREDIT" name="gjIMPUTEDCREDIT" size="10" maxlength="10"></td>
+  				</tr>
+  				
+  			</fieldset>	
+  			</table>
+  			
+  		</fieldset>
+  		
+  		<table>
+  				<tr>	
+  					<td>
+  						<input type='BUTTON' value='Accept' id='gjDATA_A' name='gjDATA_A' onclick='return f_GeneralJournal(this.id);'/>	
+  						<input type='BUTTON' value='Delete' id='gjDATA_D' name='gjDATA_D' onclick='return f_GeneralJournal(this.id);'/>
+  						<input type='BUTTON' value='Exit'   id='gjDATA_X' name='gjDATA_X' onclick='return f_GeneralJournal(this.id);'/>
+  					</td>
+  				</tr>
+  		</table>
+
+  	</form>
+  </div>
+  
+
+</body>
+
+<script>
+
+//==============================================================================
+//				 loadAcctSearches - Create Account No search box
+//==============================================================================
+	function loadAcctSearches() 
+	{
+		
+		
+//	Initialise		
+		document.getElementById("coaACCTSEARCH").innerHTML = "";
+ 		x = document.getElementById("coaACCTSEARCH");
+ 		
+ 		option = document.createElement("option");
+ 		option.text = "Select existing Account";
+ 		x.add(option);
+		
+//	Populate Account Lists		 
+		a = 0;
+		while (a != 99999)
+			{
+			 xhttp = new XMLHttpRequest();				
+			 xhttp.open("POST","SEARCH=ACCT",false);
+			 xhttp.send();
+
+			 if (xhttp.responseText.substring(0,5) != "99999")			 	 
+			 	{ 
+			 		option = document.createElement("option");
+			 		option.text = xhttp.responseText;
+			 		x.add(option);
+			 	}
+			 else
+			 	{	a = 99999; }
+			}
+
+		document.getElementById("coaCONTROLACCTSEARCH").innerHTML = 
+			document.getElementById("coaACCTSEARCH").innerHTML;
+		document.getElementById("gjDRACCTSEARCH").innerHTML = 
+			document.getElementById("coaACCTSEARCH").innerHTML;
+		document.getElementById("gjCRACCTSEARCH").innerHTML = 
+			document.getElementById("coaACCTSEARCH").innerHTML;
+		document.getElementById("gjINVACCTSEARCH").innerHTML = 
+			document.getElementById("coaACCTSEARCH").innerHTML;
+
+	}
+
+//==============================================================================
+//				 loadTranSearch - Create Transaction search box
+//==============================================================================
+	function loadTranSearch() 
+	{
+		
+//	Initialise
+		document.getElementById("gjTRANSEARCH").innerHTML = "";
+		x = document.getElementById("gjTRANSEARCH");
+		
+		option = document.createElement("option");
+		option.text = "Select existing transaction";
+		x.add(option);
+
+		a = 0;
+		while (a != 99999)
+			{
+				xhttp = new XMLHttpRequest();				
+				xhttp.open("POST","SEARCH=TRAN",false);
+				xhttp.send();
+	
+				if (xhttp.responseText.substring(0,5) != "99999")
+					{
+						option = document.createElement("option");
+						option.text = xhttp.responseText;
+						x.add(option);
+					}
+				else
+					{ a = 99999; }
+			}	
+
+		b = document.getElementById("gjTRANSEARCH");
+		c = b.options[0].text.substring(0,19).split(" ");
+		d = c[0].toString().split("/");
+		document.getElementById("gjDATE").value = d[2] + "-" + d[1] + "-" + d[0];
+		document.getElementById("gjTIME").value = c[1];
+
+	}
+	
+//==============================================================================
+//				 Account Number/Date Selection
+//==============================================================================
+	function f_SelectFromSearch(a)
+	{
+		switch(a)
+			{
+			case 1:
+				b = document.getElementById("coaACCTSEARCH");
+				if (b.selectedIndex > 0) 
+					{
+						document.getElementById("coaACCTNO").value = b.options[b.selectedIndex].text.substring(0,5);
+						f_ChartOfAccounts("coaSELECTED");
+					}
+				break;
+			case 2:
+				b = document.getElementById("coaCONTROLACCTSEARCH");
+				if (b.selectedIndex > 0) 
+					{
+						document.getElementById("coaCONTROLACCTNO").value = b.options[b.selectedIndex].text.substring(0,5);
+					}
+				break;
+			case 3:
+				b = document.getElementById("gjTRANSEARCH");
+				if (b.selectedIndex > 0) 
+					{
+						c = b.options[b.selectedIndex].text.substring(0,19).split(" ");
+						d = c[0].toString().split("/");
+						document.getElementById("gjDATE").value = d[2] + "-" + d[1] + "-" + d[0];
+						document.getElementById("gjTIME").value = c[1];
+						f_GeneralJournal("gjSELECTED");
+					}
+				break;
+			case 4:
+				b = document.getElementById("gjDRACCTSEARCH");
+				if (b.selectedIndex > 0) 
+					{
+						document.getElementById("gjDRACCTNO").value = b.options[b.selectedIndex].text.substring(0,5);
+					}
+				break;
+			case 5:
+				b = document.getElementById("gjCRACCTSEARCH");
+				if (b.selectedIndex > 0) 
+					{
+						document.getElementById("gjCRACCTNO").value = b.options[b.selectedIndex].text.substring(0,5);
+					}
+				break;
+				
+			case 6:
+				b = document.getElementById("gjINVACCTSEARCH");
+				if (b.selectedIndex > 0) 
+					{
+						document.getElementById("gjINVACCTNO").value = b.options[b.selectedIndex].text.substring(0,5);
+					}
+				break;
+			}
+	}
+	
+//==============================================================================
+//				 TAB Handler
+//==============================================================================
+	function MenuSelection(evt, selection) 
+	{
+debugger;
+//	EXIT System -------------------------------------------
+		if (selection == "EXIT")
+				{
+				 xhttp = new XMLHttpRequest();				
+				 xhttp.open("POST","COMMIT=N/A",false);
+				 xhttp.send();
+  			 document.write("Server connecton terminated");
+  			 return;
+  			}
+//	EXIT System -------------------------------------------
+
+//	Account searches are done onload but tran search is done on menu selection
+		if (selection == "gjKEY") { loadTranSearch();}
+
+//	NOW HANDLE TABS AND SCREEN
+//	Reset all TAB's to inactive		
+		tablinks = document.getElementsByClassName("tablinks");
+		for (	i = 0; 
+	  			i < tablinks.length;
+	  			i++	)	
+	   		{tablinks[i].className = tablinks[i].className.replace(" active", "");}
+
+//	Sets all KEY's to invisible (taking up no space)
+    keys = document.getElementsByClassName("keys");
+    for (	i = 0; 
+    			i < keys.length; 
+    			i++ ) 
+    		{keys[i].style.display = "none";}
+
+//	Sets all DATA's to invisible (taking up no space)
+    keys = document.getElementsByClassName("data");
+    for (	i = 0; 
+    			i < keys.length; 
+    			i++ ) 
+    		{keys[i].style.display = "none";}
+
+//	Show selected TAB as active
+    evt.currentTarget.className += " active";
+
+//	Show selected KEY    		
+    document.getElementById(selection).style.display = "block";
+
+//	and disable them
+ 		document.getElementById("menu1").disabled = true;
+ 		document.getElementById("menu2").disabled = true;   
+ 		document.getElementById("menu3").disabled = true;   
+ 		document.getElementById("menu4").disabled = true;   
+ 		document.getElementById("menu5").disabled = true;   
+ 		document.getElementById("menu6").disabled = true;   
+    
+  }
+
+//==============================================================================
+//				 VALIDATION - Chart Of Accounts
+//==============================================================================
+  function f_ChartOfAccounts(button)
+  {
+	
+//	----------------------------
+//	ACCEPT:Chart Of Accounts Key
+//	----------------------------
+  	if (button == "coaKEY_A" || button == "coaSELECTED")
+  		{
+  			if (button == "coaKEY_A")
+  				{
+  					if (document.getElementById('coaACCTNO').value.trim()=="")
+  						{
+  							alert("Please enter an Account No");
+  							return;
+  						}
+  				}
+
+  				xhttp = new XMLHttpRequest();
+  				r = "coaACCTNO="+document.getElementById('coaACCTNO').value.trim();
+  				xhttp.open("POST",r,false);
+  				xhttp.send();	
+ 	
+  				if (xhttp.responseText.substr(0,7) == "INVALID")
+  					{	
+  						alert("Internal Table is full - Please commit work and restart the program");
+  						return;
+  					}
+  				if (xhttp.responseText.substr(0,6) == "LOCKED")
+  					{	
+  						alert("Record is in use - please try again later");
+  						return;
+  					}
+			
+  				x = xhttp.responseText.split("^");		
+  				document.getElementById('coaDESCRIPTION').value				= x[0];
+  				document.getElementById('coaFLAG1').value							= x[1];
+  				document.getElementById('coaFLAG2').value							= x[2];
+  				document.getElementById('coaFLAG3').value							= x[3];
+  				document.getElementById('coaFLAG4').value							= x[4];
+  				document.getElementById('coaBALANCEINDICATOR').value	= x[5];				
+  				document.getElementById('coaCONTROLACCTNO').value			= x[6];
+  					document.getElementById("coaCONTROLACCTSEARCH").options[0].selected = true;
+  				document.getElementById('coaDEPRECIATION').value			= x[7];
+  				document.getElementById('coaUNITPRICE').value					= x[8];
+	   		
+  				document.getElementById("coaACCTNO").disabled	 				= true;
+  				document.getElementById("coaACCTSEARCH").disabled			= true;
+  				document.getElementById("coaKEY_A").disabled 					= true;
+  				document.getElementById("coaKEY_X").disabled 					= true;	
+  				document.getElementById("coaDATA").style.display			= "block";
+  					
+  				if (document.getElementById('coaDESCRIPTION').value.trim()=='')
+  					{	document.getElementById("coaDATA_D").disabled=true; }
+  				else
+  					{	document.getElementById("coaDATA_D").disabled=false; }
+  					
+  				return;
+  		}
+
+//	--------------------------
+//	EXIT:Chart of Accounts Key
+//	--------------------------
+  	if (button == "coaKEY_X")
+  		{
+  			Enable_MENU();
+  			document.getElementById("coaKEY").style.display	= "none"; 
+  			return;
+ 			}
+ 			
+//	-----------------------------
+//	ACCEPT:Chart of Accounts Data
+//	-----------------------------
+  	if (button == "coaDATA_A")
+  		{	  			
+  	//	Validate Description	
+  			if (document.getElementById('coaDESCRIPTION').value.trim()=='')
+  				{
+  					alert("Please enter a description");
+  					return;
+  				}
+
+  	//	Validate Control Account			
+  			if (document.getElementById('coaCONTROLACCTNO').value.trim() !='')
+  					{
+  						if (document.getElementById('coaCONTROLACCTNO').value.trim() == 
+  								document.getElementById('coaACCTNO').value.trim())
+  							{
+  								alert("Control Acct No cannot be the same as Acct No");
+  								return;
+  							}
+
+  						xhttp = new XMLHttpRequest();
+	 						r = "acctVALIDATE="+document.getElementById('coaCONTROLACCTNO').value.trim();		
+  						xhttp.open("POST",r,false);
+  						xhttp.send();
+
+							if (xhttp.responseText.substr(0,7) == "INVALID")
+								{	
+									alert("Invalid Control Account Number");
+									return;
+								}
+  					}  				
+
+  	//	Validate Depreciation
+  			if (Number(document.getElementById('coaDEPRECIATION').value)>'100')
+  				{
+  					alert("Depreciation cannot be greater than 100");
+  					return;
+  				}
+  				
+  		}
+
+//	-----------------------------
+//	DELETE:Chart of Accounts Data
+//	-----------------------------
+  	if (button == "coaDATA_D")
+  		{
+  			x = confirm("Are you sure you wish to delete this record ?");
+  			if (x)
+  				{
+  					xhttp = new XMLHttpRequest();
+  					xhttp.open("POST","coaDELETE=",false);
+  					xhttp.send();
+					
+  					loadAcctSearches();
+  					hide_coaDATA();				
+  					return;
+  				}
+  		}
+
+//	----------------------------------
+//	EXIT/ACCEPT:Chart of Accounts Data
+//	----------------------------------
+  	if (button == "coaDATA_A" || button == "coaDATA_X")
+  	{
+  	//ACCEPT
+  		if (button == "coaDATA_A")
+  			{
+  				xhttp = new XMLHttpRequest();
+
+  				s = "coaDESCRIPTION="				+ document.getElementById('coaDESCRIPTION').value.trim() 		+ "&" 
+	 					+ "coaFLAG1="							+ document.getElementById('coaFLAG1').value.trim() 					+ "&" 
+	 					+ "coaFLAG2="							+ document.getElementById('coaFLAG2').value 								+ "&" 
+	 					+ "coaFLAG3="							+ document.getElementById('coaFLAG3').value 								+ "&" 
+	 					+ "coaFLAG4="							+ document.getElementById('coaFLAG4').value 								+ "&" 
+	 					+ "coaBALANCEINDICATOR="	+ document.getElementById('coaBALANCEINDICATOR').value			+ "&" 
+	 					+ "coaCONTROLACCTNO="			+ document.getElementById('coaCONTROLACCTNO').value.trim()	+ "&" 
+	 					+ "coaDEPRECIATION="			+ Number(document.getElementById('coaDEPRECIATION').value)	+ "&"
+	 				  + "coaUNITPRICE="					+ Number(document.getElementById('coaUNITPRICE').value)			+ "&";	 					
+
+	 				xhttp.open("POST",s,false);
+  				xhttp.send();
+  			}
+
+  	//EXIT
+  		if (button == "coaDATA_X")
+  			{
+  				xhttp = new XMLHttpRequest();
+					xhttp.open("POST","coaEXIT=",false);
+					xhttp.send();
+  			}
+  			
+  		loadAcctSearches();  			
+  		hide_coaDATA();	
+  		return;
+  		
+  		}		 		
+  }
+
+//--------------
+//	Hide coaData
+//--------------
+  function hide_coaDATA()
+  {
+				document.getElementById("coaDATA").style.display 	= "none";
+				document.getElementById("coaKEY").style.display 	= "block";  
+				document.getElementById("coaACCTNO").disabled 		= false;
+				document.getElementById("coaACCTSEARCH").disabled	= false;
+				document.getElementById("coaKEY_A").disabled 			= false;	
+				document.getElementById("coaKEY_X").disabled 			= false;	
+  }
+//==============================================================================
+//				 VALIDATION - General Journal
+//==============================================================================
+  function f_GeneralJournal(button)
+  {
+  	
+//	--------------------------
+//	ACCEPT:General Journal Key
+//	--------------------------
+  	if (button == "gjKEY_A" || button == "gjSELECTED")
+  		{
+  			if (button == "gjKEY_A")
+  				{
+  					if (isNaN(Date.parse(document.getElementById('gjDATE').value)))
+  						{
+  							alert("Please enter a valid date");
+  							return;
+  						}
+					a = new Date();
+					document.getElementById('gjTIME').value = a.toTimeString();
+  				}
+
+				a = document.getElementById('gjDATE').value;
+				b = a.split("-");
+				a = document.getElementById('gjTIME').value;
+				c = a.split(":");
+				d = b[0] + b[1] + b[2] + c[0] + c[1] + c[2];
+				e = d.substr(0,14);
+
+				xhttp = new XMLHttpRequest();
+	  		r = "gjDATETIME="+e;
+	  		xhttp.open("POST",r,false);
+	  		xhttp.send();	
+ 				 	
+				if (xhttp.responseText.substr(0,7) == "INVALID")
+						{	
+							alert("Internal Table is full - Please commit work and restart the program");
+							return false;
+						}
+  				if (xhttp.responseText.substr(0,6) == "LOCKED")
+  					{	
+  						alert("Record is in use - please try again later");
+  						return;
+  					}
+			
+				x = xhttp.responseText.split("^");		
+      	document.getElementById('gjDRACCTNO').value				= x[00];
+      		document.getElementById("gjDRACCTSEARCH").options[0].selected = true;
+        document.getElementById('gjCRACCTNO').value				= x[01];
+      		document.getElementById("gjCRACCTSEARCH").options[0].selected = true;        
+        document.getElementById('gjDESCRIPTION').value		= x[02];
+        document.getElementById('gjVALUE').value					= x[03];				
+        document.getElementById('gjNOOFUNITS').value			= x[04];
+        document.getElementById('gjREFERENCE').value			= x[05];
+        document.getElementById('gjINVTRANTYPE').value		= x[06];		       
+        document.getElementById("gjINVACCTNO").value		 	= x[07];
+        	document.getElementById("gjINVACCTSEARCH").options[0].selected = true;
+        document.getElementById("gjINVPARCELNO").value	 	= x[08];
+        document.getElementById("gjINVGROUPING").value 		= x[09];
+        document.getElementById("gjFRANKEDAMT").value 		= x[10];        
+        document.getElementById("gjIMPUTEDCREDIT").value 	= x[11];
+        
+        document.getElementById("gjDATE").disabled	 			= true;
+        document.getElementById("gjTRANSEARCH").disabled	= true;
+        document.getElementById("gjKEY_A").disabled 			= true;
+        document.getElementById("gjKEY_X").disabled 			= true;	
+        document.getElementById("gjDATA").style.display 	= "block";
+                      
+ 				return;
+  		}
+
+//	------------------------
+//	EXIT:General Journal Key
+//	------------------------
+  	if (button == "gjKEY_X")
+  		{
+  			Enable_MENU();
+  			document.getElementById("gjKEY").style.display	= "none"; 
+  			return;
+ 			}
+  		
+//	---------------------------
+//	ACCEPT:General Journal Data
+//	---------------------------
+  	if (button == "gjDATA_A")
+  		{ 
+  	//	Validate Debit Account
+  			if (document.getElementById('gjDRACCTNO').value.trim()=='')
+  				{
+  					alert("Please enter a Debit Account No");
+  					return;
+  				}
+  			else
+  				{	
+ 						xhttp = new XMLHttpRequest();
+ 						r = "acctVALIDATE="+document.getElementById('gjDRACCTNO').value.trim();		
+ 						xhttp.open("POST",r,false);
+ 						xhttp.send();
+
+						if (xhttp.responseText.substr(0,7) == "INVALID")
+							{	
+								alert("Invalid Debit Account Number");
+								return;
+							}
+ 					}  				
+
+  	//	Validate Credit Account
+  			if (document.getElementById('gjCRACCTNO').value.trim()=='')
+  				{
+  					alert("Please enter a Credit Account No");
+  					return;
+  				}
+  			else
+  				{	
+ 						xhttp = new XMLHttpRequest();
+ 						r = "acctVALIDATE="+document.getElementById('gjCRACCTNO').value.trim();		
+ 						xhttp.open("POST",r,false);
+ 						xhttp.send();
+
+						if (xhttp.responseText.substr(0,7) == "INVALID")
+							{	
+								alert("Invalid Credit Account Number");
+								return;
+							}
+ 					}  				
+ 					
+  	//	Validate Investment Account
+  			if (document.getElementById('gjINVACCTNO').value.trim()>'')
+  				{	
+ 						xhttp = new XMLHttpRequest();
+ 						r = "acctVALIDATE="+document.getElementById('gjINVACCTNO').value.trim();		
+ 						xhttp.open("POST",r,false);
+ 						xhttp.send();
+
+						if (xhttp.responseText.substr(0,7) == "INVALID")
+							{	
+								alert("Invalid Investment Account Number");
+								return;
+							}
+ 					}  	
+
+   	//	Validate Description	
+  			if (document.getElementById('gjDESCRIPTION').value.trim()=='')
+  				{
+  					alert("Please enter a description");
+  					return;
+  				}
+
+  	//	Validate value
+  			if (Number(document.getElementById('gjVALUE').value)==0)
+  				{	
+						alert("Please Enter a Value");
+						return;
+ 					}  				
+
+  		}	  			
+  		
+//	---------------------------
+//	DELETE:General Journal Data
+//	---------------------------
+  	if (button == "gjDATA_D")
+  		{
+  		x = confirm("Are you sure you wish to delete this record ?");
+  		if (x)
+  			{
+  				xhttp = new XMLHttpRequest();
+					xhttp.open("POST","gjDELETE=",false);
+					xhttp.send();
+					
+					loadTranSearch();
+					Hide_gjDATA();				
+					return;
+				}
+  		}  		
+ 
+//	--------------------------------
+//	EXIT/ACCEPT:General Journal Data
+//	--------------------------------
+  	if (button == "gjDATA_A" || button == "gjDATA_X")
+  	{
+  	//ACCEPT
+  		if (button == "gjDATA_A")
+  			{
+  				xhttp = new XMLHttpRequest();
+
+  				s = "gjDRACCTNO="				+ document.getElementById('gjDRACCTNO').value.trim()				+ "&" 
+	 					+ "gjCRACCTNO="				+ document.getElementById('gjCRACCTNO').value.trim()				+ "&" 
+	 					+ "gjDESCRIPTION="		+ document.getElementById('gjDESCRIPTION').value.trim()			+ "&" 
+	 					+ "gjVALUE="					+ Number(document.getElementById('gjVALUE').value)					+ "&" 
+	 					+ "gjNOOFUNITS="			+ Number(document.getElementById('gjNOOFUNITS').value)			+ "&" 
+	 					+ "gjREFERENCE="			+ document.getElementById('gjREFERENCE').value.trim()				+ "&" 
+	 					+ "gjINVTRANTYPE="		+ Number(document.getElementById('gjINVTRANTYPE').value)		+ "&" 
+	 					+ "gjINVACCTNO="			+ document.getElementById('gjINVACCTNO').value.trim()				+ "&"
+	 				  + "gjINVPARCELNO="		+ Number(document.getElementById('gjINVPARCELNO').value)		+ "&"	 					
+	 					+ "gjINVGROUPING="		+ Number(document.getElementById('gjINVGROUPING').value)		+ "&" 
+	 					+ "gjFRANKEDAMT="			+ Number(document.getElementById('gjFRANKEDAMT').value)			+ "&"
+	 				  + "gjIMPUTEDCREDIT="	+ Number(document.getElementById('gjIMPUTEDCREDIT').value)	+ "&";	 					
+
+	 				xhttp.open("POST",s,false);
+  				xhttp.send();
+  				
+  			}
+
+  	//EXIT
+  		if (button == "gjDATA_X")
+  			{
+  				xhttp = new XMLHttpRequest();
+					xhttp.open("POST","gjEXIT=",false);
+					xhttp.send();
+  			}
+  			
+			loadTranSearch();
+  		Hide_gjDATA();
+			return;
+
+  	}
+ 		
+  }
+
+//-------------------------------------------
+//	Disable fields that should not be entered
+//-------------------------------------------
+  function f_SelectFromOption(a)
+  {
+  	if (a==1 && Number(document.getElementById("gjINVTRANTYPE").value)==0)
+  	{
+  		document.getElementById("gjINVACCTNO").disabled		= true;
+  		document.getElementById("gjINVPARCELNO").disabled	= true;
+  		document.getElementById("gjINVGROUPING").disabled	= true;
+  		document.getElementById("gjINVACCTSEARCH").disabled	= true;
+  		document.getElementById("gjINVACCTNO").value		 	= '';
+      document.getElementById("gjINVPARCELNO").value	 	= 0;
+      document.getElementById("gjINVGROUPING").value 		= 0;
+  		
+  	}
+  	else
+  	{
+  		document.getElementById("gjINVACCTNO").disabled		= false;
+  		document.getElementById("gjINVPARCELNO").disabled	= false;
+  		document.getElementById("gjINVGROUPING").disabled	= false;
+  		document.getElementById("gjINVACCTSEARCH").disabled	= false;
+  	}
+  }
+  
+//-------------
+//	Hide gjDATA
+//-------------
+  function Hide_gjDATA()
+  {		
+  	document.getElementById("gjDATA").style.display 	= "none";
+		document.getElementById("gjKEY").style.display 		= "block";  
+  	document.getElementById("gjDATE").disabled 				= false;
+  	document.getElementById("gjTRANSEARCH").disabled	= false;
+  	document.getElementById("gjKEY_A").disabled 			= false;	
+  	document.getElementById("gjKEY_X").disabled 			= false;	
+  }
+  
+//-------------
+//	Enable Menu
+//-------------
+	function Enable_MENU()
+	{
+  	document.getElementById("menu1").disabled 			= false;
+  	document.getElementById("menu2").disabled 			= false;   
+  	document.getElementById("menu3").disabled 			= false;   
+  	document.getElementById("menu4").disabled 			= false;   
+  	document.getElementById("menu5").disabled 			= false;   
+  	document.getElementById("menu6").disabled 			= false;		
+  }
+  
+</script>     
+</html> 

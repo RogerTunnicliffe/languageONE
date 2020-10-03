@@ -1,0 +1,8 @@
+(SYNTAX Highlighting) These must be copied into /home/roger/.jedit/modes
+	languageONE.xml
+(Console Commands) /home/roger/.jedit/console/commando
+	assemble.xml
+	pre.xml
+	link.xml
+	makeONE.xml
+	

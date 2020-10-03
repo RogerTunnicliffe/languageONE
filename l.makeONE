@@ -1,0 +1,74 @@
+path1="bin/"
+path2="./"
+clear
+P1=$1
+P2=$2
+if [ -z "$2" ]
+	then
+		P2=$P1
+		P1=' '
+	fi
+	
+echo -en "\e[36m"
+echo "[translating....]"
+STARTTIME=$(date +%s)
+echo -en "\e[37m"
+"$path1""l.languageONE" $P1 $P2
+ERRORCODE=$?
+if [ $ERRORCODE = 0 ]
+
+	then 
+		ENDTIME=$(date +%s)
+		echo -en "\e[36m  ["
+		echo "$(($ENDTIME - $STARTTIME))] seconds to reWrite..."
+		echo
+		echo -en "\e[91m"
+	else
+		echo -en "\e[31m" 
+		echo "    languageONE reWrite error"
+		echo -e "\e[39m"		
+		exit 1
+	fi
+
+echo -en "\e[36m"
+echo "[assembling....]"
+echo -en "\e[37m"
+"$path2""l.assemble" $P2.ASM
+ERRORCODE=$?
+if [ $ERRORCODE = 0 ]
+
+	then	 
+		ENDTIME=$(date +%s)
+		echo -en "\e[36m  ["
+		echo "$(($ENDTIME - $STARTTIME))] seconds to reWrite/assemble..."
+		echo
+		echo -en "\e[91m"
+	else
+		echo -en "\e[37m"
+		echo "    NASM Assembler error"
+		echo -e "\e[39m"
+		exit 1
+	fi
+
+echo -ene "\e[36m"
+echo "[linking....]"
+echo -ene "\e[37m"
+"$path2""l.link" $P2
+ERRORCODE=$?
+if [ $ERRORCODE = 0 ]
+
+	then 
+		ENDTIME=$(date +%s)
+		echo -en "\e[36m  ["
+		echo "$(($ENDTIME - $STARTTIME))] seconds to reWrite/assemble/link..."
+		echo
+		echo -en "\e[91m"
+	else
+		echo -en "\e[37m"
+		echo "    Linux ld error" 
+		echo -e "\e[39m"
+		exit 1
+	fi
+
+	
+

@@ -1,0 +1,1478 @@
+	%assign debug 0	
+	%include '../include/LMACROS.CPY'
+	%include '../include/IMACROS.CPY'
+	%include '../include/CONSTANTS.INC'
+	%line 5 FILES.LIB
+
+;	=================================================
+;	GLOBAL ROUTINES/VARIABLES defined in this library
+;	=================================================
+;	Routines
+;	--------
+	global _FILEIO
+	global _FIELDS
+	global _DELIMITER
+	global _DELETE
+;	-------------------------------------------
+;	V2.05 opened these for WORDS.StringToRecord
+;	and WORDS.RecordToString
+;	-------------------------------------------
+	global _FROMRECORD
+	global _TORECORD	
+
+;	------
+;	Fields
+;	------
+	global EOF
+	global DUPLICATES
+	global INVALIDKEY	
+	global LOCKED
+
+;	===============================================
+;	EXTERNAL ROUTINES/VARIABLES used by the library
+;	===============================================
+;	Routines
+;	--------
+	extern _SYSERROR			; COMMON
+	extern _TOALPHA				; NUMBERS
+	extern _FROMALPHA			; NUMBERS
+
+;	------
+;	Fields
+;	------
+	extern RETURN_CODE			; COMMON
+	extern w_One				; COMMON
+	extern w_Temp				; COMMON
+	extern w_RecordBuffer		; COMMON
+	extern w_SaveAddress		; COMMON
+
+;=======================================================================
+;			Call parameters for _FILES
+;=======================================================================
+;-----------------------------------------------------------------------
+;		FileStatus		+-----------+--------+-------------+----+
+;	+---+---+---+---+---|	db      |  dq    | db		   |0x00|
+;	| 1	|'9'|Len|Val|Pic+-----------+--------+-------------+----+
+;	+---+---+---+---+---| delimiter | Handle | Int[ExtName]|    |
+;		AsPer INSERTNO	+-----------+--------+-------------+----+
+;				-36		-26			-25		 0
+;			Delimiters are:-
+;					c_NONE			equ 00000000b
+;					c_NULL			equ 00000001b 
+;					c_LF			equ 00000010b 
+;					c_CSV			equ 00000100b
+;					c_RECORD		equ 00001000b
+;					c_RANDOM		equ 00010000b 
+;					c_INDEXED		equ 00100000b
+;					c_DIRECTORY		equ 01000000b
+;-----------------------------------------------------------------------
+;			INSERTFILE Delimiter,I-Name,'./X-Name
+;-----------------------------------------------------------------------
+;							  R8	 		R9		R10
+;			OPEN	*	FILES $open,		I_Name, R/W/RW[Beginning/End]/Lock
+;			READ	*	FILES $read,  		I_Name, record/{String,1,1},{String,1,1},etc
+;			WRITE	*	FILES $write, 		I_Name, record/{String,1,1},{String,1,1},etc
+;			DELETE	*	FILES $delete,		I_Name, record
+;			CLOSE	*	FILES $close, 		I_Name
+;			START	*	FILES $start, 		I_Name, record
+;			NEXT	*	FILES $next,  		I_Name, record
+;			COPY	*	FILES $filescopy,	I-from,	I-to
+;			RENAME	*	FILES $rename,		X-from,	X-to
+;			REMOVE	*	FILES $remove,		X-Name
+;			CHDIR	*	FILES $chdir,		X-Name
+;			GETCWD	*	FILES $getcwd,		X-Name
+;			LOCK	*	FILES $lock,		I_NAME,	record
+;			UNLOCK	*	FILES $unlock,		I_NAME,	record
+;-----------------------------------------------------------------------
+;=======================================================================
+;			DATA SEGMENT
+;=======================================================================
+;           Initialised - by program
+;-----------------------------------------------------------------------
+			section .data
+			
+	INSERTWORD OpenError,		80,	'Open Error='
+	INSERTWORD CloseError,		80,	'Close Error='
+	INSERTWORD ReadError,		80,	'Read Error:You need a record number to read this record'
+	INSERTWORD WriteError,		80,	'Write Error:You need a record number to write this record'
+	INSERTWORD LSeekError,		80,	'LSeek Error='
+	INSERTWORD DeleteError1,	80,	'Delete Error:You can only delete from a random file'
+	INSERTWORD DeleteError2,	80,	'Delete Error:You can only delete from a random file using a record no'
+	INSERTWORD StartError,		80, 'Start Error:You can only start a random file'
+	INSERTWORD NextError,		80, 'Next Error:You can only use next on a random file'
+
+	INSERTNUMBER EOF,			10,'99'
+	INSERTNUMBER DUPLICATES,	22,'99'
+	INSERTNUMBER INVALIDKEY,	23,'99'
+	INSERTNUMBER LOCKED,		90,'99'
+
+;-----------------------------------------------------------------------				
+;           UN Initialised - zero filled when loaded
+;-----------------------------------------------------------------------												  
+			section .bss
+w_RecordNo			resq 1												; For Fixed Length Records
+
+;***NOT SURE HOW LONG THIS IS BUT IT TRASHES STUFF AFTER IT
+stat64_buffer		resb 512 ; ?
+;	.st_dev:		resq 1		; unsigned long long		(000)
+;	.st_pad0:		resb ?		; unsigned char	__pad0[4]	(???)
+;	.__st_ino:		resd 1		; unsigned long				(???)
+;	.st_mode:		resw 1		; unsigned int				(???)
+;	.st_nlink:		resw 1		; unsigned int				(???)
+;	.st_uid:		resd 1		; unsigned long				(???)
+;	.st_gid:		resd 1		; unsigned long				(???)
+;	.st_rdev:		resq 1		; long long					(???)
+;	.st_pad3:		resb ?		; unsigned char	__pad3[4]	(???)
+
+	;.st_filler:		resb 48
+	;.st_size:		resq 1		; long long
+	
+		
+;	.st_blksize:	resd 1		; unsigned long				(???)
+;	.st_blocks:		resq 1		; unsigned long long		(???)
+;	.st_atime:		resd 1		; unsigned long				(???)
+;	.st_atime_nsec:	resd 1		; unsigned long				(???)
+;	.st_mtime:		resd 1		; unsigned long				(???)
+;	.st_mtime_nsec:	resd 1		; unsigned long				(???)
+;	.st_ctime:		resd 1		; unsigned long				(???)
+;	.st_ctime_nsec:	resd 1		; unsigned long				(???)
+;	.st_ino:		resq 1		; unsigned long long		(???)
+
+filelock:
+	l_type		resb 2
+	l_whence	resb 6
+	l_start		resb 8
+	l_len		resb 8
+	l_pid		resb 8
+
+%define c_dirBufferSize 512	
+%imacro $nextBuffer 0
+
+;	Increment the index
+	inc  qword[n_dirFrameIdx]											; increment the Index
+	
+;	Get the starting address
+	mov  r11,qword[n_dirFrameIdx]										; Grab it
+	imul r11,c_dirBufferSize											; multiply by the buffer size
+	add  r11,w_dirBuffer												; and add the base address	
+	mov  qword[n_dirFrameAddress],r11									; and store the Frame Address
+	
+;	initialise 1st 2 quad words and cleared buffer flag
+	mov  qword[r11],0													; zero the 1st qword (used as Response length)	
+	add  r11,8															; step over the Response Length
+	mov  qword[r11],0													; zero the 2nd word (Used as Unit Address)
+	add  r11,8
+	mov  qword[r11],0													; set cleared buffer flag (1st qword of Buffer)
+
+%endmacro
+
+%imacro $prevBuffer 0
+
+;	Decrement the index
+	dec  qword[n_dirFrameIdx]											; decrement the Index
+	
+;	Get the starting address
+	mov  r11,qword[n_dirFrameIdx]										; Grab it
+	imul r11,c_dirBufferSize											; multiply by the buffer size
+	add  r11,w_dirBuffer												; and add the base address
+	mov  qword[n_dirFrameAddress],r11									; and store the Address
+	
+%endmacro
+
+	%define r_RecordLength	R12
+	%define r_Index 		R13
+	
+;=======================================================================				
+;           ROUTINES ADDRESS's
+;=======================================================================	
+	[section .data]
+	callTable:	dq _READ
+				dq _WRITE
+				dq _OPEN
+				dq _CLOSE
+				dq _START
+				dq _NEXT
+				dq _DELETE
+				dq _FILESCOPY
+				dq _RENAME
+				dq _REMOVE
+				dq _CHDIR
+				dq _GETCWD
+				dq _LOCK
+				dq _UNLOCK
+;=======================================================================
+;			CODE SEGMENT
+;=======================================================================				
+	[section .text]	
+;-----------------------------------------------------------------------
+;      		Control Section
+;-----------------------------------------------------------------------
+_FILEIO:
+		
+			cld
+			mov rbx,callTable												; Get address of jump table
+			mov rax,8														; multiply by 8  
+			mul r8															; Get Calling function
+			add rbx,rax														; add to table to get offset
+			mov rbx,[rbx]													; Load the routines address
+			Call rbx														; and call it
+
+_FILEIO_EXIT:
+			ret
+
+;-----------------------------------------------------------------------
+;      	Open File
+;-----------------------------------------------------------------------
+_OPEN:
+
+	.open0:	mov rax,r_Function												; Function is OPEN					
+			mov	rdi,r_File													; setup up external name
+  			mov r14,OpenError												; set up error code
+  			mov @fileStatus(r_File),0										; Init File Status
+
+		;	--------------------
+		;	DIRECTORY PROCESSING
+		;	--------------------
+	.1If:	cmp @fileDelimiter(r_File),c_DIRECTORY						; Is it a directory ?
+				jne .1Else
+			mov	rsi,65536												; 200000octal
+		;	-----------
+			$nextBuffer													; next desting level		
+		;	-----------
+		
+			jmp .1EndIf
+	.1Else:
+		;   FLAGS
+		;	create		equ 0064d	;0100octal	; (CREATE-If necessary)
+		;	beginning	equ 0512d	;1000octal	; (BEGINNING-TRUNCATE)
+		;	end			equ 1024d	;2000octal	; (END-APPEND)	
+		;   LOCK		equ 2048d	;4000octal	;  LOCK
+			mov	rsi,r_FileFlags											; (FLAGS) 0=readonly/1=writeonly/2=ReadWrite
+			xor rsi,4000o												; Remove LOCK for present
+			or  rsi,create												; create if needed	
+			mov rdx,0666o												; permissions, (Octal) wide open -rw-rw-rw
+
+	.1EndIf:
+
+			mov r14,OpenError											; setup for possible error
+
+		;	----------------------------------------
+		;	Moved into here when callTable was coded
+		;	----------------------------------------
+			Call _CALLSYS
+
+_OPEN_EXIT:
+			ret
+
+;-----------------------------------------------------------------------
+;      		Start File
+;-----------------------------------------------------------------------			
+_START:
+
+		;	ERRORS------------------------------------------------------
+	.1If:	cmp @fileDelimiter(r_File),c_RANDOM							; RANDOM Access ?
+				je .1EndIf
+	.1Or:	cmp @fileDelimiter(r_File),c_INDEXED						; INDEXED Access ?
+				je .1EndIf				
+			xor rax,rax	
+			mov r14,StartError											; Produce error
+			Call _SYSERROR	
+	.1EndIf:
+	
+			Call _Z_INITIAL												; Record Length & Index
+	  		mov @fileStatus(r_File),0									; Init File Status
+
+		;	-----------------
+		;	Initialise Buffer
+		;	-----------------	
+			Call _CLEARRECORDBUFFER
+
+		;	If no record number given ---------------------
+	.2If:	cmp @recordNo(r_Record),0									; Record No supplied									
+				jne .2EndIf
+			inc @recordNo(r_Record)										
+	.2EndIf:
+	
+		;	Seek
+			push @recordNo(r_Record)									; Store record no
+			pop  qword[w_RecordNo]								
+			CALL _SEEK													; Call Seek
+
+		;	SEEK trashes rdx
+			mov rdi,@fileHandle(r_File)									; Set File Handle	
+			mov rsi,w_RecordBuffer										; Address of record buffer
+			mov rdx,r_RecordLength										; Set up in Z_Initial
+			
+		;	READ ----------------------
+			dec @recordNo(r_Record)										; Prepare to count records
+	.read:	inc @recordNo(r_Record)										; So as to return a record number
+			mov rax,$read												; Function is READ
+			Call _CALLSYS
+			
+	.4If:	cmp rax,0													; No bytes returned : EOF in this instance
+				ja .4OrIf												;	No then jump
+				mov @fileStatus(r_File),10								; Set FileStatus = EOF
+				jmp .Exit											
+	.4OrIf:		cmp byte[w_RecordBuffer+r_Index],0x00
+				je .read
+
+		;	Setup the record
+			mov r_Function,00											; Function to read
+			Call _RECORD
+					
+	.Exit:
+_START_EXIT:
+			ret
+
+;-----------------------------------------------------------------------
+;      		Next Record
+;-----------------------------------------------------------------------			
+_NEXT:
+		;	ERRORS------------------------------------------------------
+	.1If:	cmp @fileDelimiter(r_File),c_RANDOM							; RANDOM Access ?
+				je .1EndIf
+			cmp @fileDelimiter(r_File),c_INDEXED						; INDEXED Access ?
+				je .1EndIf				
+			xor rax,rax	
+			mov r14,NextError											; Produce error
+			Call _SYSERROR	
+	.1EndIf:
+
+			Call _Z_INITIAL			
+  			mov @fileStatus(r_File),0										; Init File Status
+  			
+		;	-----------------
+		;	Initialise Buffer
+		;	-----------------
+			Call _CLEARRECORDBUFFER
+
+		;	RECORD Length
+			mov rdi,@fileHandle(r_File)									; Set File Handle	
+			mov rsi,w_RecordBuffer										; Address of record buffer
+			mov rdx,r_RecordLength										; Set up in Z_INITIAL
+	
+		;	READ ----------------------
+	.read:	inc @recordNo(r_Record)										; So as to return a record number
+			mov rax,$read												; Function is READ
+			Call _CALLSYS
+			
+	.3If:	cmp rax,0													; EOF = INVALIDKEY in this instance
+				ja .3OrIf												;	No then jump
+				mov @fileStatus(r_File),10								; Set FileStatus = INVALIDKEY
+				jmp .Exit										
+	.3OrIf:		cmp byte[w_RecordBuffer+r_Index],0x00
+				je .read
+			
+		;	Setup the record
+			mov r_Function,00											; Function to read
+			Call _RECORD
+					
+	.Exit:
+_NEXT_EXIT:
+			ret
+			
+;-----------------------------------------------------------------------
+;      		Read File
+;-----------------------------------------------------------------------			
+_READ:
+
+			mov r14,ReadError												; setup for possible error
+  			mov @fileStatus(r_File),0										; Init File Status
+
+		;	-----------------
+		;	Initialise Buffer
+		;	-----------------
+			Call _CLEARRECORDBUFFER
+
+		;	--------------------------
+		;	ARE we reading a directory
+		;	--------------------------
+	.0If:	cmp @fileDelimiter(r_File),c_DIRECTORY							; If we are NOT reading a directory	
+				jne .1If													;	continue
+			Call _READ_DIRECTORY											; ELSE Do directory stuff
+			jmp .Exit														;	and exit
+	.0EndIf1:
+				
+		;	---------------------
+		;	ARE we using a RECORD
+		;	---------------------
+	.1If:	cmp @fileDelimiter(r_File),c_RECORD								; Is it using a record
+				je .1EndIf													;	NO, then process terminating character
+			cmp @fileDelimiter(r_File),c_RANDOM								; Is it using a record
+				je .1EndIf													;	NO, then process terminating character
+			cmp @fileDelimiter(r_File),c_INDEXED							; Is it using a record
+				je .1EndIf													;	NO, then process terminating character
+	.1Else:
+			jmp .terminated
+	.1EndIf:
+
+		;	------------------------------------------------------------
+		; 	Using RECORDS
+		;	------------------------------------------------------------
+		
+			Call _Z_INITIAL
+	
+		;	RANDOM Access ---------------------
+	.2If:	cmp @fileDelimiter(r_File),c_RANDOM							; RANDOM Access ?
+				jb .read
+	.2Else:	cmp @recordNo(r_Record),0									; Record No supplied									
+				jne .2EndIf				
+			xor rax,rax													; Produce error
+			Call _SYSERROR	
+	.2EndIf:
+
+		;	----
+		;	SEEK
+		;	----
+			push @recordNo(r_Record)									; Store record no
+			pop  qword[w_RecordNo]	
+			CALL _SEEK													; Call Seek
+		
+		;	----
+		;	READ
+		;	---- 
+	.read:	mov rax,r_Function											; Function is READ
+			mov rdi,@fileHandle(r_File)									; Set File Handle	
+			mov rsi,w_RecordBuffer										; Address of record buffer
+			mov rdx,r_RecordLength
+			Call _CALLSYS
+			
+	.4If:	cmp rax,0													; EOF in this instance
+				ja .4OrIf												;	No then jump
+				mov @fileStatus(r_File),10								; Set FileStatus = EOF
+				jmp .Exit			
+	.4OrIf:	cmp byte[w_RecordBuffer+r_Index],0x00						; Does it exist or Is it a deleted record
+				ja .4EndIf												;	No then jump				
+				mov @fileStatus(r_File),23								; Set FileStatus = INVALIDKEY
+				jmp .Exit
+	.4EndIf:
+		
+		;	Setup the record
+			Call _RECORD
+			jmp .Exit					
+
+		;	------------------------------------------------------------
+		; 	A file of type TERMINATED may use fields or a record
+		;	Either way, a record buffer is filled here and the FILES macro
+		;	handles the transfer to the fields/or the record			
+		;	------------------------------------------------------------						
+	.terminated:
+			mov rdi,@fileHandle(r_File)									; Set File Handle	
+			lea RSI,[w_RecordBuffer-1]
+			mov rdx,1													; No Of Bytes = 1
+			$delimiter bl,'L'											; Delimiter
+			mov @readLength(r_File),0									; Initialise the length of the read	
+									
+	.loop:	inc RSI	
+			mov rax,r_Function											; Function is READ	
+			Call _CALLSYS
+
+	.5If:	cmp rax,0													; END OF FILE
+			jne .5ElseIf
+			
+				cmp @readLength(r_File),0								; If we have anything already
+				ja .Exit												; then not end till next read
+						
+				mov @fileStatus(r_File),10								; Set FileStatus = End of File
+				jmp .Exit												; and jump to pad
+	.5ElseIf:	
+			cmp byte[RSI],bl											; Found record delimiter
+				je .5EndIf												;	then exit
+			inc @readLength(r_File)										; Else
+			jmp .loop													;	Add to read length and loop
+	.5EndIf:
+
+	.Exit:
+_READ_EXIT:
+			ret
+
+;-----------------
+;	Read Directory
+;-----------------
+_READ_DIRECTORY:
+
+;	WARNING:-This routine takes more than one call to supply all the files in a directory	
+;	WARNING:-ALSO *for recursion
+
+;-	--------------------------------------------------------
+;	ino64_t			dq	 +00 64-bit inode number
+;   off64_t			dq	 +08 64-bit offset to next structure
+;	d_reclen		dw	 +16 Size of this dirent
+;   d_type			db	 +18 File type
+;					 4 	 directory
+;					 8   file
+;				  	10	 symbolic link
+;   d_name			db	 +19 Filename (null-terminated)
+;	---------------------------------------------------------
+;	d_type
+;	------
+;	DT_UNKNOWN	0
+;	DT_FIFO		1
+;	DT_CHR		2
+;	DT_DIR		4
+;	DT_BLK		6
+;	DT_REG		8
+;	DT_LNK		10
+;	DT_SOCK		12
+;	DT_WHT		14
+;	---------------------------------------------------------
+
+;
+;	|								|
+;	| Directory Entry				|
+;	|								|
+;	+-------------------------------+ [r12] r_EntryAddress [r11] r_BufferAddress 
+;	| Entry Address					|
+;	+-------------------------------+
+;	| Length of Read				|
+;	+===============================+ n_dirFrameAddress:n_dirFrameIdx = 2
+;	| Space							|
+;	+-------------------------------+ [r12] r_EntryAddress (EORead) 
+;	|								|
+;	| Directory Entry				|
+;	|								|
+;	+-------------------------------+ [r12] r_EntryAddress 
+;	|								|
+;	| Directory Entry				|
+;	|								|
+;	+-------------------------------+ [r12] r_EntryAddress 
+;	|								|
+;	| Directory Entry				|
+;	|								|
+;	+-------------------------------+ [r12] r_EntryAddress [r11] r_BufferAddress 
+;	| Entry Address					|
+;	+-------------------------------+
+;	| Length of Read				|
+;	+===============================+ n_dirFrameAddress:n_dirFrameIdx = 1 
+;	| Space							|
+;	+-------------------------------+ [r12] r_EntryAddress (EORead)
+;	|								|
+;	| Directory Entry				|
+;	|								|
+;	+-------------------------------+ [r12] r_EntryAddress
+;	|								|
+;	| Directory Entry				|
+;	|								|
+;	+-------------------------------+ [r12] r_EntryAddress
+;	|								|
+;	| Directory Entry				|
+;	|								|
+;	+-------------------------------+ [r12] r_EntryAddress [r11] r_BufferAddress 
+;	| Entry Address					|
+;	+-------------------------------+
+;	| Length of Read				|
+;	+===============================+ n_dirFrameAddress:n_dirFrameIdx = 0 
+;
+;	NOTE:-
+;	The open and close will manipulate the frame index giving a frame address
+;	Each frame represents 1 directory level
+;	The buffer address is then set to the frame address + 16. This allows the
+;	1st qword on the frame to store the read length and the 2nd qword to hold the
+;	individual units address supplied by the kernel. The unit address is first set
+;	to the buffer address and then advanced for each unit to be processed.
+;	The length of each unit is returned in a dword at Unit+16
+
+[section .bss]
+	w_dirBuffer		  resb c_dirBufferSize*4096
+[section .data]
+	n_dirFrameAddress	dq 0
+	n_dirFrameIdx		dq -1			
+[section .text]
+
+	%define r_BufferAddress	r11											; qword[n_w_dirBufferAddress] + 16
+	%define r_EntryAddress	r12											; qword[r_BufferAddress-8]
+	%define r_EOBuffer		r13
+	%define r_EOUnit		r14
+
+		;	----------
+		;	Setup Buffer Address
+		;	----------
+			mov r_BufferAddress,qword[n_dirFrameAddress]				; Grab the buffer address
+			add r_BufferAddress,16 		
+
+		;	----------
+		;	First time
+		;	----------
+			cmp qword[r_BufferAddress-16],0								; and see if a read is required
+				je .read
+				
+		;	--------------------------
+		;	Have we emptied the buffer
+		;	--------------------------						
+		;	EOBuffer
+			mov r_EOBuffer,r_BufferAddress								; Grab the buffer address
+			add r_EOBuffer,qword[r_BufferAddress-16]					; and add the length	
+
+		;	EOUnit
+			mov r_EntryAddress,qword[r_BufferAddress-8]					; Grab the unit address
+			mov r_EOUnit,r_EntryAddress									; Grab the End Of Unit
+			xor rax,rax													; prepare for WORD move
+			mov ax,word[r_EntryAddress+16]								; Grab the unit length
+			add r_EOUnit,rax											; and add it
+		
+			cmp r_EOUnit,r_EOBuffer 
+				je .read												; Should work for zero (initial read)
+
+		;	---------------------------------
+		;	So then move up to the next entry
+		;	---------------------------------
+			mov r_EntryAddress,r_EOUnit									; Unit address is end of previous unit
+			mov qword[r_BufferAddress-8],r_EntryAddress					; store it	
+			jmp .load													; and jump to load it
+
+		;	---------------------------
+		;	Get the next buffer's worth
+		;	---------------------------
+	.read:	mov rax,217													; sys_getdents64 call no
+			mov RDI,@fileHandle(r_File)									; Setup the file handle																					
+			mov RSI,r_BufferAddress										; Buffer to use			
+			mov rdx,c_dirBufferSize - 16								; Requested Length
+		;	------------------
+			push R11													; syscall mess's with r11	
+			Call _CALLSYS												; Make the call
+			pop  R11													; syscall mess's with r11
+			cmp rax,0
+				ja .cont
+				je .eof
+				
+			;	SYSTEM ERROR - probably a filename exceeded the max length				
+				Call _SYSERROR
+				
+			;	EndOF File
+	.eof:		mov @fileStatus(r_File),10								;	set end of file
+				jmp .Exit												;	and exit
+
+		;	Continue------------------			
+	.cont:	mov qword[r_BufferAddress-16],rax							; Store Unit Length 
+			mov r_EntryAddress,r_BufferAddress
+			mov qword[r_BufferAddress-08],r_EntryAddress				; and save it
+			
+		;	----------------
+		;	load from buffer
+		;	----------------			
+	.load:	mov rsi,r_EntryAddress										; Grab the unit address
+			add RSI,18													; move to type
+			xor rax,rax													; prepare to store BYTE
+			mov al,byte[rsi]											; and store it	
+			mov qword[RETURN_CODE],rax									; as RETURN_CODE
+			add RSI,1													; move to name : address + 19	
+			mov rdi,r10													; destination address
+			mov rcx,qword[r10-8]										; get the destination length							
+			cld															; moving forwards
+		;	----LOOP		
+	.loop1:	cmp byte[RSI],0x00											; Have we hit the null
+				je .pad													;	then jump to padding			
+			movsb														; ELSE mov a byte
+			loop .loop1													;	and loop
+			jmp .Exit					 								; If your here the src was longer than the dest 
+			
+	.pad:	mov al,0x20													; setup a space
+	.loop2:	stosb														; store it
+			loop .loop2													; and loop
+
+	.Exit:
+_READ_DIRECTORY_EXIT:
+			ret
+			
+;-----------------------------------------------------------------------
+;      		Write File
+;-----------------------------------------------------------------------			
+_WRITE:
+			
+			mov r14,WriteError												; setup for possible error
+  			mov @fileStatus(r_File),0										; Init File Status
+
+		;	ARE we using a RECORD
+	.1If:	cmp @fileDelimiter(r_File),c_RECORD								; Is it using a record
+				je .1EndIf													;	YES then process
+			cmp @fileDelimiter(r_File),c_RANDOM								; Is it using a record
+				je .1EndIf													;	YES then process
+			cmp @fileDelimiter(r_File),c_INDEXED							; Is it indexed
+				je .1EndIf													;	YES then process
+	.1Else:																	;
+			jmp .fromfields													; ELSE process fields
+	.1EndIf:
+
+		;	------------------------------------------------------------
+		; 	Using RECORDS
+		;	------------------------------------------------------------
+			Call _Z_INITIAL
+		
+			push @recordNo(r_Record)										; Store Record No	
+			pop  qword[w_RecordNo]
+			Call _RECORD
+			mov rdx,r_RecordLength
+
+		;	RANDOM Access ---------------------			
+	.2If:	cmp @fileDelimiter(r_File),c_RANDOM								; RANDOM Access ?
+				jb .write			
+	.2Else:	cmp @recordNo(r_Record),0										; Record No supplied									
+				jne .2EndIf
+			xor rax,rax														; Produce error
+			Call _SYSERROR	
+	.2EndIf:
+
+		;	----
+		;	SEEK
+		;	----		
+			CALL _SEEK
+			
+			mov rdx,r_RecordLength
+
+	.4If:	cmp @fileDelimiter(r_File),c_INDEXED							; Allow for index if required
+				jne .4EndIf
+			mov qword[w_RecordBuffer],0x00									; Clear Index
+	.4EndIf:	
+			mov byte[w_RecordBuffer+r_Index],0x01	
+			
+			jmp .write
+
+		;	------------------------------------------------------------
+		; 	Using FIELDS
+		;	------------------------------------------------------------								
+	.fromfields:
+			mov rdx,[w_RecordBuffer-8]										; No Of Bytes (Record Length)
+
+		;	WRITE
+	.write:	mov rax,r_Function												; Function is WRITE
+			mov rdi,@fileHandle(r_File)										; Set File Handle
+			mov rsi,w_RecordBuffer											; Address of record buffer	
+
+		;	----------------------------------------
+		;	Moved into here when callTable was coded
+		;	----------------------------------------
+			Call _CALLSYS
+					
+_WRITE_EXIT:
+			ret
+
+;-----------------------------------------------------------------------
+;      		Mark Record as Deleted
+;-----------------------------------------------------------------------			
+_DELETE:
+
+		;	Can Only delete from a Random/Indexed file
+
+		;	ERRORS------------------------------------------------------
+	.1If:	cmp @fileDelimiter(r_File),c_RANDOM								; RANDOM Access ?
+				je .1Else
+			cmp @fileDelimiter(r_File),c_INDEXED							; INDEXED Access ?
+				je .1Else
+			xor rax,rax	
+			mov r14,DeleteError1											; Produce error
+			Call _SYSERROR	
+	.1Else:	cmp @recordNo(r_Record),0										; Record No supplied									
+				jne .1EndIf
+			mov r14,DeleteError2	
+			xor rax,rax														; Produce error
+			Call _SYSERROR	
+	.1EndIf:
+
+			Call _Z_INITIAL
+			
+  			mov @fileStatus(r_File),0										; Init File Status
+
+		;	----
+		;	SEEK
+		;	----
+			push @recordNo(r_Record)										; Store record no
+			pop  qword[w_RecordNo]
+			CALL _SEEK
+				
+		;	----
+		;	READ
+		;	----						
+	.read:	xor rax,rax														; Function is READ
+			mov rdi,@fileHandle(r_File)										; Set File Handle	
+			mov rsi,w_RecordBuffer											; Address of record buffer
+			mov rdx,r_RecordLength
+			
+			Call _CALLSYS
+
+		;	------
+		;	ERRORS
+		;	------
+	.4If:	cmp rax,0														; EOF = INVALIDKEY in this instance
+				je .4Else												
+	.4Or:	cmp byte[w_RecordBuffer+r_Index],0x00								
+				ja .4EndIf													; Deleted or Non Existing record
+	.4Else:	mov @fileStatus(r_File),23										; Set FileStatus = INVALIDKEY
+			jmp _DELETE_EXIT
+	.4EndIf:
+											
+	.del:	mov byte[w_RecordBuffer+r_Index],0x00
+
+		;	----
+		;	SEEK
+		;	----
+	.seek2:	CALL _SEEK														; Cuz the above read has move the record pointer forward
+
+		;	-------
+		;	REWRITE
+		;	-------		
+	.write:	mov rax,$write													; Function is WRITE
+			mov rdi,@fileHandle(r_File)										; Set File Handle	
+			mov rsi,w_RecordBuffer											; Address of record buffer
+			mov rdx,r_RecordLength
+			
+			Call _CALLSYS
+			
+_DELETE_EXIT:
+			ret
+
+;-----------------------------------------------------------------------
+;      		Lock a Record
+;-----------------------------------------------------------------------			
+_LOCK:
+
+			Call _Z_INITIAL
+	
+			mov rax,@recordNo(r_Record)									; Get record No
+			dec rax														;	less 1			
+			mul r_RecordLength											; times Record Length
+			mov r15,rax													; save the offset
+			
+		;	--------------------------------------
+		;	SET a LOCK
+		;	--------------------------------------
+	.setLock:				
+			mov word[l_type],1											; F_WRLCK 
+			mov word[l_whence],0										; SEEK_SET
+			mov dword[l_start],r15d										; offset 			
+			mov dword[l_len],R12d										; Length	
+			
+			mov rdi,@fileHandle(r_File)									; file handle
+			mov rax,72													; sys_fcntl
+			mov rsi,6													; F_SETLK
+			mov rdx,filelock
+			syscall
+			cmp rax,0													; -11 is EAGAIN - Try Again
+				je .setLockExit
+			mov @fileStatus(r_File),90									; Set FileStatus = LOCKED
+			jmp .Exit				
+	.setLockExit:		
+
+	.Exit:
+_LOCK_EXIT:
+			ret
+
+;-----------------------------------------------------------------------
+;      		UnLock a Record
+;-----------------------------------------------------------------------			
+_UNLOCK:
+
+			Call _Z_INITIAL
+	
+			mov rax,@recordNo(r_Record)									; Get record No
+			dec rax														;	less 1			
+			mul r_RecordLength											; times Record Length
+			mov r15,rax													; save the offset
+			
+		;	--------------------------------------
+		;	SET a LOCK
+		;	--------------------------------------
+	.unLock:				
+			mov word[l_type],2											; F_UNLCK
+			mov word[l_whence],0										; SEEK_SET
+			mov dword[l_start],r15d										; offset 			
+			mov dword[l_len],R12d										; Length	
+			
+			mov rdi,@fileHandle(r_File)									; file handle
+			mov rax,72													; sys_fcntl
+			mov rsi,6													; F_SETLK
+			mov rdx,filelock
+			syscall
+			cmp rax,0													; -11 is EAGAIN - Try Again
+				je .unLockExit
+			mov @fileStatus(r_File),90									; Set FileStatus = LOCKED
+			jmp .Exit				
+	.unLockExit:		
+
+	.Exit:
+_UNLOCK_EXIT:
+			ret
+;-----------------------------------------------------------------------
+;      		Close File
+;-----------------------------------------------------------------------			
+_CLOSE:
+
+  			mov @fileStatus(r_File),0										; Init File Status
+	.1If:	cmp @fileDelimiter(r_File),c_DIRECTORY							; Is it a directory ?
+				jne .1EndIf
+
+			;	-----------
+				$prevBuffer
+			;	-----------
+
+	.1EndIf:
+
+			mov rax,r_Function											; Function is CLOSE
+			mov rdi,@fileHandle(r_File)									; Set File Handle	
+
+			mov r14,CloseError											; setup for possible error
+
+		;	----------------------------------------
+		;	Moved into here when callTable was coded
+		;	----------------------------------------
+			Call _CALLSYS
+			
+_CLOSE_EXIT:
+			ret
+
+;-----------------------------------------------------------------------
+;      		UTILS
+;-----------------------------------------------------------------------
+_FILESCOPY:
+			mov rax,40														; sys_sendfile
+			mov	rsi,@fileHandle(r9)											; In file handle
+			mov	rdi,@fileHandle(r10)										; Outfile handle
+			mov	rdx,0x00													; Offset (Start at beginning)
+			mov	r10,@fileSize(r9)											; NoOfBytes
+			syscall
+			mov @readLength(r9),rax											; setup bytes written
+			cmp rax,0														; rax contains NoOfBytes written
+			jg _FILESCOPY_EXIT
+			mov qword[RETURN_CODE],rax 										; Else its negative
+_FILESCOPY_EXIT:
+			ret
+;------------------------------------
+_RENAME:
+			mov rax,82														; sys_rename
+			mov rdi,r9														; old name
+			mov rsi,r10														; new name
+			syscall
+			mov @readLength(r9),rax											; setup bytes written
+			cmp rax,0														; rax contains NoOfBytes written
+			jg _RENAME_EXIT
+			mov qword[RETURN_CODE],rax 										; Else its negative
+_RENAME_EXIT:
+			ret
+;------------------------------------
+_REMOVE:
+			mov rax,87														; sys_unlink
+			mov rdi,r9														; name
+			syscall
+			mov qword[RETURN_CODE],rax 										; 0 or Else its negative
+_REMOVE_EXIT:
+			ret
+;------------------------------------
+_CHDIR:
+			mov rax,80														; sys_chdir
+			mov rdi,r9														; setup rdi
+			syscall															; make the call
+			mov qword[RETURN_CODE],rax										; setup error code			
+_CHDIR_EXIT:
+			ret
+;------------------------------------
+_GETCWD:
+			mov rax,79														; sys_getcwd
+			mov rdi,r9														; setup rdi
+			mov rsi,qword[rdi-8]											; length of receiving buffer
+			syscall															; make the call
+			mov qword[RETURN_CODE],rax										; setup error code
+_GETCWD_EXIT:
+			ret
+
+;-----------------------------------------------------------------------
+;      		SEEK
+;-----------------------------------------------------------------------
+_SEEK:
+
+			mov rdi,@fileHandle(r_File)									; Set File Handle
+
+			mov rax,[w_RecordNo]										; Get record No
+			dec rax														;	less 1			
+			mul r_RecordLength
+			
+			mov rsi,rax													; Setup RSI (offset)
+			
+		;	SEEK_SET	0	/* Seek from beginning of file.  
+		;	SEEK_CUR	1	/* Seek from current position.  
+		;	SEEK_END	2	/* Seek from end of file.  
+		;	SEEK_DATA	3	/* Seek to next data. (NOT all filesystems supported)
+		;	SEEK_HOLE	4	/* Seek to next hole. (NOT all filesystems supported)
+		
+			xor rdx,rdx													; Zero Origin
+			mov rax,8													; Function = LSEEK
+
+			mov r14,LSeekError											; setup for possible error			
+			
+			Call _CALLSYS
+			cmp rax,-1													; System Error
+				jg .Exit							
+			Call _SYSERROR												; Call System Error (will terminate)			
+			
+	.Exit:
+_SEEK_EXIT:
+			ret
+			
+;-----------------------------------------------------------------------
+;      		SYSCALL
+;-----------------------------------------------------------------------
+_CALLSYS:
+
+	; rax will contain the error code (as a negative number) if there has been
+	; an error, ELSE it will contain the number of bytes returned (in a read)
+	; ZERO is handled in the READ routine as this indicates EOF.
+	; -6   is handled in the SEEK routine as this indicates INVALID RECORD NO
+	
+			syscall
+			cmp rax, 0													; Errors are return as -1 thru -4095
+				jnl .okay
+				
+			Call _SYSERROR												; Call System Error (will terminate)
+
+		;	OPEN -------------------------------
+	.okay:	cmp r_Function,$open										; OPEN ?
+				jne .Exit												; if NOT then exit
+				
+			mov @fileHandle(r_File),rax									; Store file handle
+
+		;	LOCKING ----------------------------
+			mov rbx,r_FileFlags											; Grab the Flags
+			and rbx,4000o												; and get the Locking bit
+			cmp rbx,4000o
+				jne .stats
+
+			mov word[l_type],1											; F_WRLCK
+			mov word[l_whence],0										; SEEK_SET
+			mov dword[l_start],0										; Offset
+			mov dword[l_len],0											; Length
+
+			mov rdi,rax													; file handle
+			mov rax,72													; sys_fcntl
+			mov rsi,6													; F_SETLK
+			mov rdx,filelock
+			syscall
+			cmp rax,0													; -11 is EAGAIN - Try Again
+				je .stats
+
+			mov rax,3													; Function is CLOSE
+			mov rdi,@fileHandle(r_File)									; Set File Handle
+			syscall
+			mov @fileStatus(r_File),90									; LOCKED
+			jmp .Exit				
+		;	LOCKING ----------------------------				
+						
+		;	get file statistics using external name
+		;	fstat will work using file handle. Maybe later
+		;	that would be a better call ?????
+	.stats:	mov rax,4													; stat64
+			mov rdi,r_File												; External Name
+			mov rsi,stat64_buffer										; Buffer
+			syscall
+
+			mov rbx,qword[rsi+48]										; Grab he size from the buffer
+			mov qword[r_File-104],rbx									; and move it to FILE_SIZE
+
+	.Exit:
+_CALLSYS_EXIT:
+			ret
+
+;=======================================================================
+;      		Load/Setup FIELDS
+;=======================================================================
+_FIELDS:
+
+			cld															; All moves here going forward
+			
+	.write:	cmp r_Function,$read
+				je .read
+				Call _FROMFIELDS
+				jmp .Exit
+					
+	.read:	Call _TOFIELDS
+	
+	.Exit:
+_FIELDS_EXIT:
+			ret			
+;-----------------------------------------------------------------------
+;      		(WRITE) Move FIELDS to BUFFER			
+;SETS:		RDI:    Must maintain RDI for FIELDS offset across multiple calls
+;-----------------------------------------------------------------------		
+_FROMFIELDS:
+			cmp @fieldLength(r_SrcAddress),0							; Nothing to do
+				je .Exit												;	then exit
+	
+			mov rdx,r_SrcAddress										; Save string address
+			cmp @fieldIndicator(r_SrcAddress),'9'						; If it is not numeric then
+				jne .DoIt												; 	jump to alpha code
+
+;-----------------------------------------------------------------------
+;           Code for numerics
+;-----------------------------------------------------------------------
+		;	Convert the binary number to ascii (LEFT to RIGHT)
+	.nos:	$pushAll r8,r9,r10,r11,r12,r13,r14,r15,rsi,rdi,rdx			; Save everything											
+			mov r12,w_Temp												; Using w_Temp
+			mov r13,[w_One]												; Start at 1
+			mov r15,c_TRUE												; Tell _TOALPHA to Set length of Destination
+			Call _TOALPHA												; Make the call
+			$popAll rdx,rdi,rsi,r15,r14,r13,r12,r11,r10,r9,r8			; Restore everything
+						
+			mov r9, w_Temp												; reset r9 to w_TempWord
+			mov r10, [w_One]											; reset to start
+			mov r11, @fieldLength(w_Temp)								; reset to end (length)
+			
+;-----------------------------------------------------------------------
+;			Code for alphanumerics
+;-----------------------------------------------------------------------
+	.DoIt:	cmp @fileDelimiter(r15),08									; Something other than c_NULL,c_LF,c_CSV			
+				ja .move
+				
+	.1If:	test @fileDelimiter(r15),c_CSV								; (r15=Filename) is it a CSV file	
+				jz .move												;	No then jump
+	.1OrIf:	cmp @fieldIndicator(rdx),'9'								; If it is numeric then
+				je .move												; 	jump to alpha code
+	.1Else:	mov ax,'"'													; else
+			stosb														; move to quote (inc's rdi)
+	.1EndIf:
+													
+	.move:	mov RSI,r9													; Set up the source offset
+			add RSI,r10													;	add the start position
+			dec RSI														;	less 1
+			mov rcx,r11													; Set up the length of the move
+	.load	lodsb														; get it
+			stosb														; put it
+			loop .load													; and loop
+
+	.2If:	cmp @fileDelimiter(r15),08									; Something other than c_NULL,c_LF,c_CSV
+				ja .Exit
+	.2OrIf:	test @fileDelimiter(r15),c_CSV								; is it a CSV file			
+				jz .Exit
+	.2EndIf:
+	
+		;	Does a CSV need a trailing quote
+			cmp @fieldIndicator(rdx),'9'								; If it is numeric then
+				je .comma												; 	jump to comma
+			mov ax,'"'
+			stosb	
+
+	.comma:	mov ax,','
+			stosb	
+
+	.Exit:
+_FROMFIELDS_EXIT:
+			ret
+			
+;-----------------------------------------------------------------------
+;      		(READ) Move BUFFER to FIELDS			
+;SETS:		RSI:   Must maintain RSI for FIELDS offset across multiple calls
+;-----------------------------------------------------------------------			
+_TOFIELDS:		
+
+			test @fileDelimiter(r15),c_CSV								; (r15=Filename) is it a CSV file
+				jz .001
+		
+	.1If:	cmp byte[RSI],','											; Is it a comma 
+				jne	.1Else												;	NO then jump over
+				inc RSI
+		;	Altered after Windows port********************
+			;	jmp .1End
+				jmp .1If
+		;	**********************************************
+	.1Else:	cmp byte[RSI],'"'											; Is it a quote
+				jne .1End												;	NO then jump over
+				inc RSI
+		;	Altered after Windows port********************
+				jmp .1If
+		;	**********************************************
+	.1End:
+			
+	.001:	cmp @fieldIndicator(r9),'9'									; If it is not numeric then
+				jne .Alpha												; 	jump to alpha code
+
+;-----------------------------------------------------------------------
+;           Code for numerics
+;-----------------------------------------------------------------------
+		;	Convert the ascii number to binary (RIGHT to LEFT)
+	.nos:	$pushAll r8,r9,r10,r11,r12,r13,r14,r15,rsi,rdi				; Save everything											
+ 		;	mov r9,---													; Destination (binary) is already setup
+			xor r10,r10													; Clear picture override
+			xor r11,r11													; Clear picture override
+			mov r12,RSI													; Set source (alpha)
+			mov r13,[w_One]												; start at 1
+			mov r14,@fieldLength(r9)									; Length (destination length)
+			Call _FROMALPHA												; Make the call
+			$popAll rdi,rsi,r15,r14,r13,r12,r11,r10,r9,r8				; Restore everything
+		
+			add RSI,[r9-8]												; add the string length to RSI
+			jmp .Exit													;	and exit
+							
+;-----------------------------------------------------------------------
+;			Code for alphanumerics
+;-----------------------------------------------------------------------
+	.Alpha:	mov RDI,r9													; Set up the Destination offset
+			add RDI,r10													;	add the destination position
+			dec RDI														;	less 1
+			mov rcx,r11													; Set up the length of the move (recieving Field)
+		
+;	.2If:	cmp rcx,0													; Has anything other than a LF been read
+;				je .2EndIf												; NO - then jump
+			
+		.load	lodsb													; get it
+				stosb													; put it
+				loop .load												; and loop
+;	.2EndIf:
+
+;	ATTEMPTED HERE TO PAD RECEIVING FIELD BUT IT SHOULD BE THE SIZE OF WHAT IS READ
+;	I THINK THIS CAME FROM languageONE.ASM (translator) SO IT NEEDS TO CLEAR THE 
+;	IMUT BUFFER ITSELF BEFORE EACH READ CUZ THIS DOESNT WORK FOR READING MULTIPLE FIELDS	
+;		;	IS the receiving field larger than that of the source
+;		;	Be carefule here. At the moment FILES is the only one that calls
+;		;	this. Maybe TABLE could
+;	.3If:	cmp r11,@readLength(r15)									; Is the receiving field greater than the no of bytes read
+;				jna .3EndIf												; If NOT then exit
+;																		; ELSE
+;				mov rcx,r11												; Grab the recieving length
+;				sub rcx,@readLength(r15)								; Subtract the No Of Bytes read
+;		.fill:	mov byte[RDI],' '										; Move spaces
+;				inc RDI													; Next Byte
+;				loop .fill												; Loop till rcx is zero
+;	.3EndIf:					
+
+	.Exit:
+_TOFIELDS_EXIT:
+			ret
+
+;-----------------------------------------------------------------------
+;      		Helper Code - Process to handle the last field of a CSV
+;-----------------------------------------------------------------------		
+_DELIMITER:
+			PUSH RAX
+
+		;	Remove last comma if it is a CSV and NOT numeric
+	.1If:	cmp @fileDelimiter(r15),08									; Something other than c_NULL,c_LF,c_CSV
+				ja .1EndIf
+	.OrCSV:	test @fileDelimiter(r15),c_CSV								; If its a CSV file
+				jz .1EndIf
+	.OrX:	cmp byte[w_SaveAddress-9],'9'								; and if its an alpha field
+				je .1EndIf
+	.1Else:	
+			dec RDI														; we need to remove the last comma
+	.1EndIf:
+	
+		;	Record Delimiter
+			cmp @fileDelimiter(r15),08									; Something other than c_NULL,c_LF,c_CSV
+				ja .other
+
+	.lf:	test @fileDelimiter(r15),c_LF								; Line Feed
+				jz .csv
+				mov ax,0x0A
+				stosb	
+				jmp .Exit
+
+	;		Altered after Windows Port*******************
+	.csv:	test @fileDelimiter(r15),c_CSV								; CSV
+				jz .null
+				mov ax,0x0A
+				stosb	
+				jmp .Exit
+	;		******************************************
+				
+	.null:	test @fileDelimiter(r15),c_NULL								; Null value
+				jz .other
+				mov ax,0x00
+				stosb	 
+				jmp .Exit
+				
+	.other:		mov al,@fileDelimiter(r15)								; Anything other
+				stosb
+				
+	.Exit:
+			sub RDI,w_RecordBuffer										; Calc length of record buffer
+			mov @fieldLength(w_RecordBuffer),RDI						; and set it
+			
+_DELIMITER_EXIT:
+			POP RAX
+			ret		
+			
+;=======================================================================
+;      		Load/Setup Record
+;=======================================================================
+_RECORD:
+
+			cld															; All moves here going forward
+							
+	.write:	cmp r_Function,$read
+				je .read
+				Call _FROMRECORD
+				jmp .Exit
+					
+	.read:	Call _TORECORD
+	
+	.Exit:
+_RECORD_EXIT:
+			ret
+
+;-----------------------------------------------------------------------
+;      		(WRITE) Move RECORD to BUFFER
+;-----------------------------------------------------------------------
+_FROMRECORD:
+			
+			lea RSI,[r_Record+17]										; Start of 1st field
+			mov RDI,w_RecordBuffer										; Get destination (RecordBuffer)
+			
+	.1If:	cmp @recordNo(r_Record),0									; RANDOM/INDEXED Access ?
+				je .1EndIf
+			cmp @fileDelimiter(r_File),c_INDEXED						; Allow for index if required
+				jne .1Else
+				mov qword[RDI],0x00
+				add RDI,8	
+				mov byte[RDI],0x01
+				inc RDI
+				jmp .1EndIf
+	.1Else:
+				mov byte[RDI],0x01
+				inc RDI
+	.1EndIf:
+	
+			
+	
+		;	START LOOP -------------------------------------------------
+			$fromRecord
+;
+;	NOT A BAD IDEA TO LEAVE THIS FOR THE MOMENT FOR DEBUGGING
+;						
+;	.loop:	cmp @fieldIndicator(RSI),0x00								; Loop Here - ARE WE DONE
+;				je _FROMRECORD_EXIT
+;
+;			cmp @fieldIndicator(RSI),'9'								; If the field is a number then
+;				je .nos													;	Do Number
+;
+;		;---WORDS ****	
+;			mov rcx,@fieldLength(RSI)									; Grab the length of the field
+;	.X:		movsb														; move the bytes
+;			loop .X														;
+;			add RSI,17													; Next Word
+;			jmp .loop													; and jump to end of field process
+;		;	END LOOP for Alpha -----------------------------------------
+;					
+;		;---NUMBERS ****	
+;		;	Convert the binary number to ascii (LEFT to RIGHT)
+;	.nos:	$pushAll r8,r9,r10,r11,r12,r13,r14,r15,rsi,rdi				; Save everything											
+;			mov r9,RSI													; Setup source (number)	
+;			xor r10,r10													; Clear picture override
+;			xor r11,r11													; Clear picture override
+;			mov r12,w_Temp												; Using w_Temp
+;			mov r13,[w_One]												; Start at 1
+;			mov r15,c_TRUE												; Tell _TOALPHA to Set length of Destination
+;			Call _TOALPHA												; Make the call
+;			$popAll rdi,rsi,r15,r14,r13,r12,r11,r10,r9,r8				; Restore everything
+;			
+;			PUSH RSI
+;			mov RSI,w_Temp												; Reset the source to w_Temp
+;			mov rcx,@fieldLength(w_Temp)								; Grab the length of the field
+;	.9:		movsb														; move the bytes
+;			loop .9									
+;			POP RSI
+;			
+;		;	Jump over stuff
+;			mov rax,RSI													; Address of Number
+;			add rax,8													; 	jump over no
+;			add rax,@fieldLength(RSI)									;	add length of picture
+;			add rax,17													;	add 17 (number)
+;			mov RSI,rax													; store the new offset
+;			jmp .loop
+;		;	END LOOP for Number ----------------------------------------
+;
+;	.Exit:
+_FROMRECORD_EXIT:
+			ret
+			
+;-----------------------------------------------------------------------
+;      		(READ) Move BUFFER to RECORD
+;-----------------------------------------------------------------------
+_TORECORD:
+
+			mov RSI,w_RecordBuffer 
+	.1If:	cmp @recordNo(r_Record),0									; RANDOM/INDEXED Access ?
+				je .1EndIf
+				inc RSI													; Allow for Record Status: 0x1=Live, 0xFF=Deleted
+			cmp @fileDelimiter(r_File),c_INDEXED						; Allow for index if required
+				jne .1EndIf
+				add RSI,8	
+	.1EndIf:
+			
+			lea RDI,[r_Record+17]										; Start of 1st field
+
+		;	START LOOP -------------------------------------------------
+			$toRecord
+;
+;	NOT A BAD IDEA TO LEAVE THIS FOR THE MOMENT FOR DEBUGGING
+;						
+;	.loop:	cmp @fieldIndicator(RDI),0x00								; Loop Here - ARE WE DONE
+;				je _TORECORD_EXIT
+;					
+;			cmp @fieldIndicator(RDI),'9'								; If the field is a number then
+;				je .nos													;	Do Number
+;
+;		;---WORDS	
+;			mov rcx,@fieldLength(RDI)									; Grab the length of the field
+;	.X:		movsb														; move the bytes
+;			loop .X									
+;			add RDI,17													; Next Word
+;			jmp .loop													; and loop back to get next field
+;		;	END LOOP for ALPHA -----------------------------------------
+;					
+;		;---NUMBERS	
+;		;	Convert the ascii number to binary (RIGHT to LEFT)
+;	.nos:	$pushAll r8,r9,r10,r11,r12,r13,r14,r15,rsi,rdi				; Save everything											
+;			mov r9,RDI													; Set destination (binary)
+;			xor r10,r10													; Clear picture override
+;			xor r11,r11													; Clear picture override
+;			mov r12,RSI													; Set source (alpha)
+;			mov r13,[w_One]												; start at 1
+;			mov r14,[r9-8]												; Length (destination length)
+;			Call _FROMALPHA												; Make the call
+;			$popAll rdi,rsi,r15,r14,r13,r12,r11,r10,r9,r8				; Restore everything
+;			
+;		;	Jump over stuff
+;			add RSI,@fieldLength(RDI)									; Advance source by picture length			
+;			mov rax,RDI													; Address of Number
+;			add rax,8													; 	jump over no
+;			add rax,@fieldLength(RDI)									;	add length of picture
+;			add rax,17													;	add 17 (number)
+;			mov RDI,rax													; store the new offset
+;						
+;			jmp .loop													; and loop back to get the next field
+;		;	END LOOP for Number ----------------------------------------
+;
+;	.Exit:
+_TORECORD_EXIT:
+			ret
+	
+_CLEARRECORDBUFFER:
+
+		;	w_RecordBuffer is not a languageONE field. So Initialise will not work
+		;	Last 7 bytes will not be cleared..meh!
+			mov rax,0x2020202020202020	
+			mov RDI,w_RecordBuffer
+			mov rcx,8192
+			cld
+		rep stosq
+
+	.Exit:
+_CLEARRECORDBUFFER_EXIT:
+		ret
+
+;-----------------------------------------------------------------------
+;      		Setup r_RecordLength and r_Index
+;-----------------------------------------------------------------------	
+_Z_INITIAL:
+
+  			xor r_Index,r_Index												; Init to NO Index
+			mov r_RecordLength,@recordLength(r_Record)						; No Of Bytes (Record Length)
+			
+	.0If:	cmp @fileDelimiter(r_File),c_RECORD								; Is it using a record
+				je .Exit													;	then NO Index or Live Flag			
+			
+			inc r_RecordLength												; Allow for Record Status: 0x1=Live, 0x0=Deleted
+	.1If:	cmp @fileDelimiter(r_File),c_INDEXED							; Allow for index if required
+				jne .1EndIf
+				add r_RecordLength,8
+				mov r_Index,8												; and set Index length
+	.1EndIf:  				
+
+	.Exit:
+_Z_INITIAL_EXIT:
+	ret

@@ -1,0 +1,263 @@
+%include 'include/BEGIN.PROGRAM'
+
+;	Refer to VERSION.HISTORY for...well...version history
+
+;	BEGIN.SYNONYMS **************************************
+;		$.	:	WORDS.  
+;		@.	:	INTEGERS.  
+;		#.	:	NUMBERS.  
+;	END.SYNONYMS ****************************************
+
+;	NOTE:	This program requires the nasm preprocessor flag set to ensure the program 
+;			accommodates the differing directory structure of a standard languageONE 
+;			setup and that of a TinyCore setup.
+	%define c_Standard 0
+	%define c_TinyCore 1
+			%assign DIRS c_Standard ; <----- This is what you change
+
+;=======================================================================
+;		  PROGRAM DATA
+;=======================================================================	      
+
+;-----------------------------------------------------------------------
+;		DICTIONARY
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.DICTIONARY'
+
+	insertword w_PortError,		0024,'Port No cannot be < 1024' 
+	insertword w_ConnectError,	0020,'Cannot create socket'
+
+;	[START] System differences
+%if DIRS = c_Standard
+	insertword w_Screen0,		0024,{'html/V1-15-screen0.html',0x00}
+%endif
+%if DIRS = c_TinyCore
+	insertword w_Screen0,		0019,{'V1-15-screen0.html',0x00}
+%endif	
+;	[END] System differences			
+	insertword w_Response,		2048,''	
+	insertword w_Enter,			0001,''
+	
+%include 'include/END.DICTIONARY'
+
+;-----------------------------------------------------------------------
+;		MATRIX
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.MATRIX'
+
+  ; Common Counters
+	INSERTNUMBER I,					0,'999999'
+	INSERTNUMBER J,					0,'999999'
+	INSERTNUMBER K,					0,'999999'
+
+  ; This programs 	
+  	insertnumber n_PortNo,		60000,'999999'
+	
+%include 'include/END.MATRIX'
+
+;=======================================================================
+;		PROGRAM INSTRUCTIONS
+;		Mainline  
+;=======================================================================
+%include 'include/BEGIN.INSTRUCTIONS'
+
+	$Call A_1_Initial
+
+	if ERROR_CODE = 0
+		www.process (w_Screen0,w_Response,B_1_GET,C_1_POST)	
+		$Call Z_1_Finalise
+	end.if
+
+%include 'include/END.INSTRUCTIONS'
+%include 'include/END.PROGRAM'      
+
+;=======================================================================
+;		PROGRAM PROCEDURES
+;=======================================================================
+
+;-------------------------------------------------------------------------------
+;		INITIALISATION
+;-------------------------------------------------------------------------------
+BEGIN.SUB A_1_Initial
+
+%if DIRS = c_TinyCore
+	display c_ClearScreen,c_CyanFG
+	display.line "===================================================================="
+	display.line "If you are running on a TinyCore system you must first copy the html"
+	display.line "files from /usr/local/share/languageONE/html/V1-15* to the directory"
+	display.line "where this program is being run"
+	display.line "===================================================================="
+	display c_LightYellowFG
+	display.line "Press <ENTER> to continue, Ctrl-C to exit."
+	display.line "This message may be removed when editing this program"
+	acceptline w_Enter
+%endif
+	
+;	Get Number
+	#.eq (n_PortNo,{w_CommandLine,1,6})
+	
+	if n_PortNo < 1024
+	
+		display.line w_PortError
+		ERROR_CODE = 99
+		
+	else
+	
+	;	OPEN THE SOCKET 
+		www.open (n_PortNo)
+		if ERROR_CODE != 0
+			display.line w_ConnectError
+		end.if
+		
+	end.if
+	
+END.SUB A_1_Initial
+
+;-------------------------------------------------------------------------------
+;	GET
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_1_GET
+
+	display.line 'Get $Callback'
+
+;	XMLHttpRequest
+	$.find ({'roger=GET',J},w_Response)
+	if J > 0
+		display.line 'Found Roger=GET'
+	end.if
+	
+END.SUB B_1_GET
+
+;-------------------------------------------------------------------------------
+;	POST
+;-------------------------------------------------------------------------------
+BEGIN.SUB C_1_POST
+	display.line 'Post $Callback'
+
+;	PROGRAMNAME entered	
+	I = 0 | J = 0 | K = 0
+	$.find ({'PROGRAMNAME=',J},w_Response)
+	if J > 0
+		I = J + 12 | J = I
+		$.find ({'&',I},w_Response)
+		if I > J
+			display 'PROGRAMNAME has been selected:='
+			K = I - J
+			$.replace ({'+',' '},{w_Response,J,K})
+			display.line {w_Response,J,K}
+		end.if
+	end.if
+		
+;	reWrite Selected
+	$.find ({'REWRITE=on',I},w_Response)
+	if I > 0
+		display.line 'reWrite has been selected'
+	end.if
+
+;	ASSEMBLE selected
+	$.find ({'ASSEMBLE=on',I},w_Response)
+	if I > 0
+		display.line 'ASSEMBLE has been selected'
+	end.if
+	
+;	LINK selected
+	$.find ({'LINK=on',I},w_Response)
+	if I > 0
+		display.line 'LINK has been selected'
+	end.if
+
+;	COMMON selected
+	$.find ({'COMMON=on',I},w_Response)
+	if I > 0
+		display.line 'COMMON has been selected'
+	end.if
+	
+;	WORDS selected
+	$.find ({'WORDS=on',I},w_Response)
+	if I > 0
+		display.line 'WORDS has been selected'
+	end.if
+
+;	NUMBERS selected
+	$.find ({'NUMBERS=on',I},w_Response)
+	if I > 0
+		display.line 'NUMBERS has been selected'
+	end.if
+
+;	DECISIONS selected
+	$.find ({'DECISIONS=on',I},w_Response)
+	if I > 0
+		display.line 'DECISIONS has been selected'
+	end.if
+
+;	STDIO selected
+	$.find ({'STDIO=on',I},w_Response)
+	if I > 0
+		display.line 'STDIO has been selected'
+	end.if
+
+;	FILES selected
+	$.find ({'FILES=on',I},w_Response)
+	if I > 0
+		display.line 'FILES has been selected'
+	end.if
+
+;	TABLES selected
+	$.find ({'TABLES=on',I},w_Response)
+	if I > 0
+		display.line 'TABLES has been selected'
+	end.if
+	
+;	XTABLES selected
+	$.find ({'XTABLES=on',I},w_Response)
+	if I > 0
+		display.line 'XTABLES has been selected'
+	end.if
+
+;	WWW selected
+	$.find ({'WWW=on',I},w_Response)
+	if I > 0
+		display.line 'WWW has been selected'
+	end.if
+
+;	DEBUG selected
+	$.find ({'DEBUG=on',I},w_Response)
+	if I > 0
+		display.line 'DEBUG has been selected'
+	end.if
+	
+;	SUBMIT selected
+	$.find ({'SUBMIT=SUBMIT',I},w_Response)
+	if I > 0
+		display.line 'SUBMIT has been selected'
+	end.if
+
+;	XMLHttpRequest
+	$.find ({'roger=POST',J},w_Response)
+	if J > 0
+		display.line 'Found Roger=POST'
+	end.if
+
+;	EXIT selected
+	$.find ({'EXIT=EXIT',I},w_Response)
+	if I > 0
+		display.line 'EXIT has been selected'
+		ERROR_CODE = 99	
+	else
+		w_Response = spaces(1)	
+		display.line
+	end.if
+
+END.SUB C_1_POST
+
+;-------------------------------------------------------------------------------
+;	FINALISATION
+;-------------------------------------------------------------------------------
+BEGIN.SUB Z_1_Finalise
+
+;	-----------------------------------------
+;	CLOSE THE SOCKET 
+;	-----------------------------------------
+	www.close (n_PortNo)
+	
+END.SUB Z_1_Finalise

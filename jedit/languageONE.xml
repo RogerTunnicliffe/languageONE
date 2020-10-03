@@ -1,0 +1,206 @@
+<?xml version="1.0"?>
+<!DOCTYPE MODE SYSTEM "xmode.dtd">
+
+<!-- languageONE mode by Roger Tunnicliffe (roger@languageONE.com.au) -->
+<!-- TO SET COLOURS OF TOKENS = Utilities/Global Options/Syntax Highlighting -->
+
+<MODE>
+
+	<PROPS>
+		<PROPERTY NAME="lineComment" VALUE=";" />
+		<PROPERTY NAME="contextInsensitive" VALUE="true"/>
+	</PROPS>
+
+	<RULES HIGHLIGHT_DIGITS="FALSE" IGNORE_CASE="TRUE"
+         DIGIT_RE="(0x)?[\p{Digit}a-fA-F_]+[hHdD]?">
+
+		<EOL_SPAN TYPE="COMMENT1">;</EOL_SPAN>
+		
+		<SPAN TYPE="LITERAL1" NO_LINE_BREAK="TRUE">
+			<BEGIN>'</BEGIN>
+			<END>'</END>
+		</SPAN>
+		<SPAN TYPE="LITERAL1" NO_LINE_BREAK="TRUE">
+			<BEGIN>"</BEGIN>
+			<END>"</END>
+		</SPAN>
+
+		<MARK_FOLLOWING TYPE="KEYWORD2" AT_WORD_START="TRUE">%</MARK_FOLLOWING>
+
+<!--	<SEQ TYPE="OPERATOR">+</SEQ>
+		<SEQ TYPE="OPERATOR">-</SEQ>
+		<SEQ TYPE="OPERATOR">/</SEQ>
+		<SEQ TYPE="OPERATOR">*</SEQ>
+		<SEQ TYPE="OPERATOR">%</SEQ>
+		<SEQ TYPE="OPERATOR">|</SEQ>
+		<SEQ TYPE="OPERATOR">^</SEQ>
+		<SEQ TYPE="OPERATOR">&amp;</SEQ>
+		<SEQ TYPE="OPERATOR">~</SEQ>
+		<SEQ TYPE="OPERATOR">!</SEQ>
+		<SEQ TYPE="OPERATOR">=</SEQ>
+		<SEQ TYPE="OPERATOR">&lt;</SEQ>
+		<SEQ TYPE="OPERATOR">&gt;</SEQ>
+-->
+		<SEQ TYPE="OPERATOR">[</SEQ>
+		<SEQ TYPE="OPERATOR">]</SEQ>
+		<SEQ TYPE="OPERATOR">{</SEQ>
+		<SEQ TYPE="OPERATOR">}</SEQ>
+
+		<KEYWORDS>
+
+			<!-- Data definitions -->
+			<KEYWORD1>insertword</KEYWORD1>
+			<KEYWORD1>insertnumber</KEYWORD1>
+			<KEYWORD1>insertfile</KEYWORD1>
+			<KEYWORD1>inserttable</KEYWORD1>
+			<KEYWORD1>insertxtable</KEYWORD1>
+			<KEYWORD1>spaces</KEYWORD1>
+			
+			<KEYWORD1>integers.eq</KEYWORD1>
+			<KEYWORD1>integers.add</KEYWORD1>
+			<KEYWORD1>integers.sub</KEYWORD1>
+			<KEYWORD1>integers.mul</KEYWORD1>
+			<KEYWORD1>integers.calc</KEYWORD1>
+			<KEYWORD1>integers.div</KEYWORD1>			
+			<KEYWORD1>integers.and</KEYWORD1>
+			<KEYWORD1>integers.or</KEYWORD1>
+			<KEYWORD1>integers.xor</KEYWORD1>
+			<KEYWORD1>integers.toggle</KEYWORD1>
+			
+			<!-- NUMBERS.o -->
+			<KEYWORD1>numbers</KEYWORD1>
+			<KEYWORD1>numbers.eq</KEYWORD1>
+			<KEYWORD1>numbers.add</KEYWORD1>
+			<KEYWORD1>numbers.sub</KEYWORD1>
+			<KEYWORD1>numbers.mul</KEYWORD1>
+			<KEYWORD1>numbers.div</KEYWORD1>
+			<KEYWORD1>numbers.calc</KEYWORD1>
+			<KEYWORD1>numbers.random</KEYWORD1>
+
+			<KEYWORD1>acceptline</KEYWORD1>
+			<KEYWORD1>acceptline.at</KEYWORD1>
+			<KEYWORD1>accept.at</KEYWORD1>			
+			<KEYWORD1>cursor</KEYWORD1>
+			<KEYWORD1>display</KEYWORD1>
+			<KEYWORD1>display.at</KEYWORD1>
+			<KEYWORD1>display.line</KEYWORD1>
+			<KEYWORD1>call</KEYWORD1>
+
+			<KEYWORD1>if</KEYWORD1>
+			<KEYWORD1>else</KEYWORD1>
+			<KEYWORD1>end.if</KEYWORD1>
+			<KEYWORD1>.if</KEYWORD1>
+			<KEYWORD1>.or</KEYWORD1>
+			<KEYWORD1>.and</KEYWORD1>
+			<KEYWORD1>.end</KEYWORD1>
+			<KEYWORD1>when</KEYWORD1>
+			<KEYWORD1>.when</KEYWORD1>
+			<KEYWORD1>wend</KEYWORD1>
+			<KEYWORD1>otherwise</KEYWORD1>
+
+			<!-- COMMON.o -->
+			<KEYWORD1>date.seconds</KEYWORD1>
+			<KEYWORD1>date.get</KEYWORD1>
+			<KEYWORD1>date.datefromdays</KEYWORD1>
+			<KEYWORD1>date.daysfromdate</KEYWORD1>
+			<KEYWORD1>date.timer</KEYWORD1>
+
+			<!-- FILES.o -->
+			<KEYWORD1>files</KEYWORD1>
+			<KEYWORD1>files.open</KEYWORD1>
+			<KEYWORD1>files.read</KEYWORD1>
+			<KEYWORD1>files.write</KEYWORD1>
+			<KEYWORD1>files.delete</KEYWORD1>
+			<KEYWORD1>files.close</KEYWORD1>
+			<KEYWORD1>files.start</KEYWORD1>
+			<KEYWORD1>files.next</KEYWORD1>
+			
+			<KEYWORD1>files.copy</KEYWORD1>
+			<KEYWORD1>files.rename</KEYWORD1>
+			<KEYWORD1>files.remove</KEYWORD1>
+			<KEYWORD1>files.chdir</KEYWORD1>
+			<KEYWORD1>files.getcwd</KEYWORD1>
+			
+
+			<!-- TABLES.o -->
+			<KEYWORD1>tables</KEYWORD1>
+			<KEYWORD1>tables.bind</KEYWORD1>
+			<KEYWORD1>tables.rget</KEYWORD1>
+			<KEYWORD1>tables.rput</KEYWORD1>
+			<KEYWORD1>tables.fget</KEYWORD1>
+			<KEYWORD1>tables.fput</KEYWORD1>
+			<KEYWORD1>tables.sort</KEYWORD1>
+			<KEYWORD1>tables.search</KEYWORD1>
+
+			<!-- XTABLES.o -->
+			<KEYWORD1>xtables</KEYWORD1>
+			<KEYWORD1>xtables.bind</KEYWORD1>
+			<KEYWORD1>xtables.rget</KEYWORD1>
+			<KEYWORD1>xtables.rput</KEYWORD1>
+			<KEYWORD1>xtables.sort</KEYWORD1>
+			<KEYWORD1>xtables.search</KEYWORD1>
+			<KEYWORD1>xtables.load</KEYWORD1>	
+			<KEYWORD1>xtables.unload</KEYWORD1>
+			<KEYWORD1>xtables.fget</KEYWORD1>
+			<KEYWORD1>xtables.fput</KEYWORD1>
+			<KEYWORD1>xtables.delete</KEYWORD1>
+
+			<KEYWORD1>insertarray</KEYWORD1>
+			<KEYWORD1>arrays.get</KEYWORD1>				
+			<KEYWORD1>arrays.put</KEYWORD1>
+			<KEYWORD1>arrays.swap</KEYWORD1>
+			<KEYWORD1>arrays.sort</KEYWORD1>
+			<KEYWORD1>arrays.if</KEYWORD1>
+			
+			<!-- WORDS.o -->
+			<KEYWORD1>words</KEYWORD1>
+			<KEYWORD1>words.copy</KEYWORD1>
+			<KEYWORD1>words.pad</KEYWORD1>
+			<KEYWORD1>words.uppercase</KEYWORD1>
+			<KEYWORD1>words.lowercase</KEYWORD1>
+			<KEYWORD1>words.insert</KEYWORD1>
+			<KEYWORD1>words.find</KEYWORD1>
+			<KEYWORD1>words.replace</KEYWORD1>
+			<KEYWORD1>words.environment</KEYWORD1>
+			<KEYWORD1>words.length</KEYWORD1>
+			<KEYWORD1>words.stringtorecord</KEYWORD1>
+			<KEYWORD1>words.recordtostring</KEYWORD1>
+			
+
+			<!-- BEGIN/END -->
+			<KEYWORD2>begin.sub</KEYWORD2>
+			<KEYWORD2>end.sub</KEYWORD2>
+			<KEYWORD2>exit.sub</KEYWORD2>
+			<KEYWORD2>begin.function</KEYWORD2>
+			<KEYWORD2>end.function</KEYWORD2>
+			<KEYWORD2>exit.function</KEYWORD2>
+			<KEYWORD2>begin.assembler</KEYWORD2>
+			<KEYWORD2>end.assembler</KEYWORD2>
+			
+			<KEYWORD2>repeat</KEYWORD2>
+			<KEYWORD2>repeat.if</KEYWORD2>			
+			<KEYWORD2>repeat.while</KEYWORD2>
+			<KEYWORD2>repeat.for</KEYWORD2>
+			<KEYWORD2>end.repeat</KEYWORD2>
+			<KEYWORD2>exit.repeat</KEYWORD2>
+			<KEYWORD2>begin.test</KEYWORD2>
+			<KEYWORD2>end.test</KEYWORD2>
+			<KEYWORD2>begin.record</KEYWORD2>
+			<KEYWORD2>end.record</KEYWORD2>
+
+			<!-- languageONE fields -->
+			<KEYWORD3>ERROR_CODE</KEYWORD3>
+			<KEYWORD3>RETURN_CODE</KEYWORD3>
+			<KEYWORD3>EOF</KEYWORD3>
+			<KEYWORD3>INVALIDKEY</KEYWORD3>
+			<KEYWORD3>LF</KEYWORD3>
+			<KEYWORD3>c_TRUE</KEYWORD3>
+			<KEYWORD3>c_FALSE</KEYWORD3>
+			<KEYWORD3>c_FIRST</KEYWORD3>
+			<KEYWORD3>c_ALL</KEYWORD3>
+
+	<!--	<KEYWORD4>AL</KEYWORD4> -->
+			
+		</KEYWORDS>
+	</RULES>
+</MODE>

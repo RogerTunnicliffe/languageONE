@@ -1,0 +1,1006 @@
+	%include '../include/LMACROS.CPY'
+	%include '../include/IMACROS.CPY'
+	%include '../include/CONSTANTS.INC'	
+	%line 4 w_STDIO.LIB
+
+;	=================================================
+;	GLOBAL ROUTINES/VARIABLES defined in this library
+;	=================================================
+;	Routines
+;	--------
+	global _getCommandLine
+	global _getSTDIOhandles
+	global _CURSOR
+	global _ACCEPTLINE
+	global _ACCEPT.AT                
+	global _DISPLAY
+
+;	------
+;	Fields
+;	------
+	global StdInHandle
+	global StdOutHandle
+	global StdErrHandle
+	global w_CommandLine
+	global w_AcceptAt
+	
+	global Col9
+	global Row9
+	global ColX
+	global RowX
+	global c_ClearScreen
+	global c_Cursor
+	global c_BottomRight						
+	global c_TopRight
+	global c_TopLeft
+	global c_BottomLeft
+	global c_Cross
+	global c_Line
+	global c_LeftMiddle
+	global c_RightMiddle
+	global c_BottomMiddle
+	global c_TopMiddle
+	global c_Bar
+	
+	global c_DefaultFG
+	global c_BlackFG
+	global c_RedFG
+	global c_GreenFG
+	global c_YellowFG
+	global c_BlueFG
+	global c_MagentaFG
+	global c_CyanFG
+	global c_LightGreyFG
+	global c_DarkGreyFG
+	global c_LightRedFG
+	global c_LightGreenFG
+	global c_LightYellowFG
+	global c_LightBlueFG
+	global c_LightMagentaFG
+	global c_LightCyanFG
+	global c_WhiteFG
+
+	global c_DefaultBG
+	global c_BlackBG
+	global c_RedBG
+	global c_GreenBG
+	global c_YellowBG
+	global c_BlueBG
+	global c_MagentaBG
+	global c_CyanBG
+	global c_LightGreyBG
+	global c_DarkGreyBG
+	global c_LightRedBG
+	global c_LightGreenBG
+	global c_LightYellowBG
+	global c_LightBlueBG
+	global c_LightMagentaBG
+	global c_LightCyanBG
+	global c_WhiteBG
+
+	global c_ResetAll
+	global c_Bold
+	global c_Dim
+	global c_Underlined
+	global c_Blink
+	global c_Reverse
+	global c_Hidden
+	global c_ResetAll
+	global c_ResetBold
+	global c_ResetDim
+	global c_ResetUnderlined
+	global c_ResetBlink
+	global c_ResetReverse
+	global c_ResetHidden
+		
+;	===============================================
+;	EXTERNAL ROUTINES/VARIABLES used by the library
+;	===============================================
+;	Windows
+;	------- 
+	extern GetStdHandle
+	extern GetCommandLineA
+	extern GetConsoleMode
+	extern SetConsoleMode
+	extern ReadConsoleA
+	extern ReadConsoleInputW
+	extern WriteConsoleA
+	extern SetConsoleCursorPosition
+	extern SetConsoleTextAttribute
+	extern GetConsoleScreenBufferInfo
+	extern FillConsoleOutputCharacterA
+
+;	-----------------
+;	languageONE
+;	-----------------
+;	Routines
+;	--------
+	extern _WORDS					; NUMBERS
+	extern _NUMBERS					; NUMBERS
+	
+;	------
+;	Fields
+;	------
+	extern w_Spaces					; COMMON
+	extern w_One					; COMMON
+	extern w_Temp					; COMMON
+	extern RETURN_CODE				; COMMON
+	extern WIN_ReturnCode			; COMMON
+
+;=======================================================================
+;			DATA SEGMENT
+;=======================================================================
+;           Initialised - by program
+;-----------------------------------------------------------------------
+			section .data
+
+	insertnumber 	Col9,				00,'99'
+	insertnumber	Row9,				00,'99'	
+	insertword		ColX,				02,''
+	insertword		RowX,				02,''
+
+	insertword 		c_ClearScreen,		02,{27,'c'}		
+	insertword		c_Cursor,			08,{27,'[00;00H'}
+	
+	insertword 		c_BottomRight,		01,217								
+	insertword 		c_TopRight,			01,191
+	insertword 		c_TopLeft,			01,218
+	insertword 		c_BottomLeft,		01,192		
+	insertword 		c_Cross,			01,197
+	insertword 		c_Line,				01,196
+	insertword 		c_LeftMiddle,		01,195
+	insertword 		c_RightMiddle,		01,180
+	insertword 		c_BottomMiddle,		01,193
+	insertword 		c_TopMiddle,		01,194
+	insertword		c_Bar,				01,179
+
+	insertword 		c_DefaultFG,		05,{27,'[39m'}
+	insertword 		c_BlackFG,			05,{27,'[30m'}	
+	insertword 		c_RedFG,			05,{27,'[31m'}	
+	insertword		c_GreenFG,			05,{27,'[32m'}	
+	insertword 		c_YellowFG,			05,{27,'[33m'}	
+	insertword 		c_BlueFG,			05,{27,'[34m'}	
+	insertword 		c_MagentaFG,		05,{27,'[35m'}	
+	insertword 		c_CyanFG,			05,{27,'[36m'}	
+	insertword 		c_LightGreyFG,		05,{27,'[37m'}	
+	insertword 		c_DarkGreyFG,		05,{27,'[90m'}	
+	insertword 		c_LightRedFG,		05,{27,'[91m'}
+	insertword 		c_LightGreenFG,		05,{27,'[92m'}
+	insertword 		c_LightYellowFG,	05,{27,'[93m'}
+	insertword 		c_LightBlueFG,		05,{27,'[94m'}
+	insertword 		c_LightMagentaFG,	05,{27,'[95m'}
+	insertword 		c_LightCyanFG,		05,{27,'[96m'}
+	insertword 		c_WhiteFG,			05,{27,'[97m'}	
+
+	insertword 		c_DefaultBG,		05,{27,'[49m'}
+	insertword 		c_BlackBG,			05,{27,'[40m'}	
+	insertword 		c_RedBG,			05,{27,'[41m'}	
+	insertword 		c_GreenBG,			05,{27,'[42m'}	
+	insertword 		c_YellowBG,			05,{27,'[43m'}	
+	insertword 		c_BlueBG,			05,{27,'[44m'}	
+	insertword 		c_MagentaBG,		05,{27,'[45m'}	
+	insertword 		c_CyanBG,			05,{27,'[46m'}	
+	insertword 		c_LightGreyBG,		05,{27,'[47m'}	
+	insertword 		c_DarkGreyBG,		06,{27,'[100m'}	
+	insertword 		c_LightRedBG,		06,{27,'[101m'}
+	insertword 		c_LightGreenBG,		06,{27,'[102m'}
+	insertword 		c_LightYellowBG,	06,{27,'[103m'}
+	insertword 		c_LightBlueBG,		06,{27,'[104m'}
+	insertword 		c_LightMagentaBG,	06,{27,'[105m'}
+	insertword 		c_LightCyanBG,		06,{27,'[106m'}
+	insertword 		c_WhiteBG,			06,{27,'[107m'}	
+
+	insertword 		c_ResetAll,			04,{27,'[0m'}
+	insertword 		c_Bold,				04,{27,'[1m'}
+	insertword 		c_Dim,				04,{27,'[2m'}
+	insertword 		c_Underlined,		04,{27,'[4m'}
+	insertword 		c_Blink,			04,{27,'[5m'}
+	insertword 		c_Reverse,			04,{27,'[7m'}
+	insertword 		c_Hidden,			04,{27,'[8m'}	
+	insertword 		c_ResetBold,		05,{27,'[21m'}
+	insertword 		c_ResetDim,			05,{27,'[22m'}
+	insertword 		c_ResetUnderlined,	05,{27,'[24m'}
+	insertword 		c_ResetBlink,		05,{27,'[25m'}
+	insertword 		c_ResetReverse,		05,{27,'[27m'}
+	insertword 		c_ResetHidden,		05,{27,'[28m'}	
+
+	INSERTWORD w_CommandLine,		256,' '
+	insertword w_AcceptAt,			128,' '
+
+
+;-----------------------------------------------------------------------				
+;           UN Initialised - zero filled when loaded
+;-----------------------------------------------------------------------												  
+			section .bss
+			
+	StdInHandle				resq 1
+	StdOutHandle			resq 1
+	StdErrHandle			resq 1
+	ConsoleFlags			resd 1
+
+	saveRow9				resq 1
+	saveCol9				resq 1
+
+;	---------------------------------
+;	INPUT_RECORD returned by kernel32
+;	---------------------------------
+	InputRecord:
+		EventType			resb 1
+							resb 1
+	KeyEventRecord:	
+							resw 1
+		keyDown				resb 1				
+							resw 4
+							resb 1
+		asciiChar			resb 1		 	
+	NoOfReads				resd 1
+	
+;	---------------------------------------
+;	Screen Buffer info returned by kernel32
+;	---------------------------------------
+	Console_Screen_Buffer_Info:	
+		ScrSize:
+			ScrWidth		resw 1
+			ScrDepth		resw 1
+		CursorPos:	
+			CursX			resw 1
+			CursY			resw 1
+		Attributes			resw 1
+		srWindow:	
+			wLeft			resw 1
+			wTop			resw 1
+			wRight			resw 1
+			wBottom			resw 1
+		MaxSize				resd 1
+	
+;=======================================================================				
+;           CONSTANTS
+;=======================================================================	
+
+;=======================================================================
+;			CODE SEGMENT
+;=======================================================================				
+			section .text	
+
+;======================================================================= 
+;			Get STDIO Handles
+;======================================================================= 
+_getSTDIOhandles:
+
+  		mov rbx,rsp															; Grab the stack pointer
+  		and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes
+		sub RSP,32															; Create Shadow Stack
+		cld																	; Clear Direction Flag
+			mov	rcx,wc_STD_IN												; Get Handle for Terminal Window READ
+			call GetStdHandle
+		mov qword[StdInHandle],rax
+			
+			mov	rcx,wc_STD_OUT												; Get Handle for Terminal Window WRITE
+			call GetStdHandle
+		mov qword[StdOutHandle],rax
+
+			mov	rcx,wc_STD_ERR												; Get Handle for Terminal Window ERROR
+			call GetStdHandle
+		mov qword[StdErrHandle],rax
+
+		mov rsp,rbx
+
+_getSTDIOhandles_EXIT:
+		ret
+		
+;======================================================================= 
+;			Get CommandLine
+;======================================================================= 
+_getCommandLine:
+
+  		mov rbx,rsp															; Grab the stack pointer
+  		and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes
+		sub RSP,32															; Create Shadow Stack
+		cld																	; Clear Direction Flag
+			Call GetCommandLineA											; Grab the address of the command line
+		mov rsp,rbx	
+
+			mov rsi,rax														; set it as source
+			mov rdi,w_CommandLine											; set the destination	
+			mov rcx,@fieldLength(w_CommandLine)								; make sure we don't overrun anything
+			xor rdx,rdx														; Used to flag 1st space
+			cld	
+	.load:	lodsb															; load each byte
+			cmp al,0x00														; if NULL terminated
+				je .Exit													; 	then exit			
+			cmp rdx,2														; if we have already found the 2 spaces
+				je .move													;	then jump to move it
+			cmp al,0x20														; If we have NOT found the 1st space
+				loopne .load												;	then loop
+			inc rdx															; ELSE set the found space flag	
+			loop .load														;	and loop
+	.move:	stosb															; store the byte
+			loop .load														; loop
+
+	.Exit:
+_getCommandLine_EXIT:
+		ret
+		
+;======================================================================= 
+;      		CURSOR to set terminal cursor position
+;          	r9 = row		Row9
+;			r12 = column	Col9
+;=======================================================================
+_CURSOR:
+
+		dec qword[Row9]														; starting 0,0
+		dec qword[Col9]
+
+	$pushAll r8,r9,r10,r11,rcx,rdx
+  		mov rbx,rsp															; Grab the stack pointer
+  		and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes
+		sub RSP,32															; Create Shadow Stack
+		cld																	; Clear Direction Flag
+			mov	rcx,qword[StdOutHandle]
+			mov rdx,qword[Row9]
+			shl edx,16
+			mov  dx,word[Col9]
+			call SetConsoleCursorPosition 	
+		mov rsp,rbx
+	$popAll rdx,rcx,r11,r10,r9,r8
+		
+_CURSOR_EXIT:
+		ret
+			
+;======================================================================= 
+;      		ACCEPTLINE to read line from stdout
+;           Messsage address passed in r9
+;=======================================================================
+_ACCEPTLINE:
+
+		mov qword[RETURN_CODE],0											; Init return code
+
+	$pushAll r8,r9,r10,r11,rcx,rdx
+  		mov rbx,rsp															; Grab the stack pointer
+  		and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes
+			push 0															; 5th Parameter on stack	
+		sub RSP,32															; Create Shadow Stack
+		cld																	; Clear Direction Flag
+			MOV	rcx,qword[StdInHandle]										; rcx = terminla window handle
+			MOV	rdx,w_Temp													; rdx = address of message
+			MOV	r8,128														; r8  = length of output												
+			MOV	r9,WIN_ReturnCode
+			call ReadConsoleA
+		mov rsp,rbx
+	$popAll rdx,rcx,r11,r10,r9,r8
+	
+	cmp qword[WIN_ReturnCode],2												; no of chars returned
+		je .Exit															; 2 will be 0x0D and 0x0A
+			
+;	----------------------------------------------------
+;	ESCAPE - Not sure if this even makes sense for Linux
+;	----------------------------------------------------
+;	.If:cmp byte[w_Temp],027
+;			jne .EndIf
+;			mov qword[RETURN_CODE],27
+;			jmp .Exit
+;	.EndIf:
+														
+		mov rax,qword[WIN_ReturnCode]										; Setup field length
+		sub rax,2
+			
+		$initialise r_SrcAddress
+	.Num:	
+		cmp @fieldIndicator(r_SrcAddress),'9'								; Numeric or Alpha
+			jne .Alpha
+
+;-----------------------------------------------------------------------
+;           Code for numerics
+;-----------------------------------------------------------------------
+			mov @fieldLength(w_Temp),rax
+			mov r8,$equals													; Convert ascii	to binary number
+		;*	r9 will already contain the destination address 
+			mov r_nSrcAddress,w_Temp
+			mov r_nSrcStart,1
+			mov r_nSrcLength,rax
+			mov r15,c_TRUE													; Needs to reset receiving field size	
+			Call _NUMBERS
+			jmp .Exit	
+	
+;-----------------------------------------------------------------------
+;			Code for alphas
+;-----------------------------------------------------------------------
+		  ; Copy buffer
+	.Alpha:	
+		mov RSI,w_Temp														; set source address
+		mov RDI,r_SrcAddress												; set destination address
+			
+		mov rbx,r_SrcAddress												; Use RBX to store end of destination
+		add rbx,@fieldLength(r_SrcAddress)									; 	and add length of string
+		dec rbx																;	less 1
+		xor rcx,rcx															; Use RCX to indicate if padding is happening
+			
+		cld
+	.load:	
+		lodsb 																; load each byte
+		cmp al,0x0D															; if its NOT a line feed
+			je .Exit
+				
+	.store:	
+		stosb
+		cmp RDI,rbx															; have we filled the destination
+			ja .Exit														; 	then exit if done
+				 
+		jmp .load															; else get the next byte
+
+	.Exit:				
+_ACCEPTLINE_EXIT:
+		ret
+
+;======================================================================= 
+;      		ACCEPT to read chars from stdin
+;           Messsage address passed in r9
+;	This code manages the terminal mosde to allow trapping single chars
+;	and calls _ACCEPT.AT_Process to process each character
+;=======================================================================
+_ACCEPT.AT:
+
+		mov qword[RETURN_CODE],0					
+
+	;	---------------------
+	;	GET THE CONSOLE FLAGS
+	;	---------------------
+	$pushAll r8,r9,r10,r11,rcx,rdx	
+  		mov rbx,rsp															; Grab the stack pointer
+  		and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes
+		sub RSP,32															; Create Shadow Stack
+		cld																	; Clear Direction Flag
+			mov	rcx,qword[StdInHandle]	
+			mov rdx,ConsoleFlags
+			Call GetConsoleMode
+		mov rsp,rbx
+	$popAll rdx,rcx,r11,r10,r9,r8
+		
+	;	---------------------
+	;	SET THE CONSOLE FLAGS
+	;	---------------------
+	;	0001B Set to off Disables line input
+	;	0010B Set to off Disables processed input
+	
+	$pushAll r8,r9,r10,r11,rcx,rdx	
+  		mov rbx,rsp															; Grab the stack pointer
+  		and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes
+		sub RSP,32															; Create Shadow Stack
+		cld																	; Clear Direction Flag
+			mov	rcx,qword[StdInHandle]
+			xor qword[ConsoleFlags],0000000000000011B						; Clear Processed Input/Line Input Flags
+			mov rdx,ConsoleFlags	
+			Call SetConsoleMode
+		mov rsp,rbx
+	$popAll rdx,rcx,r11,r10,r9,r8
+
+	;	---------------------------------------
+	;	GET CHARS
+	;	---------------------------------------
+		Call _ACCEPT.AT_Process
+
+	;	---------------------
+	;	SET THE CONSOLE FLAGS
+	;	---------------------
+	;	0001B Set to on Enables line input
+	;	0010B Set to on Enables processed input
+	
+	$pushAll r8,r9,r10,r11,rcx,rdx	
+  		mov rbx,rsp															; Grab the stack pointer
+  		and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes
+		sub RSP,32															; Create Shadow Stack
+		cld																	; Clear Direction Flag
+			mov	rcx,qword[StdInHandle]
+			 or qword[ConsoleFlags],0000000000000011B
+			 mov rdx,ConsoleFlags
+			Call SetConsoleMode
+		mov rsp,rbx
+	$popAll rdx,rcx,r11,r10,r9,r8
+		
+_ACCEPT.AT_EXIT:
+		ret
+
+;---------------------------------------------------
+;		Make the kernel32 call
+;---------------------------------------------------
+_ACCEPT.AT_Process:
+;	NOTE:-	you have differed from ACCEPTLINE in that a temp alpha field is always
+;			passed and the macro then uses NUMBERS.EQ or WORDS.COPY to do the coversion
+;			Maybe convert ACCEPTLINE to do the same at a later date
+
+	%define r_Ctr				r14
+	%define r_Valid				r15
+
+	;	--------------------------
+	;	Save Cursor for ESCAPE
+	;	--------------------------
+		push qword[Row9]
+		pop  qword[saveRow9]
+		push qword[Col9]
+		pop  qword[saveCol9]
+		
+		xor r_Ctr,r_Ctr														; Initialise the counter			
+	.loop:	
+		mov byte[asciiChar],' '												; Initialise the input character
+
+	;	----------------------------------
+	;	Next Char ???
+	;	----------------------------------
+		inc r_Ctr															; Next character
+		cmp r_Ctr,@fieldLength(r_SrcAddress)								; Have we gone past the field length
+			jna .char														; NO - then continue
+				
+	.move:	
+		dec r_Ctr															; Set the counter back one
+		dec qword[Col9]														; move the cursor back one	
+		
+	;	*** SPECIAL cuz _CURSOR always descrements Col/Row
+		inc qword[Col9]
+		inc qword[Row9]
+		Call _CURSOR
+			
+	;	-----------------------------------
+	;	GET CHAR
+	;	-----------------------------------
+	.char:	
+	$pushAll r8,r9,r10,r11,rcx,rdx
+	mov rbx,rsp															; Grab the stack pointer
+ 	and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes
+	sub RSP,32															; Create Shadow Stack
+	cld																	; Clear Direction Flag
+	
+	.charloop:
+		mov	rcx,qword[StdInHandle]											; rcx = terminla window handle
+		mov	rdx,InputRecord													; rdx = address of Input Record
+		mov	r8,1															; r8  = length of message												
+		mov	r9,NoOfReads													; We dont care	
+		cld
+		call ReadConsoleInputW
+		cmp byte[EventType],1												; If NOT a keyboard Event
+			jne .charloop													;	then loop
+		cmp byte[keyDown],1													; If NOT keypressed 
+			jne .charloop													;	then loop
+			
+	mov rsp,rbx
+	$popAll rdx,rcx,r11,r10,r9,r8		
+				
+	;	------------------------------------
+	;	ESCAPE
+	;	------------------------------------
+	.escape:
+		cmp byte[asciiChar],0x1B											; If NOT Escape								
+			jne .enter														;	then jump
+			Call _ACCEPT.AT_Redisplay										;	redisplay the field
+			mov qword[RETURN_CODE],27										;	ESCAPE to Return Code
+			jmp .Exit														;	and exit
+				
+	;	-------------------------------------
+	;	ENTER
+	;	-------------------------------------
+	.enter:	
+		cmp byte[asciiChar],0x0D											; If NOT Enter
+			jne .backspace													;	then jump				
+			mov qword[RETURN_CODE],0										;	ENTER to Return Code
+			jmp .Exit														;	and exit
+				
+	;	--------------------------------------
+	;	BACKSPACE
+	;	--------------------------------------
+	.backspace:	
+		cmp byte[asciiChar],0x08											; If NOT Backspace
+			jne .valid														;	then jump
+		cmp r_Ctr,1															;If NOT at the beginning
+			ja .back														;of the field then continue
+			mov qword[RETURN_CODE],27										;	ESCAPE to Return Code
+			jmp .Exit														;	and exit
+
+	.back: 	
+		Call _ACCEPT.AT_Slide												; Slide to the left
+		Call _ACCEPT.AT_Redisplay											; redisplay it
+		jmp .move															; and jump to move
+	
+	;	----------------------------------------
+	;	CHARACTER				
+	;	----------------------------------------
+	.valid:	
+		Call _ACCEPT.AT_ValidChar											; Is it NOT a valid character	
+		cmp r_Valid,-1														;	then ignore it 
+			je .char
+			
+		mov bl,byte[asciiChar]												; Store the character
+		mov byte[r_SrcAddress+r_Ctr-1],bl									; in the input field
+											
+		mov rdx,asciiChar													; and echo it back
+		mov r8,1
+		Call $display
+
+		inc qword[Col9]														; move cursor right
+		
+	;	*** SPECIAL cuz _CURSOR always descrements Col/Row
+		inc qword[Col9]
+		inc qword[Row9]		
+		Call _CURSOR														; cursor has moved
+		jmp .loop															; and get the next one
+				
+	.Exit:	
+_ACCEPT.AT_Process_EXIT:
+		ret
+		
+;---------------------------------------------------
+;		Process Backspace
+;---------------------------------------------------
+_ACCEPT.AT_Slide:
+
+		lea rsi,[r_SrcAddress+r_Ctr-1]										; Current cursor position
+		lea rdi,[r_SrcAddress+r_Ctr-2]										; Previous characetr
+		mov rcx,@fieldLength(r_SrcAddress)									; string length
+		sub rcx,r_Ctr														; less the position in the string
+		inc rcx																;	plus 1
+		cld																	; moving forward
+	.l: movsb																; do it
+		loop .l
+		mov rax,' '															; space to last character 
+		stosb
+
+_ACCEPT.AT_Slide_EXIT:
+		ret
+		
+;---------------------------------------------------
+;		Redisplay 
+;---------------------------------------------------
+_ACCEPT.AT_Redisplay:
+
+	;	------------------------------------
+	;	Set cursor back to beginning of word
+	;	------------------------------------
+	$pushAll r8,r9,r10,r11,rcx,rdx
+  		mov rbx,rsp															; Grab the stack pointer
+  		and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes
+		sub RSP,32															; Create Shadow Stack
+		cld																	; Clear Direction Flag
+			mov	rcx,qword[StdOutHandle]
+			mov rdx,qword[saveRow9]
+			shl edx,16
+			mov  dx,word[saveCol9]
+			call SetConsoleCursorPosition 	
+		mov rsp,rbx
+	$popAll rdx,rcx,r11,r10,r9,r8
+	
+	;	----------------------
+	;	And redisplay the word
+	;	----------------------
+		mov r13,@fieldLength(r_SrcAddress)									; grab string length
+		mov rdx,r_SrcAddress
+		mov r8,r13
+		Call $display
+
+		mov rdx,w_Spaces
+		mov r8,1
+		Call $display
+
+_ACCEPT.AT_Redisplay_EXIT:
+		ret
+		
+;---------------------------------------------------
+;		Validate input Char 
+;---------------------------------------------------			
+_ACCEPT.AT_ValidChar:
+
+		mov r_Valid,-1
+			
+		cmp byte[asciiChar],0x20		; space				
+			jb _ACCEPT.AT_ValidChar_EXIT
+		cmp byte[asciiChar],0x7D		; up to ~ 
+			ja _ACCEPT.AT_ValidChar_EXIT
+				
+	;	-----------------------
+	;	So we are good
+	;	-----------------------
+		xor r_Valid,r_Valid
+
+_ACCEPT.AT_ValidChar_EXIT:
+		ret
+
+;=======================================================================
+;       	DISPLAY to write line (Without Carraige Return) to stdout
+;           Messsage address passed in r9
+;=======================================================================
+_DISPLAY:
+
+		cmp byte[r_SrcAddress],27											; If NOT an escape
+			jne .Cont														;	then jump over
+			Call _DISPLAY_ATTRIBUTE											; Setup the attribute
+			jmp _DISPLAY_EXIT
+
+	.Cont:
+		cmp @fieldIndicator(r_SrcAddress), '9'								; If it is not numeric then
+			jne .DoIt														; 	jump to alpha code
+
+;-----------------------------------------------------------------------
+;           Code for numerics
+;-----------------------------------------------------------------------								
+		mov r8,$pad															; Convert the binary number to ascii
+		;	r9/10/11 will have been setup by $SetupField 
+		mov r12,w_Temp
+		mov r13,[w_One]
+		mov r15,c_TRUE														; Set length of Destination
+		Call _WORDS
+
+		mov r_SrcAddress,w_Temp												; reset r9 to w_Temp
+		mov r_SrcStart,[w_One]												; reset to start
+		mov r_SrcLength,[w_Temp-8]											; reset to end (length)
+
+;-----------------------------------------------------------------------
+;			Code for alphanumerics
+;-----------------------------------------------------------------------
+;	`Write Line System Call
+
+	.DoIt:
+		LEA rdx,[r_SrcAddress+r_SrcStart-1]
+		mov	r8,r_SrcLength
+		Call $display
+		
+_DISPLAY_EXIT:
+		ret
+
+;-----------------------------------------------------------------------
+;           Display the Attributes
+;-----------------------------------------------------------------------
+_DISPLAY_ATTRIBUTE:
+
+	;	------------
+	;	CLEAR SCREEN
+	;	------------
+		cmp byte[r_SrcAddress+1],'c'										; Check for Clear Screen
+			jne .foreground													; If so	
+			Call _CLEAR_SCREEN												; 	then Call it
+			jmp _DISPLAY_ATTRIBUTE_EXIT										;	and exit
+
+	;	================
+	;	Terminal Colours
+	;	================
+.foreground:
+		xor rax,rax
+		xor rdx,rdx
+
+		cmp word[r_SrcAddress+2],0x3033			; c_BlackFG			db 27, '[30m'
+			jne .01
+			mov rdx,0
+			jmp .DoIt
+.01:	cmp word[r_SrcAddress+2],0x3433			; c_BlueFG			db 27, '[34m' 					    	
+			jne .02
+			mov rdx,1
+			jmp .DoIt
+.02:	cmp word[r_SrcAddress+2],0x3233			; c_GreenFG			db 27, '[32m'					    	
+			jne .03
+			mov rdx,2
+			jmp .DoIt
+.03:	cmp word[r_SrcAddress+2],0x3633			; c_CyanFG			db 27, '[36m'   					    	
+			jne .04
+			mov rdx,3
+			jmp .DoIt
+.04:	cmp word[r_SrcAddress+2],0x3133			; c_RedFG			db 27, '[31m'
+			jne .05
+			mov rdx,4
+			jmp .DoIt
+.05:	cmp word[r_SrcAddress+2],0x3533			; c_MagentaFG		db 27, '[35m'   					    	
+			jne .06
+			mov rdx,5
+			jmp .DoIt
+.06:	cmp word[r_SrcAddress+2],0x3333			; c_YellowFG		db 27, '[33m' 					    	
+			jne .07a
+			mov rdx,6
+			jmp .DoIt
+.07a:	cmp word[r_SrcAddress+2],0x3933			; c_DefaultFG		db 27, '[39m'
+			jne .07b
+			mov rdx,7
+			jmp .DoIt
+.07b:	cmp word[r_SrcAddress+2],0x3733			; c_LightGreyFG		db 27, '[37m'					    	
+			jne .08
+			mov rdx,7
+			jmp .DoIt			
+.08:	cmp word[r_SrcAddress+2],0x3039			; c_DarkGreyFG		db 27, '[90m'   					    	
+			jne .09
+			mov rdx,8
+			jmp .DoIt			  
+.09:	cmp word[r_SrcAddress+2],0x3439			; c_LightBlueFG		db 27, '[94m'  					    	
+			jne .10
+			mov rdx,9
+			jmp .DoIt	
+.10:	cmp word[r_SrcAddress+2],0x3239			; c_LightGreenFG	db 27, '[92m'   					    	
+			jne .11
+			mov rdx,10
+			jmp .DoIt	
+.11:	cmp word[r_SrcAddress+2],0x3639			; c_LightCyanFG		db 27, '[96m'   					    	
+			jne .12
+			mov rdx,11
+			jmp .DoIt			
+.12:	cmp word[r_SrcAddress+2],0x3139			; c_LightRedFG		db 27, '[91m'   					    	
+			jne .13
+			mov rdx,12
+			jmp .DoIt			
+.13:	cmp word[r_SrcAddress+2],0x3539			; c_LightMagentaFG	db 27, '[95m'   					    	
+			jne .14
+			mov rdx,13
+			jmp .DoIt			
+.14:	cmp word[r_SrcAddress+2],0x3339			; c_LightYellowFG	db 27, '[93m'   					    	
+			jne .15
+			mov rdx,14
+			jmp .DoIt			
+.15:	cmp word[r_SrcAddress+2],0x3739			; c_WhiteFG			db 27, '[97m'  					    	
+			jne .background
+			mov rdx,15
+			jmp .DoIt			
+			 
+	;	================
+	;	Terminal Colours
+	;	================
+.background:
+		cmp word[r_SrcAddress+2],0x3934			; c_DefaultBG		db 27, '[49m'
+			jne .16
+			mov rax,0
+			jmp .DoIt
+.16:	cmp word[r_SrcAddress+2],0x3034			; c_BlackBG			db 27, '[40m'   					    	
+			jne .17
+			mov rax,0
+			jmp .DoIt
+.17:	cmp word[r_SrcAddress+2],0x3434			; c_BlueBG			db 27, '[44m'    					    	
+			jne .18
+			mov rax,1
+			jmp .DoIt
+.18:	cmp word[r_SrcAddress+2],0x3234			; c_GreenBG			db 27, '[42m'    					    	
+			jne .19
+			mov rax,2
+			jmp .DoIt
+.19:	cmp word[r_SrcAddress+2],0x3634			; c_CyanBG			db 27, '[46m'    					    	
+			jne .20
+			mov rax,3
+			jmp .DoIt
+.20:	cmp word[r_SrcAddress+2],0x3134			; c_RedBG			db 27, '[41m'   					    	
+			jne .21
+			mov rax,4
+			jmp .DoIt
+.21:	cmp word[r_SrcAddress+2],0x3534			; c_MagentaBG		db 27, '[45m'   					    	
+			jne .22
+			mov rax,5
+			jmp .DoIt
+.22:	cmp word[r_SrcAddress+2],0x3334			; c_YellowBG		db 27, '[43m'  					    	
+			jne .23
+			mov rax,6
+			jmp .DoIt
+.23:	cmp word[r_SrcAddress+2],0x3334			; c_YellowBG		db 27, '[43m'  					    	
+			jne .24
+			mov rax,6
+			jmp .DoIt
+.24:	cmp word[r_SrcAddress+2],0x3734			; c_LightGreyBG		db 27, '[47m'					    	
+			jne .25
+			mov rax,7
+			jmp .DoIt			
+.25:	cmp dword[r_SrcAddress+2],0x6d303031	; c_DarkGreyBG		db 27, '[100m' 					    	
+			jne .26
+			mov rax,8
+			jmp .DoIt
+.26:	cmp dword[r_SrcAddress+2],0x6d343031	; c_LightBlueBG		db 27, '[104m' 					    	
+			jne .27
+			mov rax,9
+			jmp .DoIt
+.27:	cmp dword[r_SrcAddress+2],0x6d323031	; c_LightGreeenBG	db 27, '[102m' 					    	
+			jne .28
+			mov rax,10
+			jmp .DoIt
+.28:	cmp dword[r_SrcAddress+2],0x6d363031	; c_LightCyanBG		db 27, '[106m' 					    	
+			jne .29
+			mov rax,11
+			jmp .DoIt
+.29:	cmp dword[r_SrcAddress+2],0x6d313031	; c_LightRedBG		db 27, '[101m' 					    	
+			jne .30
+			mov rax,12
+			jmp .DoIt
+.30:	cmp dword[r_SrcAddress+2],0x6d353031	; c_LightMagentaBG	db 27, '[105m' 					    	
+			jne .31
+			mov rax,13
+			jmp .DoIt
+.31:	cmp dword[r_SrcAddress+2],0x6d333031	; c_LightYellowBG	db 27, '[103m' 					    	
+			jne .32
+			mov rax,14
+			jmp .DoIt
+.32:	cmp dword[r_SrcAddress+2],0x6d333031	; c_LightYellowBG	db 27, '[103m' 					    	
+			jne .33
+			mov rax,14
+			jmp .DoIt
+.33:	cmp dword[r_SrcAddress+2],0x6d373031	; c_WhiteBG			db 27, '[107m'  					    	
+			jne .34
+			mov rax,7
+			jmp .DoIt
+	
+	;	-----------------------------
+	;	Exit all others at this point
+	;	-----------------------------
+.34:	jmp _DISPLAY_ATTRIBUTE_EXIT
+
+	;	=========
+	;	And Do It
+	;	=========
+	.DoIt:
+		shl rax,4  
+		 or rdx,rax
+	
+		$pushAll r8,r9,r10,r11,rcx,rdx	
+  		mov rbx,rsp															; Grab the stack pointer
+  		and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes
+		sub RSP,32															; Create Shadow Stack
+		cld																	; Clear Direction Flag
+			mov	rcx,qword[StdOutHandle]
+			call SetConsoleTextAttribute
+		mov rsp,rbx	
+		$popAll rdx,rcx,r11,r10,r9,r8
+
+_DISPLAY_ATTRIBUTE_EXIT:
+		ret
+
+;-----------------------------------------------------------------------
+;		Clear Screen
+;-----------------------------------------------------------------------	
+_CLEAR_SCREEN:
+
+	;	-------------------
+	;	Get the Screen size
+	;	-------------------
+		$pushAll r8,r9,r10,r11,rcx,rdx
+  		mov rbx,rsp															; Grab the stack pointer
+  		and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes
+		sub RSP,32															; Create Shadow Stack
+		cld																	; Clear Direction Flag
+			mov rcx,qword[StdOutHandle]
+			mov rdx,Console_Screen_Buffer_Info
+			Call GetConsoleScreenBufferInfo
+		mov rsp,rbx
+		$popAll rdx,rcx,r11,r10,r9,r8
+
+	;	------------
+	;	Clear Screen
+	;	------------
+		$pushAll r8,r9,r10,r11,rcx,rdx
+  		mov rbx,rsp															; Grab the stack pointer
+  		and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes
+			push RETURN_CODE												; 5th parameter to store length written
+		sub RSP,32															; Create Shadow Stack
+		cld																	; Clear Direction Flag
+			mov rcx,qword[StdOutHandle]			; Handle
+			mov  dl,0x20						; Space
+			mov r8w,word[ScrWidth]				; Returned from above call
+			imul r8w,word[ScrDepth]				; Returned from above call
+			mov r9,0x0							; Coordance - Top left			
+			Call FillConsoleOutputCharacterA	
+		mov rsp,rbx
+		$popAll rdx,rcx,r11,r10,r9,r8
+	
+	;	---------------
+	;	Position Cursor
+	;	---------------
+		mov qword[Row9],1
+		mov qword[Col9],1
+		Call _CURSOR
+
+_CLEAR_SCREEN_EXIT:
+		ret
+		
+;---------------------------------------------------
+;		Windows Display Call
+;---------------------------------------------------
+$display:
+
+	$pushAll r8,r9,r10,r11,rcx,rdx	
+  		mov rbx,rsp															; Grab the stack pointer
+  		and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes
+			push 0															; 5th Parameter on stack
+		sub RSP,32															; Create Shadow Stack
+		cld																	; Clear Direction Flag
+			mov	rcx,qword[StdOutHandle]											; rcx = terminla window handle
+			mov	r9,WIN_ReturnCode													
+			call WriteConsoleA
+		mov rsp,rbx
+	$popAll rdx,rcx,r11,r10,r9,r8
+	
+$displayExit:
+	ret

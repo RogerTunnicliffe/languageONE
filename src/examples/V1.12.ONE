@@ -1,0 +1,158 @@
+%include 'include/BEGIN.PROGRAM'
+
+;	Refer to VERSION.HISTORY for...well...version history
+
+;	BEGIN.SYNONYMS **************************************
+;		$.	:	WORDS.  
+;		@.	:	INTEGERS.  
+;		f.	:	FILES. 
+;	END.SYNONYMS ****************************************
+
+;=======================================================================
+;		PROGRAM DATA
+;=======================================================================
+;-----------------------------------------------------------------------
+;		CONSTANTS
+;-----------------------------------------------------------------------
+%define c_RecordLength 14
+%define c_NoOfLetters 10
+
+;-----------------------------------------------------------------------
+;		DICTIONARY
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.DICTIONARY'
+
+;	Demonstrates how to implement a list in languageONE
+;	Refer to line 135 for its usage
+	insertword wordlist,	14*9,{ \ 
+								 'NINTH RECORD  ' \
+								,'EIGHTH RECORD ' \
+								,'SEVENTH RECORD' \
+								,'SIXTH RECORD  ' \
+								,'FIFTH RECORD  ' \
+								,'FORTH RECORD  ' \
+								,'THIRD RECORD  ' \
+								,'SECOND RECORD ' \
+								,'FIRST RECORD  ' \
+								}
+
+%include 'include/END.DICTIONARY'
+
+;-----------------------------------------------------------------------
+;		MATRIX
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.MATRIX'
+
+	insertnumber I,0
+	insertnumber J,0
+	insertnumber K,0
+	insertnumber L,0
+	insertnumber M,0
+	insertnumber N,0
+
+%include 'include/END.MATRIX'
+
+;-----------------------------------------------------------------------
+;		FILES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.FILES'
+
+	INSERTFILE c_RANDOM,StartNext_File,'./StartNextFile.dat'
+		BEGIN.RECORD 15,StartNext_Record
+			insertword StartNext_Field,	14,''
+			insertword terminator,		01,0X00
+		END.RECORD StartNext_Record
+
+%include 'include/END.FILES'
+
+;-----------------------------------------------------------------------
+;		TABLES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.TABLES'
+%include 'include/END.TABLES'
+;=======================================================================
+;		PROGRAM INSTRUCTIONS
+;		Mainline
+;=======================================================================
+%include 'include/BEGIN.INSTRUCTIONS'
+
+	$Call A_1_Initial
+	$Call B_1_StartNext
+	$Call Z_1_Finalise
+
+%include 'include/END.INSTRUCTIONS'
+%include 'include/END.PROGRAM'
+
+;=======================================================================
+;		PROGRAM PROCEDURES
+;=======================================================================
+;-----------------------------------------------------------------------
+;		INITIALISATION
+;-----------------------------------------------------------------------
+BEGIN.SUB A_1_Initial
+END.SUB A_1_Initial
+
+;-----------------------------------------------------------------------
+;		Test START and NEXT for RANDOM Files
+;-----------------------------------------------------------------------
+BEGIN.SUB B_1_StartNext
+;	This sub routine demonstrates the new START and NEXT functions of the
+;	F.o package. They may only be used with random f.
+;	It also demonstrates how to implement a list in languageONE
+
+;	---------------------------------------
+;	OPEN FILE - Write at beginning
+;	---------------------------------------
+	files $open,StartNext_File,$write+$beginning
+
+;	---------------------------------------
+;	POPULATE FILE
+;	---------------------------------------
+;	@.eq(StartNext_Record_NO,0)
+	StartNext_Record_NO = 0
+	repeat.for (I,1,9*14,14)
+		StartNext_Field = {wordlist,I,14}
+		StartNext_Record_NO = StartNext_Record_NO + 1
+		f.write (StartNext_File,StartNext_Record)
+	end.repeat
+
+	StartNext_Record_NO = 11	
+	StartNext_Field  	= 'LAST RECORD'	
+	f.write (StartNext_File,StartNext_Record)
+
+;	-------------------
+;	CLOSR & REOPEN FILE
+;	-------------------
+	files.close StartNext_File
+	files.open StartNext_File,$readwrite
+
+;	----------------------------
+;	DELETE A COUPLE OF RECORDS
+;	----------------------------
+	f.delete(StartNext_File,StartNext_Record,6)
+	f.delete(StartNext_File,StartNext_Record,7)
+
+;	-----------------------------
+;	AND PRINT THEM OUT
+;	-----------------------------
+	f.start(StartNext_File,StartNext_Record,3)
+	repeat.while StartNext_File_STATUS != EOF
+		if StartNext_File_STATUS = 0
+			display 'Record No= ',StartNext_Record_NO,' ',StartNext_Field,LF
+		end.if
+		f.next(StartNext_File,StartNext_Record)
+	end.repeat
+	display.line 'You have reached the end of file'
+
+;	------------------------------
+;	CLOSE FILE
+;	------------------------------
+	f.close(StartNext_File)
+
+END.SUB B_1_StartNext
+
+;-----------------------------------------------------------------------
+;		FINALISATION
+;-----------------------------------------------------------------------
+BEGIN.SUB Z_1_Finalise
+END.SUB Z_1_Finalise

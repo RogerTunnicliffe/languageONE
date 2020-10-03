@@ -1,0 +1,1098 @@
+%include 'include/BEGIN.PROGRAM'
+
+;	Refer to VERSION.HISTORY for...well...version history
+
+;	BEGIN.SYNONYMS **************************************
+;		xT.	:	XTABLES.
+;		$.	:	WORDS.  
+;		@.	:	INTEGERS.  
+;		#.	:	NUMBERS.  
+;		f.	:	FILES. 
+;	END.SYNONYMS ****************************************
+
+;=======================================================================
+;		  PROGRAM DATA
+;=======================================================================	      
+;-----------------------------------------------------------------------
+;		CONSTANTS
+;-----------------------------------------------------------------------
+;%define c_Constant 10*10
+
+;-----------------------------------------------------------------------
+;		DICTIONARY
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.DICTIONARY'
+
+	insertword w_date,			10,'ccyy/mm/dd'	
+	insertword w_letters,		26,'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+	
+	insertword w_Command,		04,''	
+	insertword w_Message,		30,''
+	insertword w_AllOK,			01,''
+	insertword w_ErrResponse,	01,''
+	
+	insertword w_Selection,		01,''
+	
+	insertword w_StartKey,		03,''
+	insertword w_EndKey,		03,''
+	insertword w_Underline,		79,''
+	insertword w_FF,			01,0x0C
+	
+%include 'include/END.DICTIONARY'
+
+;-----------------------------------------------------------------------
+;		MATRIX
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.MATRIX'
+
+  ; Common Counters
+	INSERTNUMBER I,					0
+	INSERTNUMBER J,					0
+	INSERTNUMBER K,					0
+
+  ; This programs 
+	insertnumber n_noOfDays,		0
+	insertnumber n_FieldNo,			0
+	insertnumber n_LastRow,			0
+	insertnumber n_LineCtr,			0
+	insertnumber n_PageNo,			0,'######'
+	
+	insertnumber b_keyPressed,		c_FALSE
+		 %define ENTER	0
+		 %define ESCAPE	27
+		 %define NULL	99
+		 
+	insertnumber b_AddRecord,		c_FALSE
+	insertnumber b_DeleteRecord,	c_FALSE
+	
+%include 'include/END.MATRIX'
+
+;-----------------------------------------------------------------------
+;		FILES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.FILES'
+
+;	----------------------------------------------
+;	DATA FILE
+	INSERTFILE c_INDEXED,A00_File,'./A00_File.dat'
+;	----------------------------------------------
+	%define c_recordLength 123
+	
+		BEGIN.RECORD c_recordLength,A00_Record
+			insertword 	 A00_KeyValue,		03,''
+			insertword 	 A00_LastName,		30,''
+			insertword 	 A00_FirstName,		20,''
+			insertword 	 A00_AddressLine1,	30,''
+			insertword 	 A00_AddressLine2,	30,''
+			insertnumber A00_PostCode,		00,'9999'
+			insertnumber A00_HourlyRate,	00,'999.99'
+		END.RECORD A00_Record
+
+;	----------------------------------------------
+;	PRINT FILE
+	INSERTFILE c_LF,PRT_File,'./A00_File.prt'
+;	----------------------------------------------	
+					
+%include 'include/END.FILES'
+
+;-----------------------------------------------------------------------
+;		TABLES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.TABLES'	
+
+	insertXtable A00_Table
+
+%include 'include/END.TABLES'
+
+;=======================================================================
+;		PROGRAM INSTRUCTIONS
+;		Mainline  
+;=======================================================================
+%include 'include/BEGIN.INSTRUCTIONS'
+
+	$Call A_1_Initial
+	
+	repeat.while b_keyPressed != ESCAPE
+		$Call B_1_Function
+	end.repeat
+
+	$Call Z_1_Finalise
+
+%include 'include/END.INSTRUCTIONS'
+%include 'include/END.PROGRAM'      
+
+;=======================================================================
+;		PROGRAM PROCEDURES
+;=======================================================================
+
+;-------------------------------------------------------------------------------
+;		INITIALISATION
+;-------------------------------------------------------------------------------
+BEGIN.SUB A_1_Initial
+
+;	-----------------------------------------
+;	CREATE THE DATA FILE 
+;	-----------------------------------------
+	$Call Y_1_Create
+	
+;	-----------------------------------------
+;	LOAD FILE
+;	-----------------------------------------
+	$Call A_1_1_TableSize	
+	xT.bind (A00_Table,A00_Record,n_Size)
+	xT.load (A00_Table,A00_File,c_FALSE)
+	xT.sort (A00_Table,1,3)
+
+;	------------------------------------------
+;	DISPLAY THE SCREEN
+;	------------------------------------------
+	$Call A_1_2_Graphics
+
+;	------------------------------------------
+;	Will develop a $.ALL in the future
+;	------------------------------------------
+	repeat.for I,1,79
+		{w_Underline,I,1} = '='
+	end.repeat
+
+END.SUB A_1_Initial
+
+;-------------------------------------------------------------------------------
+;	CALCULATE TABLE SIZE
+;-------------------------------------------------------------------------------
+BEGIN.SUB A_1_1_TableSize
+;	As described in the manual records contain an extra bytes at the 
+;	front that is used to indicate a "live" record, so when we 
+;	calculate the table size we must take this into account
+;	Additionally, it is an INDEXED file, so we must add the 8 bytes
+;	of the index
+;	If you have no intention of giving enough room to add to the table
+;	then just passing the File Size is okay
+
+	[section .data]
+		insertnumber n_Length,		0
+		insertnumber n_Size,		0
+	[section .text]
+
+	f.open (A00_File,read)												; Get the file size
+	f.close (A00_File)
+
+;	No of records = File size / (RecLength+1+8)
+	n_Length = c_recordLength + 1 + 8									; Record Length + Live Indicator + Index
+	n_Size = A00_File_SIZE + [100 * n_Length]							; Size is FILE SIZE + 100 spare
+		
+END.SUB A_1_1_TableSize
+
+;-------------------------------------------------------------------------------
+;	DISPLAY SCREEN GRAPHICS
+;-------------------------------------------------------------------------------
+BEGIN.SUB A_1_2_Graphics
+
+	display c_ClearScreen,c_CyanFG
+		
+	display c_TopLeft
+	repeat.for I,2,79 | display c_Line | end.repeat
+	display c_TopRight
+	display LF
+
+	display c_Bar,spaces(78),c_Bar,LF
+	display.at (02,02,'File Maintenance Program')
+	date.get   (n_noOfDays,w_date)
+	display.at (02,69,w_date)	
+	display LF	
+
+	display c_LeftMiddle
+	repeat.for I,2,79 | display c_Line | end.repeat
+	display c_RightMiddle
+	display LF
+	
+	repeat.for I,4,21 | display c_Bar,spaces(78),c_Bar,LF | end.repeat
+
+	display c_LeftMiddle
+	repeat.for I,2,79 | display c_Line | end.repeat
+	display c_RightMiddle
+	display LF
+
+	display c_Bar,spaces(78),c_Bar,LF	
+	
+	display c_LeftMiddle
+	repeat.for I,2,79 | display c_Line | end.repeat
+	display c_RightMiddle
+	display LF
+
+	display c_Bar,spaces(78),c_Bar,LF	
+
+	display c_BottomLeft
+	repeat.for I,2,79 | display c_Line | end.repeat
+	display c_BottomRight
+	display LF
+	
+END.SUB A_1_2_Graphics
+
+;-------------------------------------------------------------------------------
+;	FUNCTION
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_1_Function
+
+;	---------------------------------
+;	SETUP SCREEN
+;	---------------------------------
+	$Call X_1_ClearScreen
+	w_Command = spaces(1)	
+	display c_CyanFG | display.at (23,02,spaces(78))
+	display.at (23,02,';      (FIND)Search; (LIST)Report; (blank)Maintain; (DEL)Delete; (ESC)Exit'
+		display c_LightYellowFG
+		display.at (23,10,'FIND')
+		display.at (23,24,'LIST')
+		display.at (23,38,'blank')
+		display.at (23,55,'DEL')		
+		display.at (23,68,'ESC')	
+	
+;	---------------------------------
+;	GET FUNCTION
+;	---------------------------------
+	display c_LightYellowFG | accept.at (23,03,w_Command)
+	b_keyPressed = RETURN_CODE
+	
+	if b_keyPressed = ENTER
+		$.uppercase (w_Command)
+
+		begin.test w_Command
+
+			when = "FIND"
+				$Call C_1_Find
+				repeat.while b_keyPressed != ESCAPE
+					$Call D_1_Maintain
+				end.repeat
+				b_keyPressed = NULL
+			wend
+
+		   .when = spaces(4) | .or = 'DEL' | .end
+				repeat.while b_keyPressed != ESCAPE
+					$Call D_1_Maintain
+				end.repeat
+				b_keyPressed = NULL
+			wend
+					
+			when = "LIST"
+				$Call E_1_List
+			wend
+	
+		end.test
+		
+	end.if
+	
+END.SUB B_1_Function
+
+;-------------------------------------------------------------------------------
+;	SEARCH
+;-------------------------------------------------------------------------------
+BEGIN.SUB C_1_Find
+
+;	Used to demonstrate the use of inline assmebler
+	[section .data]
+		LineNo times 16 dq 0
+	[section .text]
+
+;	----------------------------------------
+;	GET USER INPUT
+;	----------------------------------------
+	display c_CyanFG | display.at (23,02,spaces(78))
+	display.at (23,02,';      Start Key; (ESC)Exit')
+		display c_LightYellowFG
+		display.at (23,21,'ESC')
+
+	w_StartKey = spaces(1)	
+	accept.at (23,03,w_StartKey)
+	b_keyPressed = RETURN_CODE
+	
+	if b_keyPressed = ESCAPE
+		b_keyPressed = NULL		
+		exit.sub C_1_Find
+	end.if
+
+;	----------------------------------------
+;	GET START KEY
+;	----------------------------------------
+	A00_KeyValue = 'AAA'
+	A00_KeyValue = w_StartKey
+	xT.search (A00_Table,1,3,A00_KeyValue,A00_Record_NO)
+	if A00_Table_STATUS = 0
+		A00_Record_NO = A00_Record_NO - 1
+	else
+		A00_Record_NO = 0
+	end.if
+	
+;	----------------------------------------
+;	HEADINGS
+;	----------------------------------------
+	display c_CyanFG
+	display.at (05,06,'Key  LastName             FirstName')
+	display.at (05,43,'AddressLine1               PostCode')	
+
+	display.at (23,02,';      (NEXT)Next Page; (PREV)Previous Page; (blank)Select; (ESC)Exit'
+		display c_LightYellowFG
+		display.at (23,10,'NEXT')
+		display.at (23,27,'PREV')
+		display.at (23,48,'blank')
+		display.at (23,63,'ESC')		
+	
+	w_Command   = spaces(1)
+	w_Selection = spaces(1)
+
+;	-------------------------------------------
+;	PROCESS LOOP
+;	-------------------------------------------
+	repeat.while b_keyPressed != ESCAPE
+	
+	;	--------------
+	;	DISPLAY SCREEN
+	;	--------------
+		display c_WhiteFG			
+		repeat.for I,06,21
+
+			A00_Record_NO = A00_Record_NO + 1
+			xT.rget(A00_Table,A00_Record_NO)
+			
+			if A00_Table_STATUS = 0
+				display.at (I,03,'[ ]')
+				display.at (I,07,A00_KeyValue)
+				display.at (I,11,{A00_LastName,1,20})
+				display.at (I,32,{A00_FirstName,1,10})
+				display.at (I,43,A00_AddressLine1)
+				display.at (I,74,A00_PostCode)
+
+				begin.assembler						; TO DEMONSTRATE INLINE ASSEMBLER CODE
+					mov  rsi,LineNo					; This will store the record key
+					mov  rax,qword[I]				; of each record displayed on the screen
+					sub  rax,6						; so that a selection can be made 
+					imul rax,8						; 
+					add  rsi,rax					; 
+					push qword[A00_Record_NO]		;
+					pop  qword[RSI]					;	
+				end.assembler						;
+
+				n_LastRow = I
+				
+			else
+				if A00_Table_STATUS = EOF
+					display.at (I,03,spaces(77))
+				else
+					I = I - 1
+				end.if
+			end.if
+			
+		end.repeat
+
+	;	------------
+	;	GET RESPONSE
+	;	------------
+		display c_LightYellowFG
+		accept.at (23,03,w_Command)
+		b_keyPressed = RETURN_CODE
+	
+		if b_keyPressed = ENTER
+			$.uppercase (w_Command)
+			
+			begin.test w_Command
+			
+				when = spaces(4)
+					$Call C_1_1_Select
+					if w_Selection != spaces(1)
+						exit.sub C_1_Find
+					end.if
+				wend
+					
+				when = "NEXT"
+					if A00_Table_STATUS != 0
+						A00_Record_NO = A00_Record_NO - 16	
+					end.if	
+				wend
+					
+				when = "PREV"
+					A00_Record_NO = A00_Record_NO - 32
+					if A00_Record_NO < 0
+						A00_Record_NO = 0
+					end.if
+				wend
+					
+			end.test
+			
+		end.if
+		
+	end.repeat
+	
+END.SUB C_1_Find
+
+;-------------------------------------------------------------------------------
+;	MAKE SELECT FROM FIND LIST
+;-------------------------------------------------------------------------------
+BEGIN.SUB C_1_1_Select
+
+	w_Selection = spaces(1)	
+;	-------------------------------------
+;	GET FIELDS
+;	-------------------------------------
+	n_FieldNo = 6	
+	repeat.while f1_validFieldNo
+ 
+		display c_LightYellowFG
+		accept.at (n_FieldNo,04,w_Selection)
+		display c_WhiteFG
+
+		b_keyPressed = RETURN_CODE
+		if b_keyPressed = ESCAPE
+			display.at (n_FieldNo,05,']') 
+			n_FieldNo = n_FieldNo - 1
+		else
+			if w_Selection != spaces(1)
+				exitRepeat = c_TRUE
+			else
+				if n_FieldNo < n_LastRow
+					n_FieldNo = n_FieldNo + 1
+				end.if
+			end.if
+		end.if
+			
+	end.repeat
+
+;	-----------------------------------
+;	EXIT 
+;	-----------------------------------
+	if n_FieldNo = 5
+		exit.sub C_1_1_Select
+	end.if
+	
+;	-----------------------------------
+;	ALL OKAY
+;	-----------------------------------	
+	begin.assembler							; TO DEMONSTRATE INLINE ASSEMBLER CODE
+		mov  rsi,LineNo						; This will retrieve the record no
+		mov  rax,qword[n_FieldNo]			; of the selected record displayed on the screen
+		sub  rax,6							; so that the record can be retrieved 
+		imul rax,8							;
+		add  rsi,rax						; 
+		push qword[RSI]						;
+		pop  qword[A00_Record_NO]			;
+	end.assembler
+
+	w_Command = spaces(1)	
+	xT.rget (A00_Table,A00_Record_NO)
+	
+END.SUB C_1_1_Select
+
+;=============================
+BEGIN.FUNCTION f1_validFieldNo
+;-----------------------------
+	.if n_FieldNo > 5
+   .and n_FieldNo < 22
+   .end
+  		RETURN_CODE = c_TRUE
+  	end.if
+  	
+END.FUNCTION f1_validFieldNo
+
+;-------------------------------------------------------------------------------
+;	MAINTAIN
+;-------------------------------------------------------------------------------
+BEGIN.SUB D_1_Maintain
+
+;	This sub routine can be entered in 3 ways.
+;	1] a BLANK at the Function screeen - add/modify mode
+;	2] 'DEL' at the Function screen - delete mode
+;	3] from the 'FIND' routine
+
+;	----------------
+;	SET MODE
+;	----------------
+	b_AddRecord 	= c_FALSE
+	b_DeleteRecord  = c_FALSE
+	if w_Command = 'DEL'				; then reset delete if 'DEL' function selected
+		b_DeleteRecord = c_TRUE
+	end.if
+			 
+;	---------------
+;	ENTER KEY VALUE
+;	---------------
+	display.at (23,02,spaces(78))
+	b_keyPressed = NULL
+	repeat.if f_NoValid_KeyPressed
+		$Call D_1_1_GetKey
+	end.repeat
+
+;	---------------
+;	ENTER DATA
+;	---------------
+	if b_keyPressed = ENTER
+	
+		b_keyPressed = NULL
+		repeat.if f_NoValid_KeyPressed
+			$Call D_1_2_GetData
+		end.repeat
+		
+		if b_keyPressed = ENTER
+			$Call D_1_3_Process			
+
+		;	If we have arrived here from the 'DEL' function 
+		;	we set escape and exit
+			if b_DeleteRecord = c_TRUE
+				b_keyPressed = ESCAPE
+				exit.sub D_1_Maintain
+			end.if
+
+		;	If you have arrived here from a search
+		;	we set escape, initialise the selection and exit
+			if w_Selection != spaces(1)
+				b_keyPressed = ESCAPE
+				w_Selection = spaces(1)	
+				exit.sub D_1_Maintain				
+			end.if
+
+		;	If you have arrived here directly	
+		;	setup the key so we loop		
+			if w_Selection = spaces(1)					
+				b_keyPressed = NULL
+			end.if
+			
+		end.if
+		
+	end.if
+	
+END.SUB D_1_Maintain
+
+;==================================
+BEGIN.FUNCTION f_NoValid_KeyPressed
+;----------------------------------
+   .if b_keyPressed != ENTER
+  .and b_keyPressed != ESCAPE
+  .end
+  		RETURN_CODE = c_TRUE
+  	end.if
+  	
+END.FUNCTION f_NoValid_KeyPressed
+
+;-------------------------------------------------------------------------------
+;	GET KEY
+;-------------------------------------------------------------------------------
+BEGIN.SUB D_1_1_GetKey
+
+;	This sub routine can be entered in 3 ways.
+;	1] a BLANK at the Function screeen - add/modify mode
+;	2] 'DEL' at the Function screen - delete mode
+;	3] from the 'FIND' routine
+
+;	--------------------------------
+;	SETUP THE SCREEN
+;	--------------------------------
+	$Call X_1_ClearScreen
+	display c_CyanFG
+	display.at (05,05,'Key Value.....:')
+		
+;	---------------------------------
+;	ENTER KEY VALUE
+;	---------------------------------
+	display (c_LightYellowFG)
+	if w_Selection = spaces(1)							; Normal entry (Not from search)			
+		A00_KeyValue = spaces(1)						; so clear the key	
+	end.if
+	display.at (05,21,A00_KeyValue)
+
+	if w_Selection != spaces(1)						; Arrived here from search					
+		b_keyPressed = ENTER							; so continue as we already have the key
+	else
+		accept.at (05,21,A00_KeyValue)					; Arrived here normally				
+		b_keyPressed = RETURN_CODE						; Grab the key
+		if b_keyPressed = ESCAPE						; and exit if escape
+			exit.sub D_1_1_GetKey
+		end.if
+	end.if
+	
+;	---------------------------------
+;	VALIW_DATE
+;	---------------------------------
+	if A00_KeyValue = spaces(3)
+		cursor (25,02) | display (c_LightRedFG,c_Reverse)
+		display ('Please Enter Key Value',c_ResetReverse)
+		w_AllOK = spaces(1) | accept.at  (25,78,w_AllOK)
+		display.at (25,02,spaces(22))
+		b_keyPressed = NULL
+		exit.sub D_1_1_GetKey
+	end.if
+
+;	------------------------------------
+;	PROCESS
+;	------------------------------------
+	if w_Selection != spaces(1)									; If coming from find
+		xT.rget (A00_Table,A00_Record_NO)							; just grab the record
+	else															; ELSE 'DEL' or 'ADD/MODIFY'
+		xT.search (A00_Table,1,3,A00_KeyValue,A00_Record_NO)		; then search for the record
+	end.if
+
+;	So if we have not found a record
+;		for 'DEL' it is an error
+;		for 'ADD' it is a new record
+;	ELSE
+;		we will modify the existing record
+	if A00_Table_STATUS = INVALIDKEY
+	
+		if b_DeleteRecord = c_TRUE
+			cursor (25,02) | display (c_LightRedFG,c_Reverse)
+			display ('Record does not exist',c_ResetReverse)	
+			w_AllOK = spaces(1) | accept.at  (25,78,w_AllOK)
+			display.at (25,02,spaces(22))
+			b_keyPressed = NULL
+			exit.sub D_1_1_GetKey
+		else		
+			A00_LastName		= spaces(1)
+			A00_FirstName		= spaces(1)
+			A00_AddressLine1	= spaces(1)
+			A00_AddressLine2	= spaces(1)
+			A00_PostCode		= 0		
+			A00_HourlyRate		= 0
+			b_AddRecord			= c_TRUE			
+		end.if	
+	else
+		b_AddRecord = c_FALSE
+	end.if
+					
+END.SUB D_1_1_GetKey
+
+;-------------------------------------------------------------------------------
+;	GET DATA
+;-------------------------------------------------------------------------------
+BEGIN.SUB D_1_2_GetData
+
+;	This sub routine can be entered in 3 ways.
+;	1] a BLANK at the Function screeen - add/modify mode
+;	2] 'DEL' at the Function screen - delete mode
+;	3] from the 'FIND' routine
+
+;	-------------------------------------
+;	DISPLAY LITERAL
+;	-------------------------------------
+	display c_CyanFG
+	display.at (07,05,'Lastname......:')
+	display.at (08,05,'Firstname.....:')
+	display.at (09,05,'Addressline 1.:')
+	display.at (10,05,'Addressline 2.:')
+	display.at (11,05,'Postcode......:')
+	display.at (12,05,'Hourly Rate...:')
+
+;	-------------------------------------
+;	DISPLAY THE RECORD
+;	-------------------------------------
+	display c_LightYellowFG
+	display.at (07,21,A00_LastName)
+	display.at (08,21,A00_FirstName)
+	display.at (09,21,A00_AddressLine1)
+	display.at (10,21,A00_AddressLine2)		
+	display.at (11,21,A00_PostCode)				
+	display.at (12,21,A00_HourlyRate)				
+	
+;	-------------------------------------
+;	GET FIELDS
+;	-------------------------------------
+	if b_DeleteRecord = c_TRUE						; If entered in 'DEL' mode 	
+		{w_Message,1} = 'Delete [Y/N]  '			; then setup the prompt only
+	else											; ELSE for 'ADD/MODIFY'
+		$Call D_1_2_1_GetFields						; go and grab the fields
+		if n_FieldNo = 0							;	exit if escape
+			exit.sub D_1_2_GetData					;
+		end.if										;		
+		{w_Message,1} = 'All Okay [Y/N]'			; setup the prompt 
+	end.if
+	
+;	-----------------------------------
+;	ALL OKAY
+;	-----------------------------------	
+	display c_CyanFG 		| display.at (25,02,w_Message)
+	display c_LightYellowFG | w_AllOK = spaces(1)	| accept.at  (25,17,w_AllOK)
+	$.uppercase w_AllOK	
+	
+	display.at (25,02,spaces(32))
+	b_keyPressed = RETURN_CODE
+	
+   .if w_AllOK != 'Y'	
+   .or b_keyPressed = ESCAPE
+   .end
+   		if b_DeleteRecord = c_TRUE  				; If $Called in 'DEL' mode 				
+   			b_keyPressed = ESCAPE					; setup ESCAPE to exit the getkey/getdata process
+   		else										; ELSE					
+   			b_keyPressed = NULL						; continue
+   		end.if
+   	end.if	
+	
+END.SUB D_1_2_GetData
+
+;-------------------------------------------------------------------------------
+;	GET FIELDS
+;-------------------------------------------------------------------------------
+BEGIN.SUB D_1_2_1_GetFields
+
+	n_FieldNo = 1	
+	
+	repeat.while f2_validFieldNo 
+
+		begin.test n_FieldNo
+			when = 1 | accept.at  (07,21,A00_LastName)		| wend
+			when = 2 | accept.at  (08,21,A00_FirstName)		| wend		
+			when = 3 | accept.at  (09,21,A00_AddressLine1)	| wend
+			when = 4 | accept.at  (10,21,A00_AddressLine2)	| wend
+			when = 5 | accept.at  (11,21,A00_PostCode)		| wend	
+			when = 6 | accept.at  (12,21,A00_HourlyRate)	| wend		
+		end.test
+
+		b_keyPressed = RETURN_CODE
+		if b_keyPressed = ESCAPE
+			n_FieldNo = n_FieldNo - 1	
+		else
+			$Call D_1_2_1_1_Valid_date
+			display c_LightYellowFG
+		end.if
+			
+	end.repeat
+
+END.SUB D_1_2_1_GetFields
+
+;=============================
+BEGIN.FUNCTION f2_validFieldNo
+
+   .if n_FieldNo > 0
+  .and n_FieldNo < 7
+  .end
+  		RETURN_CODE = c_TRUE
+  	end.if
+
+END.FUNCTION f2_validFieldNo
+
+;-------------------------------------------------------------------------------
+;	FIELD VALIDATION
+;-------------------------------------------------------------------------------
+BEGIN.SUB D_1_2_1_1_Valid_date
+
+	w_Message = spaces(1)	
+	
+;	----------------------------
+;	TEST EACH FIELD
+;	----------------------------
+	begin.test n_FieldNo
+
+		when = 1
+			if A00_LastName = spaces(30)
+				w_Message = 'Please Enter Last Name'
+			end.if
+		wend
+
+		when = 2
+			if A00_FirstName = spaces(20)
+				w_Message = 'Please Enter First Name' 
+			end.if
+		wend
+
+		when = 3
+			if A00_AddressLine1 = spaces(30)
+				w_Message = 'Please Enter Address Line 1'
+			end.if
+		wend
+
+		when = 4
+			if A00_AddressLine2 = spaces(30)
+				w_Message = 'Please Enter Address Line 2'
+			end.if
+		wend
+
+		when = 5
+			if A00_PostCode = 0
+				w_Message = 'Please Enter Post Code'
+			end.if
+		wend
+		
+		when = 6
+			if A00_HourlyRate = 0
+				w_Message = 'Please Enter Hourly Rate'
+			end.if		
+		wend
+
+	end.test
+
+;	-----------------------------------
+;	ERROR MESSAGE or NOT
+;	-----------------------------------
+	if w_Message != spaces(30)
+		cursor (25,02) | display (c_LightRedFG,c_Reverse)
+		display (w_Message,c_ResetReverse)
+		accept.at (25,78,w_ErrResponse)
+	else
+		n_FieldNo = n_FieldNo + 1
+	end.if
+	
+;	------------------------------------
+;	CLEAR ERROR MESSAGE
+;---------------------------------------
+	w_Message = spaces(1)	
+	display.at (25,02,w_Message)
+
+END.SUB D_1_2_1_1_Valid_date
+
+;-------------------------------------------------------------------------------
+;	WRITE THE RECORD
+;-------------------------------------------------------------------------------
+BEGIN.SUB D_1_3_Process
+
+	begin.test c_TRUE
+	
+		when b_AddRecord = c_TRUE
+			A00_Table_UBOUND = A00_Table_UBOUND + 1
+			A00_Record_NO 	 = A00_Table_UBOUND
+			xT.rput (A00_Table,A00_Record_NO)
+			xT.sort(A00_Table,1,3)
+		wend
+			
+		when b_DeleteRecord = c_TRUE
+			xT.delete (A00_Table,A00_Record_NO,c_TRUE)
+		wend
+
+		otherwise
+			xT.rput (A00_Table,A00_Record_NO)
+			
+	end.test
+
+END.SUB D_1_3_Process
+
+;-------------------------------------------------------------------------------
+;	LIST FILE
+;-------------------------------------------------------------------------------
+BEGIN.SUB E_1_List
+
+;	-------------------------------------
+;	DISPLAY LITERAL
+;	-------------------------------------
+	display c_CyanFG
+	display.at (23,02,spaces(78)
+	display.at (23,02,'Enter Starting Key;      & Ending Key;      (ESC)Exit'
+	display c_LightYellowFG
+	w_StartKey = 'AAA'	
+	display.at (23,22,w_StartKey)
+	w_EndKey = 'zzz'
+	display.at (23,41,w_EndKey)	
+
+;	----------------------
+;	USER INPUT
+;	----------------------
+	n_FieldNo = 1	
+	repeat.while f3_validFieldNo 
+	
+		begin.test n_FieldNo
+			when = 1 | accept.at (23,22,w_StartKey)	| wend
+			when = 2 | accept.at (23,41,w_EndKey)	| wend		
+		end.test
+
+		b_keyPressed = RETURN_CODE
+		if b_keyPressed = ESCAPE
+			n_FieldNo = n_FieldNo - 1
+		else
+			n_FieldNo = n_FieldNo + 1	
+		end.if
+			
+	end.repeat
+
+;	------------------------------------
+;	EXIT
+;	------------------------------------
+	b_keyPressed = NULL
+	if n_FieldNo = 0
+		exit.sub E_1_List
+	end.if
+
+;	-----------------------------------
+;	PROCESS
+;	-----------------------------------
+	A00_KeyValue = w_StartKey
+	xT.search (A00_Table,1,3,A00_KeyValue,A00_Record_NO)
+	n_PageNo = 0
+	n_LineCtr = 60
+	
+	f.open(PRT_File,write+beginning)
+
+	repeat.while A00_Table_STATUS != EOF
+	
+		$Call E_1_1_Headings
+
+		files $write,PRT_File,spaces(4)			\
+							 ,A00_KeyValue		\		
+							 ,spaces(1)			\
+							 ,A00_FirstName		\
+							 ,spaces(1)			\
+							 ,A00_LastName		\
+							 ,spaces(1)			\
+							 ,A00_HourlyRate
+							 
+		files $write,PRT_File,spaces(08)		\						 
+							 ,A00_AddressLine1
+							 
+							 
+		files $write,PRT_File,spaces(08)		\						 
+							 ,A00_AddressLine2
+							 
+		files $write,PRT_File,spaces(08)		\
+							 ,A00_PostCode
+							 
+		files $write,PRT_File,spaces(79)					 
+	
+		n_LineCtr = n_LineCtr + 5	
+		
+		A00_Record_NO = A00_Record_NO + 1
+		xT.rget (A00_Table,A00_Record_NO)
+		if A00_KeyValue > w_EndKey
+			exitRepeat = c_TRUE
+		end.if
+		
+	end.repeat
+
+	f.close(PRT_File)
+	
+END.SUB E_1_List
+;	-----------------------
+BEGIN.FUNCTION f3_validFieldNo
+
+   .if n_FieldNo > 0
+  .and n_FieldNo < 3
+  .end
+  		RETURN_CODE = c_TRUE	
+  	end.if
+
+END.FUNCTION f3_validFieldNo
+
+;-------------------------------------------------------------------------------
+;	PRINT HEADINGS
+;-------------------------------------------------------------------------------
+BEGIN.SUB E_1_1_Headings
+
+	if n_LineCtr < 55
+		exit.sub E_1_1_Headings
+	end.if
+
+;	--------------------------
+;	PAGE HEADINGS
+;	--------------------------
+	n_PageNo = n_PageNo + 1	
+	files $write,PRT_File,w_FF
+	files $write,PRT_File,w_Underline
+	files $write,PRT_File,w_date					\
+						 , spaces(1)				\
+						 ,'A00_File Listing:from '	\
+				 		 , w_StartKey				\
+				 		 ,' to '					\
+				 		 , w_EndKey					\
+				 		 , spaces(22)				\
+				 		 ,'Page No '				\
+				 		 , n_PageNo
+	files $write,PRT_File,w_Underline
+	files $write,PRT_File,spaces(79)
+	
+;	----------------------------
+;	COLUMN HEADINGS
+;	----------------------------
+	files $write,PRT_File,spaces(4)					\ 
+						 ,'Key Name/Address' 		\		
+						 ,spaces(36)				\
+						 ,'HourlyRate'
+	files $write,PRT_File,spaces(4)					\
+						 ,'--- ------------' 		\		
+						 ,spaces(36)				\
+						 ,'----------'
+						 
+	n_LineCtr = 0	
+
+END.SUB E_1_1_Headings
+
+;-------------------------------------------------------------------------------
+;	CLEAR SCREEN
+;-------------------------------------------------------------------------------
+BEGIN.SUB X_1_ClearScreen
+
+	repeat.for I,5,21
+		display.at (I,03,spaces(77))
+	end.repeat
+
+END.SUB X_1_ClearScreen
+
+;-------------------------------------------------------------------------------
+;	CREATE DATA FILE
+;-------------------------------------------------------------------------------
+BEGIN.SUB Y_1_Create
+
+;	-------------------------------
+;	MESSAGE
+;	-------------------------------
+	display c_ClearScreen
+	display.line 'languageONE  will handle  full screen  terminal programs'
+	display.line 'Although it does not try to be NCURSERS it may meet your'
+	display.line 'if they are simple. Operational keys are:-'
+	display.line '	ENTER, ESCAPE and BACKSPACE'
+	display.line '	all other keys are mapped to ESCAPE'
+
+;	-------------------------------
+;	USER INPUT
+;	-------------------------------
+	display 'Create data file [Y/N] '
+	w_AllOK = spaces(1) | acceptline w_AllOK | $.uppercase w_AllOK
+	if w_AllOK != 'Y'
+		exit.sub Y_1_Create
+	end.if	
+
+;	-------------------------------
+;	PROCESS
+;	-------------------------------
+	f.open (A00_File,write+beginning)
+	
+	repeat.for (I,26,1)
+	  {A00_KeyValue,3} = {w_letters,I,1}
+	  repeat.for (J,26,1)	
+		{A00_KeyValue,2} = {w_letters,J,1}
+		repeat.for (K,6,1)	
+		  {A00_KeyValue,1} = {w_letters,K,1}
+		  
+		  A00_LastName			= A00_KeyValue
+		  {A00_LastName,5}		= 'LastName'
+
+		  A00_FirstName			= A00_KeyValue
+		  {A00_FirstName,5}		= 'FirstName'
+
+		  A00_AddressLine1		= A00_KeyValue
+		  {A00_AddressLine1,5}	= 'Address Line 1' 
+
+		  A00_AddressLine2		= A00_KeyValue
+		  {A00_AddressLine2,5}	= 'Address Line 2' 		
+
+		  A00_Record_NO			= A00_Record_NO + 1
+		  A00_PostCode			= A00_Record_NO
+		  A00_HourlyRate		= A00_Record_NO
+		  
+		  f.write (A00_File,A00_Record,A00_Record_NO)
+		  
+		end.repeat
+	  end.repeat
+	end.repeat
+
+	f.close (A00_File)
+	
+END.SUB Y_1_Create
+
+;-------------------------------------------------------------------------------
+;	FINALISATION
+;-------------------------------------------------------------------------------
+BEGIN.SUB Z_1_Finalise
+
+;	-----------------------------------
+;	COMMIT CHANGES
+;	-----------------------------------	
+	display c_CyanFG 		| display.at (25,02,'Commit Changes [Y/N]')
+	display c_LightYellowFG | w_AllOK = spaces(1)	| accept.at  (25,23,w_AllOK)
+	
+	$.uppercase w_AllOK		
+	if w_AllOK = 'Y'	
+   		xT.unload (A00_Table,A00_File,c_FALSE)
+   	end.if	
+  	
+END.SUB Z_1_Finalise

@@ -1,0 +1,43 @@
+<html>
+<head>
+	<title>GUI-makeONE-screen2</title>
+	<style type="text/css">
+		iframe {float: left;margin: 0; padding: 0; border: none;}
+    </style>
+</head>
+<body>
+
+    <iframe id='include' src='GUI-makeONE.htm' 
+          height='100%' 
+          width='90%'/>
+    </iframe>  
+
+	<form name='screen2' id='screen2' action='' method='post' target=''>	
+		<input type='SUBMIT' value='EXIT' id='EXIT' name='EXIT' onclick='return f_onclick(this.id);'/>
+	</form>	
+	
+</body>
+
+<script type='text/javascript'>
+
+var frame = document.getElementById('include');
+
+	frame.onload = function ()	
+		{
+		var body = frame.contentWindow.document.querySelector('body');
+			body.style.color = 'red';
+			body.style.fontSize = '12px';
+			body.style.lineHeight = '2px';
+		}
+    	
+function f_onclick(ButtonID){
+		
+	if (ButtonID=='EXIT')
+		{
+		var xhttp = new XMLHttpRequest();
+		xhttp.open("POST","EXIT=EXIT",true);
+		xhttp.send();
+		} 				
+}
+</script>
+</html>

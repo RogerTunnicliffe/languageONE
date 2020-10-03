@@ -1,0 +1,452 @@
+%include 'include/BEGIN.PROGRAM'
+;
+;	Refer to VERSION.HISTORY for...well...version history
+
+;	BEGIN.SYNONYMS **************************************
+;		$.	:	WORDS.  
+;		@.	:	INTEGERS.  
+;		#.	:	NUMBERS.  
+;		f.	:	FILES. 
+;		T.	:	TABLES.
+;		xT.	:	XTABLES.
+;	END.SYNONYMS ****************************************
+
+;=======================================================================
+;		  PROGRAM DATA
+;=======================================================================
+%include 'include/BEGIN.DICTIONARY'
+
+	insertword w_Word,		30,''
+	insertword w_Response,	01,''
+	
+%include 'include/END.DICTIONARY'
+
+%include 'include/BEGIN.MATRIX'
+  ; Common Counters
+	insertnumber I,			0,'999999999'
+	insertnumber J,			0,'999999999'
+	
+	insertnumber n_Idx,		0,'999'
+	insertnumber n_InnerIdx,0,'999'
+	insertnumber n_OuterIdx,0,'999'
+	insertnumber n_Number,	0,'999'
+	
+%include 'include/END.MATRIX'
+
+%include 'include/BEGIN.FILES'
+
+	%define	c_RecordLength 099
+	%define c_NoOfRecords  016
+
+	begin.record c_RecordLength,A01_Record
+		insertnumber	A01_1_number,		01,'999'
+		insertword 		A01_2_word,			30,''
+		insertnumber	A01_3_number,		03,'999'
+		insertword 		A01_4_word,			30,''	
+		insertnumber	A01_5_number,		05,'999'
+		insertword 		A01_6_word,			30,''
+	end.record A01_Record	
+		
+%include 'include/END.FILES'
+				
+%include 'include/BEGIN.TABLES'
+
+;	Single Dimension XTable
+	INSERTXTABLE A01_Table
+
+;	Two Dimension Table
+	INSERTTABLE B01_Table,c_RecordLength*5*4
+	
+%include 'include/END.TABLES'
+
+;----- MACROS
+[section .data]
+	insertnumber	n_3Num,	0,'999'
+	insertword 		w_3Char,3,''
+[section .text]
+%imacro m_NumToWord 2
+;	A conversion of a number to a alpha field is right justified
+;	hence we use a temporary 3 digit field to load the No,
+;	a temporary 3 character alpha field to convert a Number to 
+;	alpha, and then move the result (left justified) to the receiving
+;	alpha field. I may change this in the future to be left justified
+
+	integers.eq	n_3Num,%1
+	words.copy	n_3Num,w_3Char
+	words.copy	w_3Char,%2
+
+%endmacro
+
+;=======================================================================
+;		PROGRAM INSTRUCTIONS
+;		Mainline  
+;=======================================================================
+%include 'include/BEGIN.INSTRUCTIONS'
+
+	$Call A_1_Demo1
+	$Call B_1_Demo2
+	
+%include 'include/END.INSTRUCTIONS'
+%include 'include/END.PROGRAM'      
+
+;=======================================================================
+;		PROGRAM PROCEDURES
+;=======================================================================
+
+;-----------------------------------------------------------------------
+;	Demo 1 Mainline
+;-----------------------------------------------------------------------
+BEGIN.SUB A_1_Demo1
+
+	display c_ClearScreen,c_LightGreyFG,"Demonstrating fGET/fPUT with XTABLES",LF
+	$Call X_3_UserResponse
+
+	$Call A_1_1_PopulateTable
+	if A01_Table_STATUS = 0
+		$Call A_1_2_Test
+	end.if
+		
+END.SUB A_1_Demo1
+
+;-----------------------------------------------------------------------
+;	This routine creates a Table and fills it
+;-----------------------------------------------------------------------
+BEGIN.SUB A_1_1_PopulateTable
+;	This routine uses the 'rPUT/rGET' functions
+
+;	------------------
+;	1st Bind the table
+;	------------------
+;	Remember that an XTABLE contains an extra 9 bytes at the 
+;	front of each record to hold a DeleteFlag and an Index
+	%define c_Size c_NoOfRecords*(c_RecordLength + 9)
+	xT.bind (A01_Table,A01_Record,c_Size)
+	
+;	----------------
+;	Then populate it
+;	----------------
+	repeat.for (A01_Record_NO,1,c_NoOfRecords)
+
+		$Call A_1_1_1_BuildRecord	
+
+		A01_Table_UBOUND = A01_Table_UBOUND + 1
+		xT.rPut (A01_Table,A01_Record_NO)
+		if A01_Table_STATUS != 0
+			display "Record No=",A01_Record_NO,LF
+			display "Table rPUT Error - Status is=",A01_Table_STATUS,LF
+			EXIT.SUB A_1_1_PopulateTable
+		end.if
+
+	end.repeat
+
+;	-----------------------
+;	And display our results
+;	-----------------------
+	repeat.for (A01_Record_NO,1,c_NoOfRecords)
+
+		xT.rGet (A01_Table,A01_Record_NO) 
+		if A01_Table_STATUS = 0
+			Call X_1_DisplayA01TableRow
+		else
+			display "A01_Table rGET Error - Status is=",A01_Table_STATUS,LF
+			exitRepeat = c_TRUE
+		end.if
+	end.repeat
+
+;	--------
+;	Continue
+;	--------
+	$Call X_3_UserResponse
+	
+END.SUB A_1_1_PopulateTable
+;	EXIT
+
+;-----------------------------------------------------------------------
+;	This routine builds each record with test data
+;-----------------------------------------------------------------------
+BEGIN.SUB A_1_1_1_BuildRecord
+
+	A01_1_number	= A01_Record_NO + 100
+	A01_3_number	= A01_Record_NO + 300
+	A01_5_number	= A01_Record_NO + 500
+
+	m_NumToWord [A01_Record_NO + 200],A01_2_word
+	{A01_2_word,5} 	= 'Word 2'
+
+	m_NumToWord [A01_Record_NO + 400],A01_4_word
+	{A01_4_word,5} 	= 'Word 4'
+
+	m_NumToWord [A01_Record_NO + 600],A01_6_word
+	{A01_6_word,5} 	= 'Word 6'
+
+END.SUB A_1_1_1_BuildRecord
+;	EXIT
+
+;-----------------------------------------------------------------------
+;		
+;-----------------------------------------------------------------------
+BEGIN.SUB A_1_2_Test
+;	This routine uses the 'fGET/fPUT' functions
+
+;	-----------------------------------
+;	Display fields from record 1,5,9,13
+;	-----------------------------------
+	A01_Record_NO = 1
+	repeat.while A01_Record_NO < c_NoOfRecords
+
+		xT.fget (A01_Table,1,A01_1_number,	A01_Record_NO)
+		xT.fget (A01_Table,2,A01_2_word,	A01_Record_NO)
+		xT.fget (A01_Table,3,A01_3_number,	A01_Record_NO)
+		xT.fget (A01_Table,4,A01_4_word,	A01_Record_NO)
+		xT.fget (A01_Table,5,A01_5_number,	A01_Record_NO)
+		xT.fget (A01_Table,6,A01_6_word,	A01_Record_NO)
+		$Call X_1_DisplayA01TableRow
+		A01_Record_NO = A01_Record_NO + 4
+
+	end.repeat
+
+;	--------
+;	Continue
+;	--------
+	$Call X_3_UserResponse
+
+;	---------------------------------------------
+;	Now test the fPUT function - replace 1,5,9,13
+;	---------------------------------------------
+	A01_Record_NO = 1
+	repeat.while A01_Record_NO < c_NoOfRecords
+
+		n_3Num = 10 + A01_Record_NO
+		xT.fput (A01_Table,1,n_3Num,A01_Record_NO)
+
+		m_NumToWord n_3Num,A01_2_word
+		{A01_2_word,5} 		= 'Word 2'
+		xT.fput (A01_Table,2,A01_2_word,A01_Record_NO)
+
+		n_3Num = 30 + A01_Record_NO
+		xT.fput (A01_Table,3,n_3Num,A01_Record_NO)
+
+		m_NumToWord n_3Num,A01_4_word
+		{A01_4_word,5} 		= 'Word 4'
+		xT.fput (A01_Table,4,A01_4_word,A01_Record_NO)
+
+		n_3Num = 50 + A01_Record_NO
+		xT.fput (A01_Table,5,n_3Num,A01_Record_NO)
+
+		m_NumToWord n_3Num,A01_6_word
+		{A01_6_word,5} 		= 'Word 6'
+		xT.fput (A01_Table,6,A01_6_word,A01_Record_NO)
+
+		A01_Record_NO = A01_Record_NO + 4
+
+	end.repeat
+
+;	-----------------------------------
+;	Display fields from record 1,5,9,13
+;	-----------------------------------
+	A01_Record_NO = 1
+	repeat.while A01_Record_NO < c_NoOfRecords
+		xT.rget (A01_Table,A01_Record_NO)
+		$Call X_1_DisplayA01TableRow
+		A01_Record_NO = A01_Record_NO + 4
+	end.repeat
+
+;	--------
+;	Continue
+;	--------
+	$Call X_3_UserResponse
+
+END.SUB A_1_2_Test
+
+;-----------------------------------------------------------------------
+;	Demo 2 Mainline
+;-----------------------------------------------------------------------
+BEGIN.SUB B_1_Demo2
+
+	display c_LightGreyFG,"Demonstrating fGET/fPUT with TABLES",LF
+	$Call X_3_UserResponse
+
+	$Call B_1_1_PopulateTable
+	if B01_Table_STATUS = 0
+		$Call B_1_2_Test
+	end.if
+	
+END.SUB B_1_Demo2
+
+;-----------------------------------------------------------------------
+;	This routine creates a Table and fills it
+;-----------------------------------------------------------------------
+BEGIN.SUB B_1_1_PopulateTable
+;	This routine uses the 'rPUT/rGET' functions
+
+;	------------------
+;	1st Bind the table
+;	------------------
+	T.bind (B01_Table,A01_Record,5,4)
+
+;	----------------
+;	Then populate it
+;	----------------
+	repeat.for (n_OuterIdx,1,5)
+		repeat.for (n_InnerIdx,1,4)
+
+			$Call B_1_1_1_BuildRecord
+
+			T.rPut (B01_Table,n_OuterIdx,n_InnerIdx)
+			if B01_Table_STATUS != 0
+				display "OuterIdx=",n_OuterIdx,' InnerIdx=',n_InnerIdx,LF
+				display "Table rPUT Error - Status is=",B01_Table_STATUS,LF
+				EXIT.SUB B_1_1_PopulateTable
+			end.if
+
+		end.repeat
+	end.repeat
+
+;	-----------------------
+;	And display our results
+;	-----------------------
+	repeat.for (n_OuterIdx,1,5)
+		repeat.for (n_InnerIdx,1,4)
+
+			T.rGet (B01_Table,n_OuterIdx,n_InnerIdx) 
+			if B01_Table_STATUS = 0
+				Call X_2_DisplayB01TableRow
+			else
+				display "B01_Table rGET Error - Status is=",B01_Table_STATUS,LF
+				exit.sub B_1_1_PopulateTable
+			end.if
+
+		end.repeat
+	end.repeat
+
+;	--------
+;	Continue
+;	--------
+	$Call X_3_UserResponse
+
+end.SUB B_1_1_PopulateTable
+
+;-----------------------------------------------------------------------
+;	This routine builds each record with test data
+;-----------------------------------------------------------------------
+BEGIN.SUB B_1_1_1_BuildRecord
+
+	A01_1_number	= 100 + [n_OuterIdx * 10] + n_InnerIdx
+	A01_3_number	= 300 + [n_OuterIdx * 10] + n_InnerIdx
+	A01_5_number	= 500 + [n_OuterIdx * 10] + n_InnerIdx
+
+	m_NumToWord A01_1_number,A01_2_word
+	{A01_2_word,5} 	= 'Word 2'
+
+	m_NumToWord A01_3_number,A01_4_word
+	{A01_4_word,5}	= 'Word 4'
+	
+	m_NumToWord A01_5_number,A01_6_word
+	{A01_6_word,5}	= 'Word 6'
+
+END.SUB B_1_1_1_BuildRecord
+;	EXIT
+
+;-----------------------------------------------------------------------
+;	This routine displays Table values 
+;-----------------------------------------------------------------------
+BEGIN.SUB B_1_2_Test
+	
+;	-----------------------------------------------
+;	Display fields from records 1,1 2,2 3,3 and 4,4
+;	-----------------------------------------------
+	repeat.for n_OuterIdx,1,4
+
+		n_InnerIdx = n_OuterIdx
+		T.fget (B01_Table,1,A01_1_number,	n_OuterIdx,n_InnerIdx)
+		T.fget (B01_Table,2,A01_2_word,		n_OuterIdx,n_InnerIdx)
+		T.fget (B01_Table,3,A01_3_number,	n_OuterIdx,n_InnerIdx)
+		T.fget (B01_Table,4,A01_4_word,		n_OuterIdx,n_InnerIdx)
+		T.fget (B01_Table,5,A01_5_number,	n_OuterIdx,n_InnerIdx)
+		T.fget (B01_Table,6,A01_6_word,		n_OuterIdx,n_InnerIdx)
+		$Call X_2_DisplayB01TableRow
+
+	end.repeat
+
+;	--------
+;	Continue
+;	--------
+	$Call X_3_UserResponse
+
+;	--------------------------------------------------------
+;	Now test the fPUT function - records 1,1 2,2 3,3 and 4,4
+;	--------------------------------------------------------
+	repeat.for n_OuterIdx,1,4
+
+		n_InnerIdx 		= n_OuterIdx
+		A01_1_number	= n_OuterIdx * n_InnerIdx * 1
+		A01_3_number 	= n_OuterIdx * n_InnerIdx * 3
+		A01_5_number 	= n_OuterIdx * n_InnerIdx * 5
+ 
+		T.fput (B01_Table,1,A01_1_number,n_OuterIdx,n_InnerIdx)
+		T.fPut (B01_Table,2,'Altered #2',n_OuterIdx,n_InnerIdx)
+		T.fPut (B01_Table,3,A01_3_number,n_OuterIdx,n_InnerIdx)
+		T.fPut (B01_Table,4,'Altered #4',n_OuterIdx,n_InnerIdx)
+		T.fPut (B01_Table,5,A01_5_number,n_OuterIdx,n_InnerIdx)
+		T.fPut (B01_Table,6,'Altered #6',n_OuterIdx,n_InnerIdx)
+
+	end.repeat
+
+;	-----------------------------------------------------
+;	AND reDisplay fields from records 1,1 2,2 3,3 and 4,4
+;	-----------------------------------------------------
+	repeat.for n_OuterIdx,1,4
+		n_InnerIdx = n_OuterIdx 
+		T.rGET (B01_Table,n_OuterIdx,n_InnerIdx) 
+		$Call X_2_DisplayB01TableRow
+	end.repeat
+
+;	--------
+;	Continue
+;	--------
+	$Call X_3_UserResponse
+
+END.SUB B_1_2_Test
+
+;-----------------------------------------------------------------------
+;	This routine displays A01_Table values 
+;-----------------------------------------------------------------------
+BEGIN.SUB X_1_DisplayA01TableRow
+
+	display	 c_LightYellowFG,  {A01_Record_NO,'##9'},	' '\ 
+			,c_MagentaFG,		A01_1_number,			','\
+			,c_CyanFG,		   {A01_2_word,1,10},		','\
+			,c_MagentaFG,		A01_3_number,			','\
+			,c_CyanFG,		   {A01_4_word,1,10},		','\
+			,c_MagentaFG,		A01_5_number,			','\
+			,c_CyanFG,		   {A01_6_word,1,10},LF
+
+END.SUB X_1_DisplayA01TableRow
+
+;-----------------------------------------------------------------------
+;	This routine displays B01_Table values 
+;-----------------------------------------------------------------------
+BEGIN.SUB X_2_DisplayB01TableRow
+
+	display	 c_LightYellowFG,  {n_OuterIdx,'##9'},		' '\
+							  ,{n_InnerIdx,'##9'},		' '\ 
+			,c_MagentaFG,		A01_1_number,			','\
+			,c_CyanFG,		   {A01_2_word,1,10},		','\
+			,c_MagentaFG,		A01_3_number,			','\
+			,c_CyanFG,		   {A01_4_word,1,10},		','\
+			,c_MagentaFG,		A01_5_number,			','\
+			,c_CyanFG,		   {A01_6_word,1,10},LF
+
+END.SUB X_2_DisplayB01TableRow
+
+;-----------------------------------------------------------------------
+;	Get User Response
+;-----------------------------------------------------------------------
+BEGIN.SUB X_3_UserResponse
+
+	display c_CyanFG,"Press <ENTER> to continue"
+	acceptline w_Response
+	display.line
+
+END.SUB X_3_UserResponse
+

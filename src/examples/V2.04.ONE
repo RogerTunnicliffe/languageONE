@@ -1,0 +1,169 @@
+%include 'include/BEGIN.PROGRAM'
+;
+;	Demonstrating (I)nter (P)rogram (C)ommunication
+;	This is a client that will send a message to the Server
+;
+;	Refer to VERSION.HISTORY for...well...version history
+
+;	BEGIN.SYNONYMS **************************************
+;		$.	:	WORDS.  
+;		@.	:	INTEGERS.  
+;		#.	:	NUMBERS.  
+;		f.	:	FILES.
+;		xT.	:	XTABLES. 
+;	END.SYNONYMS ****************************************
+
+;	==========================================================================
+;	This program has been taken up into the languageONE system and is provided
+;	as the languageONE GUI make utility 'GUI-makeONE'
+;	==========================================================================
+
+;=======================================================================
+;		  PROGRAM DATA
+;=======================================================================	      
+
+;-----------------------------------------------------------------------
+;		DICTIONARY
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.DICTIONARY'
+
+	insertword w_ListeningPortNo,	05,''
+	insertword w_SendingPortNo,		05,''
+	insertword w_Response,			01,''
+	insertword w_Msg,				80,''
+	insertword w_Exit,				04,''
+	
+%include 'include/END.DICTIONARY'
+
+;-----------------------------------------------------------------------
+;		MATRIX
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.MATRIX'
+
+  ; Common Counters
+	INSERTNUMBER I,					0,'999999'
+	INSERTNUMBER J,					0,'999999'
+	INSERTNUMBER K,					0,'999999'
+
+	insertnumber b_keyPressed,		c_FALSE
+		 %define ENTER	0
+		 %define ESCAPE	27
+		 %define NULL	99
+		 
+%include 'include/END.MATRIX'
+
+;-----------------------------------------------------------------------
+;		FILES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.FILES'
+%include 'include/END.FILES'
+
+;-----------------------------------------------------------------------
+;		TABLES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.TABLES'
+%include 'include/END.TABLES'
+
+;=======================================================================
+;		PROGRAM INSTRUCTIONS
+;		Mainline  
+;=======================================================================
+%include 'include/BEGIN.INSTRUCTIONS'
+	
+	$Call A_1_Initial
+	
+	repeat.while b_keyPressed != ESCAPE
+		$Call B_1_Process
+	end.repeat
+	
+	$Call Z_1_Finalise
+
+%include 'include/END.INSTRUCTIONS'
+%include 'include/END.PROGRAM'      
+
+;=======================================================================
+;		PROGRAM PROCEDURES
+;=======================================================================
+
+;=======================================================================
+;		INITIALISATION
+;=======================================================================
+BEGIN.SUB A_1_Initial
+
+	display c_ClearScreen
+	display.at 01,01,"Enter Listening Port No.:"
+	display.at 02,01,"Enter Sending Port No...:"
+	
+	accept.at  01,27,w_ListeningPortNo
+	accept.at  02,27,w_SendingPortNo
+
+	display.at 03,01,"(S)end; (R)ecieve.......:"	
+	I = 5
+	
+END.SUB A_1_Initial
+
+;-----------------------------------------------------------------------
+;		Process
+;-----------------------------------------------------------------------
+BEGIN.SUB B_1_Process
+
+;	--------------------
+;	Sending or Recieving
+;	--------------------
+	accept.at  03,27,w_Response
+	b_keyPressed = RETURN_CODE
+	if b_keyPressed = ESCAPE
+		exit.sub B_1_Process
+	end.if
+	$.uppercase w_Response
+	
+;	-------
+;	Sending
+;	-------
+	if w_Response = 'S'
+		
+		repeat.while b_keyPressed != ESCAPE								; ESCAPE to terminate loop
+		
+			w_Msg = spaces(1)											; Clear the message
+			display.at 04,01,w_Msg										; and display it
+			
+			accept.at 04,01,w_Msg										; Now get the message
+			b_keyPressed = RETURN_CODE									; and grab and escape code
+			if b_keyPressed = ESCAPE									; If ESCAPE then
+				b_keyPressed = NULL										;	reset it to null
+				exit.sub B_1_Process									;	and exit the process
+			else														; else
+				www.SendMsg "127.0.0.1",w_SendingPortNo,w_Msg			; send the message
+			end.if
+			
+		end.repeat 
+		
+	else
+;	---------
+;	Receiving
+;	---------
+		w_Msg = spaces(1)
+	
+		repeat.while w_Msg != "EXIT"									; Will receive an 'exit' from sending program
+			www.RecvMsg "127.0.0.1",w_ListeningPortNo,w_Msg				; so listen
+			
+			w_Exit = w_Msg												; grab the 1st 4 characters of the message
+			$.uppercase w_Exit											; uppercase for simplicity
+			if w_Exit = 'EXIT'											; if we received an exit
+				exit.sub B_1_Process									;	then exit the routine
+			end.if
+			
+			I = I + 1													; Go to the next line								
+			display.at I,01,w_Msg										; and display it
+			
+		end.repeat 
+
+	end.if
+	
+END.SUB B_1_Process
+
+;=======================================================================
+;	FINALISATION
+;=======================================================================
+BEGIN.SUB Z_1_Finalise	
+END.SUB Z_1_Finalise

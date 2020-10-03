@@ -1,0 +1,207 @@
+%include 'include/BEGIN.PROGRAM'
+
+;	Refer to VERSION.HISTORY for...well...version history
+
+;	DEVELOPED THE QUICKSORT ALGORYTHM IN languageONE
+;	Man is it slow.
+
+;	BEGIN.SYNONYMS **************************************
+;		$.	:	WORDS.  
+;		@.	:	INTEGERS.  
+;		#.	:	NUMBERS.  
+;		f.	:	FILES. 
+;		xT.	:	XTABLES. 
+;	END.SYNONYMS ****************************************
+
+;=======================================================================
+;		PROGRAM DATA
+;=======================================================================	      
+;-----------------------------------------------------------------------
+;		CONSTANTS
+;-----------------------------------------------------------------------
+
+;-----------------------------------------------------------------------
+;		DICTIONARY
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.DICTIONARY'
+%include 'include/END.DICTIONARY'
+
+;-----------------------------------------------------------------------
+;		MATRIX
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.MATRIX'
+
+	insertnumber StartSeconds,		0,'99999999999999999999999999'
+	insertnumber EndSeconds,		0,'99999999999999999999999999'
+	
+	insertnumber I,					0
+	insertnumber J,					0
+	insertnumber K,0
+	insertnumber L,0
+	insertnumber M,0
+	insertnumber N,0	
+	
+	insertnumber recursionLevel,	0,'99'
+	insertnumber left,				0,'9999999999'
+	insertnumber right,				0,'9999999999'
+	insertnumber pivotValue,		0,'9999999999'
+	insertnumber prevLeftIdx,		0,'9999999999'
+	insertnumber tmp,				0,'9999999999'
+
+%include 'include/END.MATRIX'
+
+;-----------------------------------------------------------------------
+;		FILES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.FILES'
+
+	BEGIN.RECORD 10,RandomNo_Record
+		insertnumber RandomNo,		0,'9999999999'
+	END.RECORD RandomNo_Record	
+		
+	BEGIN.RECORD 20,Recursion_Record
+		insertnumber leftIdx,		0,'9999999999'
+		insertnumber rightIdx,		0,'9999999999'
+	END.RECORD Recursion_Record	
+
+%include 'include/END.FILES'
+
+;-----------------------------------------------------------------------
+;		TABLES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.TABLES'	
+
+		%define RandomNo_Table_Size (10 * 1000000)
+	inserttable RandomNo_Table,RandomNo_Table_Size
+	
+		%define Recursion_Table_Size (20 * 64)
+	inserttable Recursion_Table,Recursion_Table_Size
+		
+%include 'include/END.TABLES'
+
+;-----------------------------------------------------------------------
+;		PROTOTYPES - MACROS
+;-----------------------------------------------------------------------
+
+	%imacro QuickSort 0
+		integers.add recursionLevel,1
+		Call QuickSort
+		integers.sub recursionLevel,1
+	%endmacro
+	
+	%imacro moveThem 0	
+		Call moveThem
+	%endmacro	
+	
+;=======================================================================
+;		PROGRAM INSTRUCTIONS
+;		Mainline  
+;=======================================================================
+%include 'include/BEGIN.INSTRUCTIONS'
+
+	$Call Initialise
+	
+	date.seconds(StartSeconds)
+	display.line StartSeconds
+
+	QuickSort
+	
+	date.seconds(EndSeconds)
+	display.line EndSeconds
+	
+	EndSeconds = EndSeconds - StartSeconds	
+	display 'Sort Time = ',{EndSeconds,'999'},' Seconds',LF	
+	
+	$Call DisplayThem
+
+%include 'include/END.INSTRUCTIONS'
+%include 'include/END.PROGRAM'      
+
+BEGIN.SUB Initialise
+
+	tables.Bind RandomNo_Table,RandomNo_Record,1000000
+	tables.Bind Recursion_Table,Recursion_Record,64
+ 
+	repeat.for I,1,1000000
+		numbers.random 2,J
+			RandomNo[I] = J
+	end.repeat
+  			
+	leftIdx[1] = 1
+	rightIdx[1] = 1000000
+	
+END.SUB Initialise
+
+BEGIN.SUB QuickSort
+
+	if recursionLevel > 64
+		display.line "Recursion depth exceeded"
+		terminate 1
+	end.if
+	left = leftIdx[recursionLevel] | right = rightIdx[recursionLevel]
+	
+	if  left >= right
+		exit.sub QuickSort
+	end.if
+
+	pivotValue = RandomNo[ [ left + right / 2 ] ]
+	prevLeftIdx = [moveThem]
+
+;	--------------
+;	Recursive Call
+;	--------------
+	left = leftIdx[recursionLevel] | right = rightIdx[recursionLevel]	
+	leftIdx[[recursionLevel + 1]] = left
+	rightIdx[[recursionLevel + 1]] = [prevLeftIdx - 1] 
+	QuickSort
+	
+;	--------------
+;	Recursive Call
+;	--------------
+	left = leftIdx[recursionLevel] | right = rightIdx[recursionLevel]	
+	leftIdx[[recursionLevel + 1]] = prevLeftIdx
+	rightIdx[[recursionLevel + 1]] = right
+	QuickSort
+
+END.SUB QuickSort
+
+
+BEGIN.FUNCTION moveThem,{integer:returnedIdx,0,'9999999'}
+
+	left = leftIdx[recursionLevel] | right = rightIdx[recursionLevel]
+	
+	repeat.while (left <= right)
+
+		I = RandomNo[left]
+		repeat.while (I < pivotValue)
+			left 	= left + 1
+			I 		= RandomNo[left]
+		end.repeat
+
+		I = RandomNo[right]
+		repeat.while (I > pivotValue)
+			right 	= right - 1
+			I 		= RandomNo[right]
+		end.repeat
+
+		if left <= right
+			tmp				= RandomNo[left]			
+			RandomNo[left]	= RandomNo[right]			
+			RandomNo[right]	= tmp			
+			left			= left + 1
+			right			= right - 1
+		end.if
+				
+	end.repeat
+	
+	returnedIdx = left
+
+END.FUNCTION moveThem
+
+BEGIN.SUB DisplayThem
+
+	repeat.for I,1000,1010
+		display.line RandomNo[I]
+	end.repeat
+	
+END.SUB Finalise

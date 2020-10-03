@@ -1,0 +1,61 @@
+#!/bin/bash
+#sudo mount V1.20-languageONE.tcz /mnt/tmp -t squashfs -o loop
+
+clear
+echo "Ensure that V1.15, V1.16 and GUI-makeONE have the c_TinyCore flag set"
+echo "Ensure that GUI-makeONE has been reassembled and the result moved to ./bin" 
+read -p "[ENTER] to continue" Response
+
+read -p "[ENTER] to continue - Removing previous build " Response
+rm ./TinyCore/usr/local/bin/* 
+rm ./TinyCore/usr/local/doc/languageONE/*
+rm ./TinyCore/usr/local/doc/languageONE/examples/*
+rm ./TinyCore/usr/local/include/languageONE/*
+rm ./TinyCore/usr/local/lib/*
+rm ./TinyCore/usr/local/lib/languageONE/src/*
+rm ./TinyCore/usr/local/share/languageONE/html/*
+rm ./TinyCoreBuild/languageONE.tar.gz.bfe
+
+read -p "[ENTER] to continue - Copying Source " Response
+./TinyCoreBuild/V1.20
+
+read -p "[ENTER] to continue - Stripping Debug Information " Response
+strip --strip-all ./TinyCore/usr/local/bin/l.GUI-makeONE
+strip --strip-all ./TinyCore/usr/local/bin/l.languageONE
+strip --strip-debug ./TinyCore/usr/local/lib/*.l
+
+read -p "[ENTER] to continue - setting permissions " Response
+chmod 755 ./TinyCore/usr/local/bin/*
+
+read -p "[ENTER] to continue - change user:group to root:root " Response
+sudo chown -R root:root ./TinyCore
+
+read -p "[ENTER] to continue - Creating squashfs " Response
+mksquashfs ./TinyCore languageONE.tcz 
+mv languageONE.tcz ./TinyCoreBuild
+
+read -p "[ENTER] to continue - change user:group to roger:roger " Response
+sudo chown -R roger:roger ./TinyCore
+
+read -p "[ENTER] to continue - Creating md5sum " Response
+md5sum ./TinyCoreBuild/languageONE.tcz > ./TinyCoreBuild/languageONE.tcz.md5.txt
+
+read -p "[ENTER] to continue - Creating languageONE.tcz.list " Response
+cd ./TinyCore
+find usr -not -type d > languageONE.tcz.list
+cd ../
+mv ./TinyCore/languageONE.tcz.list ./TinyCoreBuild
+
+read -p "[ENTER] to continue - Creating languageONE.tar.gz archive " Response
+cd ./TinyCoreBuild
+tar zcf languageONE.tar.gz languageONE.*
+
+read -p "[ENTER] to continue - BCRYPTing languageONE.tar.gz archive " Response
+rm languageONE.tar.gz.bfe
+echo "password=tinycore"
+bcrypt languageONE.tar.gz
+
+echo
+echo "Send the resulting languageONE.tar.gz.bfe file to tcesubmit@gmail.com"
+
+

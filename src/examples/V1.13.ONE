@@ -1,0 +1,390 @@
+%include 'include/BEGIN.PROGRAM'
+
+;	Refer to VERSION.HISTORY for...well...version history
+
+;	BEGIN.SYNONYMS **************************************
+;		$.	:	WORDS.  
+;		@.	:	INTEGERS.  
+;		#.	:	NUMBERS.  
+;		f.	:	FILES. 
+;		xT.	:	XTABLES. 
+;	END.SYNONYMS ****************************************
+
+;=======================================================================
+;		PROGRAM DATA
+;=======================================================================	      
+;-----------------------------------------------------------------------
+;		CONSTANTS
+;-----------------------------------------------------------------------
+%define c_RecordLength 1024
+%define c_NoOfLetters 10
+
+;-----------------------------------------------------------------------
+;		DICTIONARY
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.DICTIONARY'
+
+	insertword scr_Response,01,'?'
+	insertword letters,		10,'abcdefghij'
+	insertword buf,			64,' '
+							
+%include 'include/END.DICTIONARY'
+
+;-----------------------------------------------------------------------
+;		MATRIX
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.MATRIX'
+
+	insertnumber StartSeconds,0,'99999999999999999999999999'
+	insertnumber EndSeconds,0,'99999999999999999999999999'
+	
+	insertnumber I,0
+	insertnumber J,0
+	insertnumber K,0
+	insertnumber L,0
+	insertnumber M,0
+	insertnumber N,0	
+	
+%include 'include/END.MATRIX'
+
+;-----------------------------------------------------------------------
+;		FILES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.FILES'
+
+	INSERTFILE c_INDEXED,Gig_File_IN,'./GigFile.dat'
+		BEGIN.RECORD c_RecordLength,IN_Record
+			insertword IN_Field,1023,' '
+			insertword IN_LF,	001,0x0A
+		END.RECORD IN_Record	
+
+	INSERTFILE c_INDEXED,Gig_File_OUT,'./GigFile.srt'
+		BEGIN.RECORD c_RecordLength,OUT_Record
+			insertword OUT_Field,1023,' '
+			insertword OUT_LF,	001,0x0A
+		END.RECORD OUT_Record	
+		
+%include 'include/END.FILES'
+
+;-----------------------------------------------------------------------
+;		TABLES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.TABLES'	
+
+	insertXtable Gig_Table
+		
+%include 'include/END.TABLES'
+;=======================================================================
+;		PROGRAM INSTRUCTIONS
+;		Mainline  
+;=======================================================================
+%include 'include/BEGIN.INSTRUCTIONS'
+
+	$Call A_1_Initial
+	$Call B_1_Process		
+	$Call Z_1_Finalise
+
+%include 'include/END.INSTRUCTIONS'
+%include 'include/END.PROGRAM'      
+
+;=======================================================================
+;		PROGRAM PROCEDURES
+;=======================================================================
+;-----------------------------------------------------------------------
+;		INITIALISATION
+;-----------------------------------------------------------------------
+BEGIN.SUB A_1_Initial
+END.SUB A_1_Initial
+
+;-----------------------------------------------------------------------
+;		PROCESS
+;-----------------------------------------------------------------------
+BEGIN.SUB B_1_Process
+
+	$Call B_1_1_CreateFile
+	$Call B_1_2_LoadTable
+	$Call B_1_3_SortTable
+	$Call B_1_4_UnloadTable
+	$Call B_1_5_SearchTable
+
+END.SUB B_1_Process
+
+;-----------------------------------------------------------------------
+;		CREATE FILE
+;-----------------------------------------------------------------------
+BEGIN.SUB B_1_1_CreateFile
+
+;	-----------------------------------------
+;	USER INPUT
+;	-----------------------------------------
+	display c_ClearScreen
+	display ('Create 1Gig file - press <ENTER> to proceed ')
+	acceptline (scr_Response)
+	
+;	-----------------------------------------
+;	INITIALISE
+;	-----------------------------------------
+	f.open (Gig_File_IN,readwrite+beginning)
+	IN_Record_NO = 0	
+	date.seconds(StartSeconds)
+		
+;	-----------------------------------------
+;	PROCESS
+;	-----------------------------------------	
+	repeat.for (N,c_NoOfLetters,1)
+	  {IN_Field,6} = {letters,N,1}
+	  repeat.for (M,c_NoOfLetters,1)	
+		{IN_Field,5} = {letters,M,1}
+		repeat.for (L,c_NoOfLetters,1)	
+		  {IN_Field,4} = {letters,L,1}
+		  repeat.for (K,c_NoOfLetters,1)	
+			{IN_Field,3} = {letters,K,1}
+			repeat.for (J,c_NoOfLetters,1)
+			  {IN_Field,2} = {letters,J,1}
+			  repeat.for (I,c_NoOfLetters,1)
+				{IN_Field,1} = {letters,I,1}
+				IN_Record_NO = IN_Record_NO + 1
+				f.write (Gig_File_IN,IN_Record,IN_Record_NO)
+			  end.repeat 
+			end.repeat 
+		  end.repeat 
+		end.repeat
+	  end.repeat
+	end.repeat
+	
+;	-----------------------------------------
+;	FINALISE
+;	-----------------------------------------
+	date.seconds(EndSeconds)
+	EndSeconds = EndSeconds - StartSeconds	
+	display '  File creation Time = ',{EndSeconds,'999'},' Seconds',LF
+	display '  Records written =',{IN_Record_NO,'#,###,##9'},LF
+
+;	-----------------------------------------
+;	REMOVE RECORDS
+;	-----------------------------------------
+	f.delete (Gig_File_IN,IN_Record,1000000)	; aaaaaa
+	f.delete (Gig_File_IN,IN_Record,900000)		; aaaaab
+	f.delete (Gig_File_IN,IN_Record,800000)		; aaaaac
+
+;	-----------------------------------------
+;	SETUP SOME DUPLICATES
+;	-----------------------------------------	
+;	$.copy 'jessic',{IN_Field,1,6}
+	{IN_Field,1,6} = 'jessica'
+	f.write (Gig_File_IN,IN_Record,2)
+	f.write (Gig_File_IN,IN_Record,3)	
+	f.write (Gig_File_IN,IN_Record,4)
+
+	f.close (Gig_File_IN)
+	
+END.SUB B_1_1_CreateFile
+
+;-----------------------------------------------------------------------
+;		LOAD TABLE
+;-----------------------------------------------------------------------
+BEGIN.SUB B_1_2_LoadTable
+;	There are 3 different ways to load a table from a file.
+;
+;	NOTE:-
+;	------
+;	LINUX.	Where a file is accessed randomly via an index (or more precisely an offset), holes
+;			may exist in the file. That is:- records of null values where records have not as 
+;			yet been written. For example:-
+;				write 64byte record with an index of 1
+;				write 64byte record with an index of 3
+;				write 64byte record with an index of 5
+;			will produce a file of 320 bytes looking like:-
+;				Record 1 - Your record		
+;				Record 2 - All Nulls (0x00)
+;				Record 3 - Your record
+;				Record 4 - All Nulls (0x00)
+;				Record 5 - Your record
+;
+;	LANGUAGEONE.	Where a deletion request is received the record is marked as deleted by filling
+;					the record with all Nulls. To physically delete a record the file must be read
+;					and rewritten without the deleted records.
+;					To this effect when a file_STATUS of INVALIDKEY is detected, two results must
+;					be acknowledged:-
+;					1]	No record has ever existed - record will contain nulls
+;					2]	A deleted record has been returned - and can be restored if required	
+;	-----------------------------------------
+;	USER INPUT
+;	-----------------------------------------
+	display (LF,'Loading 1Gig file - press <ENTER> to proceed ')
+	acceptline (scr_Response)
+	
+;	-----------------------------------------
+;	INITIALISE
+;	-----------------------------------------
+	f.open (Gig_File_IN,read)
+	f.close (Gig_File_IN)
+;	xT.bind (Gig_Table,IN_Record,Gig_File_IN_SIZE)
+
+;	-----------------------------------------
+;	My Windows runs out of memeory so this is
+;	as big as I can make it
+;	-----------------------------------------
+	xT.bind (Gig_Table,IN_Record,930000*1033)			
+
+	date.seconds(StartSeconds)	
+;	-----------------------------------------
+;	1] LOAD XTABLE 
+;	-----------------------------------------
+;	Where c_TRUE/c_FALSE equals "include deleted records/holes" or not
+;	NOTE:-that when an indexed file is used this flag is meaningless
+;		as .load will swallow the file whole.
+;	------------------------------------------------------------------
+;	xT.load (Gig_Table,Gig_File_IN,c_TRUE)
+
+;	-----------------------------------------
+;	OPEN FILE
+;	-----------------------------------------
+	f.open (Gig_File_IN,read)
+	
+;	-----------------------------------------
+;	2] LOAD XTABLE
+;	-----------------------------------------
+;	The use of start/next will never return a hole/deleted record
+;	-------------------------------------------------------------
+	@.eq(IN_Record_NO,1)
+	f.start(Gig_File_IN,IN_Record)
+	repeat.while (Gig_File_IN_STATUS = 0)
+		@.add (Gig_Table_UBOUND,1)
+		
+		;	-----------------------------------------
+		;	My Windows runs out of memeory so this is
+		;	as big as I can make it
+		;	-----------------------------------------
+		if Gig_Table_UBOUND > 930000
+			exitRepeat = c_TRUE
+		end.if
+
+		xT.rput(Gig_Table,IN_Record_NO)
+		f.next(Gig_File_IN,IN_Record)
+	end.repeat
+
+;	-----------------------------------------
+;	3] LOAD XTABLE
+;	-----------------------------------------
+;	The logic of this code will include holes/deleted records
+;	that must then be dealt with accordingly
+;	---------------------------------------------------------
+;	@.eq(IN_Record_NO,1)
+;	f.read(Gig_File_IN,IN_Record,IN_Record_NO)
+;	
+;	repeat.while (Gig_File_IN_STATUS != EOF)
+;		if Gig_File_IN_STATUS != INVALIDKEY
+;			@.add (Gig_Table_UBOUND,1)
+;			xT.rput(Gig_Table,IN_Record_NO)
+;		end.if
+;		@.add (IN_Record_NO,1)
+;		f.read(Gig_File_IN,IN_Record,IN_Record_NO)
+;	end.repeat
+	
+;	-----------------------------------------
+;	CLOSE FILE
+;	-----------------------------------------	
+;	f.close (Gig_File_IN)
+	
+;	-----------------------------------------
+;	TIME TAKEN
+;	-----------------------------------------
+	date.seconds(EndSeconds)
+	EndSeconds = EndSeconds - StartSeconds	
+	display '  File Load Time = ',{EndSeconds,'999'},' Seconds',LF
+
+END.SUB B_1_2_LoadTable
+
+;-----------------------------------------------------------------------
+;		SORT THE TABLE
+;-----------------------------------------------------------------------
+BEGIN.SUB B_1_3_SortTable
+
+;	-----------------------------------------
+;	USER INPUT
+;	-----------------------------------------
+	display (LF,'Sort 1Gig file - press <ENTER> to proceed ')
+	acceptline (scr_Response)
+	date.seconds(StartSeconds)
+
+	xT.sort(Gig_Table,1,6)	
+
+;	-----------------------------------------mv 
+;	FINALISE
+;	-----------------------------------------
+	date.seconds(EndSeconds)	
+	EndSeconds = EndSeconds - StartSeconds	
+	display '  Table Sort Time = ',{EndSeconds,'999'},' Seconds',LF
+	
+END.SUB B_1_3_SortTable
+
+;-----------------------------------------------------------------------
+;		UNLOAD TABLE
+;-----------------------------------------------------------------------
+BEGIN.SUB B_1_4_UnloadTable
+
+	display (LF,'UnLoading 1Gig file - press <ENTER> to proceed ')
+	acceptline (scr_Response)
+	
+	date.seconds(StartSeconds)
+	xT.unload (Gig_Table,Gig_File_OUT,c_TRUE)
+	date.seconds(EndSeconds)
+
+	EndSeconds = EndSeconds - StartSeconds	
+	display '  File UnLoad Time = ',{EndSeconds,'999'},' Seconds',LF
+	
+END.SUB B_1_4_UnloadTable
+
+;-----------------------------------------------------------------------
+;		SEARCH TABLE
+;-----------------------------------------------------------------------
+BEGIN.SUB B_1_5_SearchTable
+
+;	-----------------------------------------
+;	USER INPUT
+;	-----------------------------------------
+	display (LF,'Search 1Gig file - press <ENTER> to proceed ')
+	acceptline (scr_Response)
+	date.seconds(StartSeconds)
+	
+;	-----------------------------------------
+;	PROCESS
+;	-----------------------------------------
+	xT.search (Gig_Table,1,6,'jessic',I)
+
+;	-----------------------------------------
+;	FINALISE
+;	-----------------------------------------
+	date.seconds(EndSeconds)	
+	EndSeconds = EndSeconds - StartSeconds	
+	display '  Table Search Time = ',{EndSeconds,'999'},' Seconds',LF
+
+	if Gig_Table_STATUS < INVALIDKEY
+		display '  Found ',{IN_Field,1,6},' in slot ',I,LF
+		repeat _01
+			I = I + 1	
+			xT.rget(Gig_Table,I)
+			if Gig_Table_STATUS != 0 
+				exit.repeat _01
+			else
+				if {IN_Field,1,6} = 'jessic'
+					display '  Found ',{IN_Field,1,6},' in slot ',I,LF
+				else
+					exit.repeat _01
+				end.if
+			end.if
+		end.repeat _01
+	else
+		display 'Key NOT found',LF
+	end.if
+	
+	display.line	
+
+END.SUB B_1_5_SearchTable
+
+;-----------------------------------------------------------------------
+;		FINALISATION
+;-----------------------------------------------------------------------
+BEGIN.SUB Z_1_Finalise
+END.SUB Z_1_Finalise

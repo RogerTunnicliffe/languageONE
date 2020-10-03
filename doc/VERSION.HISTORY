@@ -1,0 +1,995 @@
+;	Version history has been removed from the source members and located
+;	here.
+;	--------------------------------------------------------------------
+
+;	LANGUAGEONE V2.13
+
+;	NEW
+;	---
+;	1] - Enhancements for Windows debugging
+;		 Coding and exporting Global symbols
+;	
+;	2] - Developed LCURSES.PKG - written in raw languageONE - contains the following routines
+;
+;		lcurses.HLine
+;		lcurses.VLine
+;		lcurses.Box
+;		lcurses.MenuItems
+;		lcurses.Menu
+;		lcurses.Call
+;		
+;		a) Modified STDIO.LIB to return RETURN/FUNCTIONKEYS/ALT/ARROWS/ESCAPE/BACKSPACE/NULL
+;		b) RETURN/FUNCTIONKEYS/ALT/ARROWS/ESCAPE/BACKSPACE/NULL available thru CONSTANTS.INC	
+;		c) Renamed the following fields for clarity
+;			c_LeftMiddle	-> c_MiddleLeft
+;			c_RightMiddle	-> c_MiddleRight
+;			c_BottomMiddle	-> c_MiddleBottom
+;			c_TopMiddle		-> c_MiddleTop
+;		d) Added
+;			c_HideCursor
+;			c_ShowCursor
+;
+;	3] - Reworked the RUN macro
+;			Originally used to run a batch program (with redirected stdin/stdout/stderr) has now 
+;			been enhanced to run an interactive shell
+;			The RUN macro counts the number of paramaters and calls _RUN_INTERACTIVE if passed 1
+;			parameter and _RUN_BATCH if passed 2 parameters.
+
+;	LANGUAGEONE V2.12
+
+;	NEW
+;	---
+;	1] - this is a "tuning" release. Identifying a few bottle necks and speeding things up.
+;	2] - MAJOR restructuring of the reWriter
+
+;	MODIFIED
+;	--------
+;	0]	Correct bug in reWriter when INSERTNUMBER does not have a picture
+;	0]	Correct bug in reWriter (synonyms) introduced when restructured
+;	0]  Corrent bug in reWriter "%endmacro" being written when no macros created
+;	0]  Modified LMACROS.CPY to remove 4th parameter to XTABLES.SORT
+;	0]	Correct small bug in FILES.LIB, was reporting EOF with last line read
+;	1]	reWriter will now write the assembler code for a call to _MOVESTR when fields are
+;			equal length
+;	2] 	COMMON.LIB
+;		_RANDOM,_CMPSTR,_MOVESTR
+;	3]	XTABLES.LIB
+;		_FROMRECORD (rput) removed code to inc UPPERBOUNDARY. Do it in the application
+;	4]  TABLES.LIB - remove INVALID KEY check in fGET if filed has nulls
+;	5]	Correct small error in WORDS.LIB where the destination is qualified but not validated
+;	6]	Quaranteened the use of the continuation character "\" to "raw" code only
+
+;	MODIFIED - WINDOWS
+;	--------
+;	1]	IMACROS.CPY (As used by w_XTABLES.LIB)
+;		$w_getmem - Changed "GetProcessHeap" (Address of Process Heap) to "HeapCreate" (Address of outside of process heap)
+;		to allow large XTables to be defines (> 1M)
+
+
+;	LANGUAGEONE V2.11
+
+;	NEW
+;	---
+;	0] - Implemented the new DATE.TIMER (Returns seconds/milliseconds)
+;	1] - Implemented the QuickSort algorythm in TABLES.LIB
+;	2] - Implemented the QuickSort algorythm in XTABLES.LIB
+;	3] - Implemented the QuickSort algorythm in w_XTABLES.LIB
+;	4] - Tuned the SORTS and am getting a really good time now.
+;		 It seems that "repe cmpsb" is deathly slow so have written _CMPSTR (3 * faster)
+;		 Sort for XTABLES will now beat a JAVA sort while ARRAY.SORT will sort 
+;			1M integers in .09 second
+
+;	LANGUAGEONE V2.10
+
+;	NEW
+;	---
+;	1] - Developed the QuickSort algorythm
+;	2] - Created the ARRAY.LIB module (and its associated commands)
+
+;	MODIFIED
+;	--------
+;	0] Restructured the reWriter
+;	1] Correct a bug in the reWriter introduced in V2.09 restructure
+;	2] Correct a bug in the reWriter - seems to have been there for a long time
+;	3] Correct a bug in the reWriter - found when TEST is part of a dataname
+;	4] Moved the BIND processing in the reWriter to the 1st pass
+;	5] Corrected the reWriter in looking for %DEFINE (added %IDEFINE & %ASSIGN)
+;	6] Modified the reWriter to allow for Arrays.If
+;	7] Removed from reWriter - V2.07-New-Point3 ($IF quaranteen)
+
+
+
+;	LANGUAGEONE V2.09
+
+;	NEW
+;	---
+;	1]	Allowed Functions to be coded inside of square brackets
+;		ie 	display.line [CompoundInterest(1500,{{43,'.099'}},4,6)]
+;		ie if [ [ CompoundInterest 1500,{{43,'.099'}},4,6 ] * 2 ] = [ 1938.8368 * 2 ]
+
+;	MODIFIED
+;	--------
+;	1] Correct a bug in the reWriter where datanames in the Matrix were not being recognised 
+
+;	LANGUAGEONE V2.08
+
+;	NEW
+;	---
+;       This version brings nothing new but gives an example of how to code complex
+;		compound if statements
+
+;	MODIFIED
+;	--------
+;		Nil
+
+;	LANGUAGEONE V2.07
+
+;	NEW
+;	---
+;   1]	Added labels during reWriting to enhance debugging.
+;   2]	Expended the use of Synonyms so that you can create aliases of datanames
+;		was enhanced to allow dataname ALIAS's. Synonyms were the logical
+;		place to fit this in. By making Synonyms fit Alias's processing
+;		the original code was greatly improved (Shrunk). It was probably
+;		badly inplimented in the 1st place.
+;	3]	Quaranteened "$IF" as a macro name to allow the coding of functions that can
+;		be passed parameters. A "side effect" of this process is that macros are not
+;		fully checked for end construct errors -  a small price to pay"
+
+;	MODIFIED
+;	--------
+;	1] Correct small error in reWriter where split lines were being incorrected processed
+;	2] Corrected the manual in regard to .WHEN statements
+
+
+;	LANGUAGEONE V2.06
+;       This version brings nothing new but is used to detect bugs (particularly
+;       with tables and the cooked version of indexed elements). No bugs were actually
+;       detected.
+;       The application is a Backgammon game and in no way is a finished application.
+;       It is in itself quite buggy but only really exists to perform the testing
+;       done for LanguageONE
+;
+;	NEW
+;	---
+;       Nothing
+;	MODIFIED
+;	--------
+;       Nothing
+
+
+;	LANGUAGEONE V2.05
+;
+;	NEW
+;	---
+;	1] Introduced String To Record conversions
+;		WORDS.StringToRecord
+;		WORDS.RecordToString
+;
+;	MODIFIED
+;	--------
+;	1] WWW.LIB 			: Allow for literal in Open and Close
+;	2] WWW.LIB 			: SendMsg & RecvMsg were rewritten to use UDP and not TCP
+;	3] WWW.LIB 			: Added a response when the program was asked to terminate
+;	4] IMACROS.CPY		: Moded $toRecord and $fromRecord to have their own exits 
+;	5] XTABLES.LIB		: Moded such that reading from a table rGet/fGet will set invalid status 
+;	   TABLES.LIB		: 	and return record. Writting fPut/fPut will always set record to live
+;	6] XTABLES.LIB		: Fixed a cut & paste error. jmp _FGET_EXIT in _FPUT routine
+;	   TABLES.LIB		: 	""			""			""			""			""
+;	7] XTABLES.LIB		: ** TO BE DONE **
+;	   TABLES.LIB		: Change sort and search to use same parameter: start position and no of chars
+;	8] languageONE.asm	: fix small error in the reWriter
+;	9] COMMON.LIB		: fixed _ENVIRONMENT. It was failing
+:
+;  10] WINDOWS			: Quite a few changes here including
+;						: Align Stack prior to any system calls
+;						: w_WWW.LIB corrections
+;						: Have swapped to PellesC for linking/libraries as GOLINK was producing
+;						: incorrect code. This also has allowed the production of a library rather
+;						: individual .obj modules
+
+
+;	LANGUAGEONE V2.04
+;
+;	NEW
+;	---
+;	1] Introduced (I)nter (P)rocess (C)ommunication via WWW.SendMsg and WWW.RecvMsg
+
+
+;	LANGUAGEONE V2.03
+;
+;	NEW
+;	---
+;	1] Introduced File and Record Locking
+;		included General improvements to FILES.LIB
+;
+;	MODIFIED
+;	--------
+;	1] FILES.LIB : READ error when checking deleted records (failed on Indexed records)
+;
+;	2] FILES.Open : Correct open error for shared access (Windows version)
+;
+;	3] Moded the reWriter so that XTABLE_UBOUND is checked/incremented from an infered fput
+;
+;	4] Fixed problems with XTABLES
+;		a) .SORT:One of those "How did it ever work in the 1st place" moments
+;
+;		b) .FPUT:Needs to set the Live/Deleted flag to live
+;
+;		c) .SEARCH/_DUPLICATES - pretty much reWritten
+
+
+;	LANGUAGEONE V2.02
+;
+;	MODIFIED
+;	--------
+;	1] WWW.LIB has been modified in that a ResponseField formatted by a POST or GET Callback
+;		routine will be passed directly back to a browser. This is enabled by initialising
+;		RETURN_CODE to the length of the ResponseField. V2.02.ONE demonstrates a Data Entry
+;		style of processing making use of this new functionality.
+;
+;	2] The languageONE reWriter has been modified so that {NUMBER = ALPHA} is correctly infered
+;
+;	3] XTABLES.Delete has an added flag to move NULLs to the record or not
+;
+;	4] The system field "record_LENGTH" has been redefined as "WRITE" Only
+;
+;	5] Correct small error in the languageONE reWriter where not identifying fixed point numbers 
+;
+;	6] Correct small error in NUMBERS.LIB. J = "aaa" where J has no picture caused a coredump
+;
+;	SPECIAL NOTE:-Porting of languageONE to OSX has been abandoned. The information available
+;	to enable the port is negligible. The proprietory nature of Apple products also makes the
+;	port next to impossible. We will all have to live in the Linux/Windows world.
+
+
+;	LANGUAGEONE V2.01
+;
+;		NEW
+;		---
+;		1] Involves some internal structure changes prior to porting to OSX. 
+;			These changes have brought about a few syntax changes (probably for the better)
+;
+;		Compound Decisions and Dot Commands
+;
+;			.IF 1 = 1
+;			.or 2 = 2
+;			.end
+;				Do Something
+;			END.IF
+;
+;			.WHEN 1 = 1
+;			.and 2 = 2
+;			.end
+;				Do Something
+;			WEND
+;
+;		Loop Exits
+;
+;			exitRepeat = c_TRUE
+;
+;
+;		MODIFIED
+;		--------
+;		1] Correct error in XTABLES[unload]
+
+
+;	LANGUAGEONE V2.00
+;
+;		This release represents the merging of the code following the porting to Windows
+;
+;		NEW
+;		---
+;		1] Integers.And  (Destination,Source)	
+;		2] Integers.Or 	 (Destination,Source)	
+;		3] Integers.Xor  (Destination,Source)
+;		4] Numbers.Random(Destination) - Returns random number between 0 and 65,536 	
+;
+;		MODIFIED - bugs or changes that enable the Linux/Windows code to be the same
+;		--------
+;		1] Bug when working with CSV files. Not sure how it ever worked.
+;			Also redefined CSV files to only allow a LF to terminate each line
+;		2] Correct error in TABLES.sort
+;		3] Correct error in XTABLES.unload when setting IncludeDeletedRecords to TRUE
+;		4] Restructured WWW.LIB. 
+;		5] Fixed bug in RUN command
+;		6] Fix error reporting in WAIT command
+;		7] Revamped RUN processing to return a handle for STDOUT and STDERR of the child process
+
+
+;	LANGUAGEONE V1.25
+;		NEW
+;		---
+;		1]	This release contains no new features but the internals of the system
+;			have been improved,and the code has been cleaned a little. Most importantly
+;			I have gone top to bottom of the manual and hopefully is a lot better
+;			now. 
+;			In addition, languageONE.ASM can now reWRITE itself in debug mode. 
+;			This release preceeds the porting of languageONE to Microsoft Windows 
+;
+;		MODIFIED
+;		--------
+;		2] I have renamed the "TRANSLATOR" in documentation to "reWRITER" to more 
+;			accurately describe its purpose in the languageONE ecosystem.
+;		3] %define
+;			Brackets may now be used when defining constants
+;		4] Small error in TABLES.LIB when calling the search routine.
+;			rdx was not being cleared prior to a divide 
+
+
+;	LANGUAGEONE V1.24
+;		NEW
+;		---
+;		1] Following V1.22 that introduced field level table access
+;			languageONE will now be able to INFER the access thereby
+;				allowing a more familiar syntax
+;			Int[1,2] = Int[2,3] + Int[3,4]
+;
+;		MODIFIED
+;		--------
+;		2] Renamed '@spaces' to 'spaces'
+;		3] Weird one in the fact that I have never found it. When copying a longer field
+;			to a shorter one, Words.o would overrun the destination
+;		4] Small error that restricted the "Exiting SubRoutine" debug message
+;		5] Small error where w_FP_Picture was not enclosed in quotes
+;		6] Small error in REPEAT.FOR n1,n2,n3 where n1 and n2 begin equal
+;		7] Nested functions were not returning the correct result
+;		8] Reversed the fields in WORDS.LENGTH to be more standard-ish
+;			old WORDS.LENGTH Integer,Word
+;			to	WORDS.LENGTH Word,Integer 
+;
+;		** DEFERRED **
+;		1] languageONE will now handle the '\' backslash continuation character
+;			This is because as languageONE becomes more able it stretches the 
+;			capabilities of NASM
+;		** DEFERRED **
+;
+
+
+;	LANGUAGEONE V1.23
+;		NEW
+;		---
+;		1] Expanded the use of square brackets to denote Fixed Point precedents.
+;			A = [[[B + 2.34 + 3.45] / 3] + 1.23] * [5.67 + [C * 2.34]]
+;				or use where Fixed Point numbers are used
+;			NOTE:- Cannot be used following a WHEN statement
+;
+;		MODIFIED
+;		--------
+;		1] Corrected Fixed Point number processing where the line split 
+;			character "|" is used
+
+
+
+;	LANGUAGEONE V1.22
+;		NEW
+;		---
+;		1] Develop access to tables/xtables at a field level
+;
+;		MODIFIED
+;		--------
+;		1] Correct error in moving number to word. Word length was being reset
+;			and add validation if destination is shorter than source
+;		2] Correct error in integer precedence. Detecting Square brackets in quotes
+;		3] Modify the translator to retain bracketing of a NASM directive
+;
+
+
+;	LANGUAGEONE V1.21
+;		NEW
+;		---
+;		1] Introduced the FILES.RENAME keyword
+;	`	2] Introduced the FILES.REMOVE keyword
+;		3] Introduced square brackets to denote integer precedents.
+;			A = [[[B + 2 + 3] / 3] + 123] * [5 + [C * 2]]
+;				or use where integers are used
+;			NOTE:- Cannot be used following a WHEN statement
+;
+;		MODIFIED
+;		--------
+;		1] Corrected small bug in the translator where an IF or REPEAT began in the 1st column
+;		2] Fix incorrect assessment of RETURN_CODE in FILES.COPY routine
+;		3] Added Simple Debug to Functions. ie BEGIN/END.FUNCTION,? will produce debug message
+;		4] Updated the Manual. It's still a bit flacky but at present it's more for me to 
+;			refer to when I have forgotten how something should be coded
+;
+;	--------------------------------------------------------------------
+;	LANGUAGEONE V1.20
+;		NEW
+;		---
+;		1] Introduced languageONE.a, an archive of all the object modules
+;			link.sh has been modified to comply with the newer way of linking
+;		2] New keyword FILES.COPY (file1,file2) - copy one complete file to another
+;		3] New keyword WORDS.LENGTH (len,Word) - returns length of word
+;
+;		MODIFIED
+;		--------
+;		1] Small error in translator when inferring dictionary words
+;		2] link.sh creating TinyCore version becomes easier
+;		3] Corrected an error with the RUN keyword 
+;
+;		3] Tailoring to suit INSIGHT GUI for GDB Debugging
+;			a) CALL keyword replaced with $CALL
+;			b) Moved EOF,INVALIDKEY and DUPLICATES definitions 
+;				from FILES.INC to BEGIN.DICTIONARY
+;			c) Fix small bug in translator where in debug mode blank line were
+;				not being removed
+;			d) altered translator to provide a stop before 'begin.assembler'
+;
+;	--------------------------------------------------------------------
+;	LANGUAGEONE V1.19 
+;		NEW
+;		---
+;		1] Created new filetype of c_DIRECTORY
+;			Directories can now be read as if they were files.
+;			Records are not pertinant for this. Just code a single field.
+;				insertfile c_DIRECTORY,IN_DIR,'/home/roger/_dev1/source/languageONE'
+;				insertword fileNames,	255,''
+;				files.open IN_DIR
+;				files.read IN_DIR,receivingField
+;				files.close IN_DIR
+;
+;		MODIFIED
+;		--------
+;		1] Extended the system defined fields in languageONE (translator)
+;			a)	The filename itself because they can now be set dynamically 
+;				(I'm thinking they always could)
+;			b)	filename_HANDLE so the same definition can be used for different files
+;
+;	LANGUAGEONE V1.18 
+;		NEW
+;		---
+;		1] TERMINATE keyword introduced
+;			syntax is TERMINATE (return_code)
+;
+;		2] Where NASM sees a decimal point it assigns a value based on its 
+;			assumption that the program will use the Floating Point Unit.  
+;			LanguageONE does not in fact use the FPU but rather performs fixed 
+;			point arithmetic. To that end numbers with decimal places will now 
+;			be manipulated by the translator to allow for correct processing. Ie:-
+;
+;				insertnumber	Test1,		 -1.23456,'#,###,##9.99999-'
+;					will be transformed into 
+;	 			insertnumber	Test1,		  -123456,'#,###,##9.99999-'
+;					being as the decimal point is inferred in  LanguageONE
+;
+;			other examples are:-
+;
+;				insertnumber	Test2,			1.234,'##9.99999-'
+;					will be transformed into 
+;				insertnumber	Test2,		     123400  ,'##9.99999-'
+;
+;				insertnumber	Test4,			12345,'##9.99999-'
+;					will be transformed into 
+;				insertnumber	Test4,     1234500000,'##9.99999-'
+;
+;			In addition, where as a fixed point number used as a literal following 
+;			the begin.instructions directive needed a picture,The translator will
+;			now provide that picture such that you may code only the fixed point
+;			number. So, whereas a “raw” LanguageONE  program requires
+;				for example
+;
+;				numbers.add n_Destination,{12345,'99.999'}
+;					you may now code
+;				numbers.add n_Destination,12.345
+;
+;		*******
+;		3] INTEGERS.CALC keyword introduced
+;			syntax is INTEGERS.CALC integer = integer + integer - integer * integer / integer
+;		4] NUMBERS.CALC keyword introduced
+;			syntax is NUMBERS.CALC number = number + number - number * number / number
+;		******* Note:-with both integers/numbers.calc bracketting is unavailable at present
+;						and is earmarked for a later development
+;
+;		5] The languageONE translator was modified so that it may 'infer' the .calc keyword
+;			so that you may write integer1 = integer2 * integer3 / integer4 - integer5 
+;								or number1 =  number2 *  number3 /  number4 - number5
+;
+;		6] Although strictly not a languageONE function, an example is given on how to code
+;			NASM macros to assist in languageONE programming
+;
+;		MODIFIED
+;		--------
+;		1] Fixed small bug in languageONE (translator) with split line processing
+;		2] Fixed small bug in FILES.LIB. Read buffer was not being initialised
+;
+;	--------------------------------------------------------------------
+;	LANGUAGEONE V1.17 
+;		NEW
+;		---
+;		1]	Introduced SYNONYM's.
+;		The idea is to be able to dynamically rename macros if you find the 
+;		originals too verbose. Only macros following begin.program can have 
+;		synonyms. 
+;		Synonyms cannot be longer than the original macro name
+;		The Synonym directives must be coded as comments
+;
+;		NOTE:- You can of course rename the macros in LMACROS.CPY but this would
+;		then be a system wide change. Synonyms allow for more individual style 
+;		when coding.
+;		Synonyms should be coded between the BEGIN and END SYNONYMS directives.
+;		They comprise of a synonym (replace ?? with your own) and a KEYWORD (Macro)
+;		separated by a colon.
+
+;		BEGIN.SYNONYMS **************************************
+;			??	:	ACCEPTINE.
+;			??	:	ACCEPT.
+;			??	:	DISPLAY.
+;			f.	:	FILES.
+;			??	:	XTABLES.
+;			??	:	TABLES.
+;			??	:	DATE.
+;			$.	:	WORDS.  
+;			@.	:	INTEGERS.  
+;			#.	:	NUMBERS.  
+;			??	:	CURSOR 
+;			??	:	DISPLAY
+;			??	:	ACCEPTLINE 
+;		END.SYNONYMS ****************************************
+;		
+;		2]	Added a little bit of extra debugging 
+;		ie Code a second parameter to the BEGIN/END.SUB (I use ?) and the program
+;		will display Enter and Exit messages
+;
+;		MODIFIED
+;		--------
+;		1] rename the integer macros. - This is in preparation for the introduction
+;			of synonyms
+;			@set ---> integers.eq
+;			@add ---> integers.add
+;			@sub ---> integers.sub
+;			@mul ---> integers.mul
+;			@div ---> integers.div
+;			@toggle-> integers.toggle
+;
+;		2] Repackaged the TinyCore file structures to their request.
+;
+;		+ TinyCore
+;			+Usr
+;				+local
+;					+bin
+;					|	pre.sh							; commandline pre assemble tools
+;					|	assemble.sh						; commandline assemble script
+;					|	link.sh							; commandline link script
+;					|	makeONE.sh						; commandline make utility
+;					|	languageONE						; languageONE translator
+;					|	GUImakeONE						; executable
+;					|	GUImakeONE.sh					; GUI make utility
+;					+doc
+;					|	+languageONE
+;					|	|	+examples
+;					|	|		Demonstration programs (V0.01 thru V????)
+;					|	|	languageONE.html			: the manual
+;					|	|	languageONE.odt				: the manual
+;					|	|	languageONE.pdf				: the manual
+;					|	|	languageONE-LICENSE			: gnu general public license
+;					|	|	languageONE-VERSION.HISTORY	: this document
+;					+include
+;					|	+languageONE
+;					|		Macros (Keywords)			; BEGIN.* END.* *.CPY *.INC
+;					+lib
+;					|	+languageONE
+;					|		+src
+;					|			object Libraries		; *.LIB
+;					|			Templates				; *.ONE
+;					|			languageONE.ASM			; Translator
+;					|	*.o								; Object Files
+;					|	languageONE.a					; Archive
+;					+share
+;						+languageONE
+;							+html
+;								Screens and JPegs
+:
+;
+;	LANGUAGEONE V1.16 
+;	=========================================================================
+;	[Note that suffixes have dropped from this version on.]
+;	[There were no real changes other than architectural so 16A is followed by 16]
+;	[I try not to let that happen again]
+;
+;		NEW
+;		---
+;		1] This change included NO changes to languageONE itself. It was a restructuring
+;			of the filing system used to store the elements of the language
+;				
+;		+ languageONE
+;			pre.sh						; commandline pre assemble tools
+;			assemble.sh					; commandline assemble script
+;			link.sh						; commandline link script
+;			makeONE.sh					; commandline make utility
+;			GUImakeONE.sh				; GUI make utility
+;			|
+;			+-----ARCHIVE				: THE SOURCE FOR ALL PREVIOUS VERSIONS
+;			+-----bin					: LANGUAGEONE EXECUTABLES
+;			|		languageONE			: the translator
+;			|		GUI.makeONE			: the (GUI) make utility
+;			+-----doc					: DOCUMENTATION
+;			|		languageONE.html	: the manual
+;			|		languageONE.odt		: the manual
+;			|		languageONE.pdf		: the manual
+;			|		LICENSE				: gnu general public license
+;			|		README.MD			: github readme
+;			|		VERSION.HISTORY		: this document
+;			+-----html					; HTML SCREENS
+;			|		GUI-makeONE...		; GUI make utility screens
+;			|		V1-16a...			; demo program V1.16a screens
+;			+-----include				; LANGUAGEONE CORE COMPONENTS
+;			+-----jedit					; JEDIT CONFIG FILES FOR LANGUAGEONE
+;			+-----lib					: STATICALLY LINKED LANGUAGEONE LIBRARIES
+;			+-----src					: LANGUAGEONE DEMONSTRATION PROGRAMS
+;
+;		languageONE was also packaged for inclusion in TinyCore Linux
+;		The directory structures where altered for that version to suit
+;		TinyCores requirements and this required hard-coding some paths
+;		in V1.15 and V1.16 (GUI-makeONE)
+;
+;		MODIFIED
+;		--------
+;		1] Corrected small error in translator. Was changing commandline
+;			parameters to uppercase
+;		2] For better use with git
+;			Remove trailing letter in source name
+;		3] Corrected small error in V1.14.ONE where 'date' was used as variable name
+;			(It's a macro name)
+;
+;	--------------------------------------------------------------------
+;	LANGUAGEONE V1.16A
+;		NEW
+;		---
+;		1] Develop RUN macro. [_RUN (COMMON.o)]. 
+;		2] Develop WAIT macro
+;		3] Develop V1.16a.ONE (Real Web Online program) 
+;		4] Copy V1.16a.ONE to GUI.makeONE.ONE as languageONE's make utility
+;		5] Create bash GUImakeONE.sh to start GUI.makeONE and firefox (or your browser)
+;		6] Rename existing makeONE to makeONE.sh for clarity
+;		7] Update manual for GUI programs - should have been done in V1.15a
+;		8] Update manual for GUImakeONE make utility
+;
+;		MODIFIED
+;		--------
+;		1] Correct error in WWW.LIB. Enlarge buffer to 64K.
+;			Set write length to read length on response
+;		2] Correct error in REPEAT.IF when qualifying fields
+;			discovered in languageONE (translator)
+;		3] Correct errors in DATE routines (not sure how they ever worked !!!)
+;		4] added checking in languageONE (translator) for invalid input file
+
+;	--------------------------------------------------------------------
+;	LANGUAGEONE V1.15A
+;		NEW
+;		---
+;		1] Develop WWW.LIB - for online GUI programs or just plain HTML servers
+;		2] Develop V1.15a.ONE 
+
+;	--------------------------------------------------------------------
+;	LANGUAGEONE V1.14A
+;		NEW
+;		---
+;		1] Develop V1.14a.ONE to put languageONE thru its paces
+;		2] Introduced Line Drawing characters for terminal display 
+;		3] Introduce the ACCEPT.AT keyword to handle single character input
+;			to build words. You can then control the length of the input line
+;
+;		MODIFIED
+;		--------
+;		1A]Correct small error in languageONE translator which filled literals of spaces
+;			with commas
+;		1B]Correct small error in languageONE translator detecting continuation cgaracters
+;			in debug mode
+;		2] Correct small error in WORDS.pad. Padding 1 byte too many  
+;		3] Correct small error in XTABLES.unload. Need to create output file if it does
+;			not exist
+;		4] Modified XTABLES to return a "closest" record no after a search that returns
+;			an invalid key
+;		5] Correct with XTABLES.bind and passed size
+;		6] Amended XTABLES to return an EOF
+;		7] Correct error when coding "repeat.if FUNCTION"
+;		8] Removed the requirement for assembler to be coded within a sub routine
+;			The translator will no longer check for this
+;			Introduced the BEGIN.ASSEMBLER and END.ASSEMBLER directives.
+;			Assembler may now be coded anywhere following the BEGIN.INSTRUCTIONS
+;		9] Corrected error made evident when call a sub routine from a TEST statement
+;			Internal modifications to allow for nesting
+;	   10] Add 'cld' before $copyBytes  
+;
+
+;	--------------------------------------------------------------------
+;	LANGUAGEONE V1.13A
+;		NEW
+;		---
+;		1] Introduced the tables.search function
+;		2] Introduced the UBOUND field, to track the highest used table
+;			entry
+;		3] INTRODUCED XTABLES
+;		4] Added the .xml files for JEDIT
+;		5] Introduced a new file type 'c_INDEXED' for use with XTABLES
+;
+;		MODIFIED
+;		--------
+;		1] Reworked some of the macros for better understanding		
+;		2] Reworked the Shell Sort in V0.06/TABLES.LIB
+;		3] FILES.NEXT not returning the record no
+;		4] Restore the LIVE/DELETED flag (1st byte of file record) to 0x00
+;			Altered in V1.12a. Not sure why. 
+;		5] Correct small error in languageONE (Translator) that seemed to have creeped in.
+;			Split lines were not be handled correctly
+;		6] Corrected error when displaying a Matric number with a picture override
+;		7] Corrected overflow error in NUMBERS divide routine
+;		8] Added brace({}) count in languageONE translator
+;
+;	--------------------------------------------------------------------
+;	LANGUAGEONE V1.12A
+;		NEW
+;		---
+;		1] Introduced GUI Debugging using 'ddd'
+;			Refer to the manual for debugging a languageONE program
+;		2] Introduced the FILES.START and the FILES.NEXT keywords
+;			for random access files
+;		3] Introduced the tables.search function
+;
+;		MODIFIED
+;		--------
+;		1] Reworked all the macro for better results
+;		2] Corrected error in "makeONE" assembly script
+;		3] Modified the LIVE/DELETED flag (1st byte of file record) to be 0xFF
+;			rather than 0X00
+;		4] Modified FILES.o such that READ/WRITE/DELETE for files of records
+;			may or may not pass a 3rd parameter. It being the record No
+;			ie: files.read (File,Record,Record_No) will yield the same result
+;			as: @set(Record_No,1)
+;				files.read (File,Record)
+;		-----------------
+;		Personally, I have switched editors from Geany to JEdit.
+;		I have now included the following files in languageONE 
+;		distributions:-
+;			Providing syntax highlighting
+;				~/.jedit/modes/languageONE.xml
+;			Providing makeONE process via the use of the 'console' plugin
+;				~/.jedit/console/commando/makeONE.xml
+;			
+;	--------------------------------------------------------------------
+;	LANGUAGEONE V1.11A
+;		NEW
+;		---
+;		1] Completed the 1st draft of the languageONE manual
+;		2] Expanded the use of _IN to WHEN/_AND/_OR macros
+;		3] COMMON.o now includes he following date functions
+;			date.get
+;			date.datefromdays
+;			date.daysfromdate
+;			date.seconds
+;		4] Allow REPEAT.WHILE as synonym for REPEAT.IF
+;		5] Introduced boolean FUNCTIONS for use with
+;			IF, _OR, _AND, REPEAT.IF(WHILE),WHEN	
+;
+;		MODIFIED
+;		--------
+;		1] Altered the Assembler sub routine starting name characters
+;			from "@_" to "?", in order to free the @ sign for future
+;			use.
+;
+;	--------------------------------------------------------------------
+;	LANGUAGEONE V1.10A
+;		NEW
+;		---
+;		Developed L1_Translator
+;			This is a preprocessor that will grow to enhance languageONE
+;			beyond the capabilities of NASM
+;			1] Strip BRACKETS from MACRO parameters
+;				This allow languageONE to conform to what is most 
+;				common amongst programming languages.
+;			2]  Add commas where they may have been omitted
+;				ie.- if A = B must translate to if A,=,B
+;
+;		Introduced the '|' split line character.
+;			This will denote to the languageONE translator that there
+;			is more than one command on each line
+;
+;		CREATE MAKE file to run:-
+;			languageONE
+;			NASM
+;			LD
+;
+;		SYNTAX ALTERATIONS
+;			@OR  to _OR to better suit the new languageONE formatter
+;			@AND to _AND to better suit the new languageONE formatter
+; 
+;			Introduced a @TOGGLE() command.
+;			Will toggle a value between 0 (c_FALSE) and 1 (c_TRUE)
+;
+;			Introduced the _IN parameter for an IF statement
+;			ie:- IF "ROGER" _IN {"ROGER","JESSICA","KRYSTAL","TIFFANI"}
+;				An easy one realy cuz its just a compound if statement
+;				that looks a little nicer
+;
+;			Introduced the ERROR_CODE numeric field. It can be used within
+;			your program and will also be used to set the return code
+;			when your program terminates
+;
+;			Defined a requirement that assembler sub routine names must
+;			begin with '@_'
+;
+;			Completed the following equivalences in the DECISIONS.INC
+;			+-----------------------+-------+-------+-------+
+;			|Equals					| EQ	| =		|		|
+;			|isNOTEqualTo			| N_EQ	| !=	|		|
+;			|isLessThan				| LT	| <		|		|
+;			|isNOTLessThan 			| N_LT	| !<	|		|
+;			|isGreaterThanOREqualTo	|		| >=	| =>	|
+;			|isGreaterThan			| GT	| >		|		|					
+;			|isNOTGreaterThan		| N_GT	| !>	|		|
+;			|isLessThanOREqualTo	|		| <=	| =<	|
+;			+-----------------------+-------+-------+-------+
+;			NOTE:-	You may develop your own names for these comparitors 
+;					by editing the DECISIONS.INC file and reproducing
+;					the values under your own naming scheme
+;
+;			CLARIFICATION:
+;			-------------
+;			when using a when statement and coding the c_ALL parameter
+;			the else statement may not function as expected. It is best
+;			avoided at present time.
+;
+;			BUGS:
+;			-----
+;			words.o:
+;			Correct introduced error in the words.environment routine.
+;
+;			Corrected small error in _OR/_AND when used with 2 parameters
+;			under a when statement
+;
+;			FILES.o
+;			Corrected/Simplified OPEN function
+;
+;			Corrected the FILE read of a terminated record so that it does 
+;			NOT return the terminating character
+;			
+;			Added the field _ReadLength to File Control Block
+;				eg:-	FILES.READ IN_FILE,IN_RECORD
+;					 	if IN_FILE_ReadLength,=,0
+;
+;			Began coding a Trace function but have commented it out for a 
+;			later release as I am investigating a debugger for languageONE
+;
+;	--------------------------------------------------------------------
+;	LANGUAGEONE V1.00A
+;		NEW
+;		---
+;		Added FIXED POINT NUMERIC Pocessing
+;
+;	--------------------------------------------------------------------
+;	LANGUAGEONE V0.06A/B
+;		NEW
+;		---
+;		Add the SORT option to tables.o
+;
+;		This release brings the sort option to the tables.o module
+;		and additionally shows the path to the selection of SHELL
+;		sort as the sort type. It also assists in debugging languageONE
+;		in that 'a bit of code' is presented.
+;
+;		The program firstly presents a Bubble sort, a INSERTION sort
+;		and finally a SHELL sort. It is obvious from the counter
+;		displays that the SHELL sort is by far the quickest. (It is
+;		not the quickest sort known to man but carries the benefits
+;		of be coded easily and to sort 'in place' [no extra memory needed])
+;		Please refer to wikipedia for details on sorting algorithms.
+;			
+;		It should be noted that the gap(divisor) used in the SHELL sort
+;		may vary as to the quickest for a particular fileset so a 
+;		default of 1.3 is used in tables.o. A future release may allow
+;		this to be passed to tables.o but if the table size is unknown
+;		finding the best gap is not possible
+;
+;		MODIFIED
+;		--------
+;		Corrected the internal macro $SetupField
+;		Corrected bug in tables.o
+;		Corrected bug in END.SUB
+;
+;		Renamed Constant definitions (as of V0.04b)
+;			c_Constant EQU 1
+;				becomes
+;			%define c_Constant 1
+;			THIS will allow expressions to be used in constants.ie:-
+;				%define c_UpperBoundary 26*26*26*26
+;
+;		Allow for the psuedonyms
+;			(prior to V0.06a) 	isNOTLessThan
+;				(allow)				isGreaterThanOREqualTo
+;			(prior to V0.06a)	isNOTGreaterThan
+;				(allow)				isLessThaOREqualTo												
+;
+;		Correct documentation on size of integers.
+;
+;	--------------------------------------------------------------------
+;	LANGUAGEONE V0.05A
+;		NEW
+;		---
+;		Develop the TEST macros
+;
+;		MODIFIED
+;		--------
+;		Corrected the internal macro $SetupField
+;		Corrected bug in TABLES.o
+;
+;	--------------------------------------------------------------------
+;	LANGUAGEONE V0.04A
+;		NEW
+;		---
+;		Introduce Table/Array handling
+;		Introduced constants
+;		Demonstrate some assembler code
+;
+;	--------------------------------------------------------------------
+;	LANGUAGEONE V0.03A
+;		NEW
+;		---
+;		Putting languageONE into action
+;		This release comes with the 'filetypes.asm' from the Geany editor
+;		that will highlight language keywords
+;
+;	--------------------------------------------------------------------
+;	LANGUAGEONE V0.02A
+;		NEW
+;		---
+;		File Handling
+;
+;		Introduced the backslash "\" as a continuation character
+;		EXIT.SUB as per other exit statements
+;		display@ consolidates CURSOR/display
+;			CURSOR 20,12
+;			display c_Cursor,'Hello World'
+;		can now be coded as
+;	  	display@ 20,12, 'Hello World' -	Note thought that only one field 
+;										at a time can be displayed using
+;										display@
+;		ACCEPTLINE@ consolidates CURSOR/ACCEPTLINE
+;			CURSOR 20,12
+;			ACCEPTLINE w_Field
+;		can now be coded as
+;	 	ACCEPTLINE@ 20,12,w_Field -		Note thought that only one field 
+;										at a time can be displayed using
+;										display@
+;	
+;		MODIFIED
+;		--------
+;		Record Length has been moved from insertfile to BEGIN.RECORD
+;				(a no brainer really)
+;		Parameter 1 of insertfile has been redefined to better describe
+;		the file
+;		Which kinda reciprecated a rewrite of the files module. 
+;		REMOVED the need for loop LABELS ie. repeat {name}....end.repeat {name}
+;			becomes repeat....end.repeat
+;		Renamed endIF to end.IF for consistency with other end instructions
+;		ACCEPTLINE will now accept both Numeric and Alphanumeric fields
+;		languageONE will only recognise the number portion of a field
+;		entered incorrectly. ie:-
+;			ACCEPTLINE@ 02,03,w_Number
+;			if '9aa' is entered then the result will be 9
+;			if '5d3' is entered then the result will be 53			
+;
+;	--------------------------------------------------------------------
+;	LANGUAGEONE V0.01A
+;		NEW
+;		---
+;		Original Version
+;
+;		MODIFIED
+;		--------
+;		1]	Corrected constant c_LightGreeenFG to c_LightGreenFG		
+;		2]	Reworked call to $toEdited, and corrected error where a number is moved to {string,Start}
+;		3]  REMOVED the need to name loops. ie repeat.If {name},I,Equals,10
+;		4]	Small fix in words.o to fix error with the PAD function
+;
+;		5]	Renamed OPEN.DICTIONARY		to BEGIN.DICTIONARY
+;			Renamed CLOSE.DICTIONARY	to END.DICTIONARY
+;		6]	Renamed OPEN.MATRIX			to BEGIN.MATRIX
+;			Renamed CLOSE.MATRIX		to END.MATRIX
+;		7]	Renamed BEGIN ProcedureName	to BEGIN.SUB Procedure Name
+;			Renamed END ProcedureName	to END.SUB ProcedureName
+;		8]	Corrected error in NUMBERS.LIB:FROMEDITED
+;		9]  Document valid characters for words and NUMBERS
+
+
+

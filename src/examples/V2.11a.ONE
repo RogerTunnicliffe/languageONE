@@ -1,0 +1,93 @@
+%include 'include/BEGIN.PROGRAM'
+
+;	Refer to VERSION.HISTORY for...well...version history
+
+;=======================================================================
+;		PROGRAM DATA
+;=======================================================================
+
+;-----------------------------------------------------------------------
+;		CONSTANTS
+;-----------------------------------------------------------------------
+
+;-----------------------------------------------------------------------
+;		DICTIONARY
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.DICTIONARY'
+%include 'include/END.DICTIONARY'
+
+;-----------------------------------------------------------------------
+;		MATRIX
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.MATRIX'
+
+	insertnumber StartSeconds,		0,'99999999999999999999999999'
+	insertnumber EndSeconds,		0,'99999999999999999999999999'
+	
+	insertnumber I,					0,'999999'
+	insertnumber randNo,			0,'999999'
+
+	insertnumber seconds,			0,'99999999999999999'
+	insertnumber milliseconds,		0,'.999999'
+	
+%include 'include/END.MATRIX'
+
+;-----------------------------------------------------------------------
+;		FILES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.FILES'
+%include 'include/END.FILES'
+
+;-----------------------------------------------------------------------
+;		TABLES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.TABLES'	
+
+	insertArray _RandomNo,1000000
+	
+%include 'include/END.TABLES'
+	
+;=======================================================================
+;		PROGRAM INSTRUCTIONS
+;		Mainline  
+;=======================================================================
+%include 'include/BEGIN.INSTRUCTIONS'
+	
+	$Call Initialise
+
+	date.timer seconds,milliseconds
+	display "start=",seconds,milliseconds,LF
+	
+	Arrays.sort (_RandomNo)
+
+	date.timer seconds,milliseconds
+	display "stop= ",seconds,milliseconds,LF
+	
+	$Call DisplayThem
+	
+%include 'include/END.INSTRUCTIONS'
+%include 'include/END.PROGRAM'      
+
+BEGIN.SUB Initialise
+
+	display.line "Preparing the _Arrays - Please wait"
+	repeat.for I,0,999999
+		numbers.random 2,randNo
+		Arrays.Put _RandomNo,(I,randNo)
+	end.repeat
+	display.line "Sorting now"
+		
+END.SUB Initialise
+
+;-----------------------------------------------------------------------
+;		Display Them
+;-----------------------------------------------------------------------
+BEGIN.SUB DisplayThem
+
+	repeat.for I,100,119
+		Arrays.Get _RandomNo,(I,randNo)	
+		display.line randNo
+	end.repeat
+	
+END.SUB Finalise
+

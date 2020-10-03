@@ -1,0 +1,5 @@
+	[section .data]
+
+	insertnumber exitRepeat,c_FALSE
+	STOP		 dq 0
+	

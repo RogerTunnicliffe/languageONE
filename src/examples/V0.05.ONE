@@ -1,0 +1,483 @@
+%include 'include/BEGIN.PROGRAM'
+
+;	Refer to VERSION.HISTORY for...well...version history
+
+;	BEGIN.SYNONYMS **************************************
+;		$.	:	WORDS.  
+;		@.	:	INTEGERS.  
+;		#.	:	NUMBERS.  
+;	END.SYNONYMS ****************************************
+
+;=======================================================================
+;		  PROGRAM DATA
+;=======================================================================	      
+
+%include 'include/BEGIN.DICTIONARY'
+	insertword  TESTWORD,			   08, 'TestWord'
+	insertword  Char1,				   01, ' '
+	insertword	ErrorMessage,		   47, 'Error in languageONE. This is a languageONE bug'	
+%include 'include/END.DICTIONARY'
+
+%include 'include/BEGIN.MATRIX'
+	insertnumber w_3,					3, '9'
+	insertnumber w_123point45,		12345, '999.99'
+%include 'include/END.MATRIX'
+
+%include 'include/BEGIN.FILES'		
+%include 'include/END.FILES'
+
+%include 'include/BEGIN.TABLES'		
+%include 'include/END.TABLES'
+
+;=======================================================================
+;		PROGRAM INSTRUCTIONS
+;		Mainline  
+;=======================================================================
+%include 'include/BEGIN.INSTRUCTIONS'
+
+;	The 'TEST'  keyword  introduces  an  idea  that  is  common  amongst 
+;	programming languages. 	In COBOL it is EVALUATE, 
+;							In PASCAL it is CASE OF, 
+;							In C it is SWITCH/CASE, 
+;							In BASIC it is SELECT CASE etc etc.
+;	It  really is  just a nice way  to make decisions  without  the code 
+;	looking too cluttered.
+;	Keywords for a complete TEST statement are:-
+;		begin.test
+;		when
+;		wend
+;		END.test
+;	and keywords from the DECISIONS.o package that sit happily within
+;	the TEST construct are:-
+;	OTHERWISE - should be last statement in construct
+;		  .OR - simple OR
+;	     .AND - simple AND
+;
+;	begin.test %1 where
+;		%1 may be:-
+;			a Numeric Literal
+;			a Alphabetic Literal
+;			a Word from the Dictionary
+;			a Number from the Matrix
+;			the system constant c_TRUE
+;
+;	when %1,%2,[%3]
+;		when c_TRUE is coded in the begin.test keyword
+;			%1,%2,%3 take the form of the standard IF keyword
+;		else
+;			%1 = Comparison
+;			%2 = The thing to be compared
+;
+;	otherwise
+;		Is identical to the else in an IF construct
+;		NOTE:-else does not make sense when c_ALL is coded in the 
+;				begin.test keyword. The reults will be unpredictable.
+;
+;	END.test
+
+	$Call A_1_Test1
+	$Call A_2_Test2
+	$Call A_3_Test3
+	$Call A_4_Test4
+	$Call A_5_Test5
+
+%include 'include/END.INSTRUCTIONS'
+%include 'include/END.PROGRAM'      
+
+;-----------------------------------------------------------------------
+;		  Test 1A thru 1E
+;-----------------------------------------------------------------------
+begin.SUB A_1_Test1
+
+	display (c_ClearScreen,c_DefaultBG,c_CyanFG)
+	
+;	Test 1A
+	display (c_LightBlueFG, 'T1A-Alpha Literal to Alpha Literal, Non-Sensicle but will work',LF)
+	begin.test 'TestWord'
+	
+		when = 'TestWord'
+			display (c_CyanFG,spaces(5),'Alpha Literal Equals Alpha Literal',LF)
+		wend
+			
+		when = 'Somethingelse'
+			display (c_CyanFG,spaces(5),ErrorMessage,LF)
+		wend
+			
+		otherwise
+			display (c_CyanFG,spaces(5),ErrorMessage,LF)
+			
+	end.test
+	$Call GetUserInput
+	
+;	Test1B
+	display (c_LightBlueFG, 'T1B-Numeric Literal to Numeric Literal, Non-Sensicle but will work',LF)
+	begin.test 1
+	
+		when = 1
+			display (c_CyanFG,spaces(5),'Numeric Literal Equals Numeric Literal',LF)
+		wend
+			
+		when = 2
+			display (c_CyanFG,spaces(5),ErrorMessage,LF)
+		wend
+			
+		otherwise
+			display (c_CyanFG,spaces(5),ErrorMessage,LF)
+			
+	end.test
+	$Call GetUserInput
+
+;	Test 1C
+	display (c_LightBlueFG, 'T1C-Literal to Dictionary Word',LF)
+	begin.test 'TestWord'
+	
+		when = TESTWORD
+			display (c_CyanFG,spaces(5),'Literal Equals Dictionary WORD',LF)
+		wend
+		
+		when = Char1
+			display (c_CyanFG,spaces(5),ErrorMessage,LF)
+		wend
+			
+		otherwise
+			display (c_CyanFG,spaces(5),ErrorMessage,LF)
+			
+	end.test
+	$Call GetUserInput
+
+;	Test 1D
+	display (c_LightBlueFG, 'T1D-Dictionary Word to Literal',LF)
+	begin.test TESTWORD
+	
+		when = 'TestWord'
+			display (c_CyanFG,spaces(5),'Dictionary Word Equals Literal',LF)
+		wend
+			
+		when = 'Somethingelse'
+			display (c_CyanFG,spaces(5),ErrorMessage,LF)
+		wend
+			
+		otherwise
+			display (c_CyanFG,spaces(5),ErrorMessage,LF)
+			
+	end.test
+	$Call GetUserInput
+
+;	Test 1E
+	display (c_LightBlueFG, 'T1E-[Qualfied]Dictionary Word to Literal',LF)
+	begin.test {TESTWORD,1,4}
+	
+		when = 'Test'
+			display (c_CyanFG,spaces(5),'Dictionary Word Equals Literal',LF)
+		wend
+			
+		when = 'Somethingelse'
+			display (c_CyanFG,spaces(5),ErrorMessage,LF)
+		wend
+			
+		otherwise
+			display (c_CyanFG,spaces(5),ErrorMessage,LF)
+			
+	end.test
+	$Call GetUserInput
+
+END.SUB  A_1_Test1
+
+;-----------------------------------------------------------------------
+;		  Test 2A thru 2A
+;-----------------------------------------------------------------------
+begin.SUB A_2_Test2
+
+	display (c_ClearScreen,c_DefaultBG,c_CyanFG)
+	
+;	Test 2A
+	display (c_LightBlueFG, 'T2A-Testing the c_ALL function',LF)
+	begin.test w_3
+	
+		when > 0
+			display (c_CyanFG,spaces(5),'Number is Greater Than 0',LF)
+		wend
+			
+		when > 1
+			display (c_CyanFG,spaces(5),'Number is Greater Than 1',LF)
+		wend
+			
+		when > 2
+			display (c_CyanFG,spaces(5),'Number is Greater Than 2',LF)
+		wend
+			
+		when > 3
+			display (c_CyanFG,spaces(5),ErrorMessage,LF)
+		wend
+						
+	end.test
+	$Call GetUserInput
+	
+END.SUB A_2_Test2
+
+;-----------------------------------------------------------------------
+;		  Test 3A thru 3G
+;-----------------------------------------------------------------------
+begin.SUB A_3_Test3
+
+	display (c_ClearScreen,c_DefaultBG,c_CyanFG)
+	
+;	Test 3A
+	display (c_LightBlueFG, 'T3A-Testing the c_TRUE function [Numeric Literal]',LF)
+	
+	begin.test c_TRUE
+	
+		when 1 = 1
+			display (c_CyanFG,spaces(5),'TRUE - 1 Equals 1',LF)
+		wend
+		
+		when 2 = 2
+			display (c_CyanFG,spaces(5),'TRUE - 2 Equals 2',LF)
+		wend
+			
+		when 3 = 3
+			display (c_CyanFG,spaces(5),'TRUE - 3 Equals 3',LF)
+		wend
+			
+	    otherwise
+			display (c_CyanFG,spaces(5),'TRUE - Dropped thru to else',LF)
+				    
+	end.test
+	$Call GetUserInput
+	
+;	Test 3B
+	display (c_LightBlueFG, 'T3A-Testing the c_TRUE function [Numeric from Matrix]',LF)
+	begin.test c_TRUE
+	
+		when 1 = 2
+			display (c_CyanFG,spaces(5),'TRUE - 1 Equals 1',LF)
+		wend
+			
+		when 2 = 3
+			display (c_CyanFG,spaces(5),'TRUE - 2 Equals 2',LF)
+		wend
+			
+		when 3 = w_3
+			display (c_CyanFG,spaces(5),'TRUE - 3 Equals 3',LF)
+		wend
+			
+	    otherwise
+			display (c_CyanFG,spaces(5),'TRUE - Dropped thru to else',LF)
+			    
+	end.test
+	$Call GetUserInput
+	
+;	Test 3C
+	display (c_LightBlueFG, 'T3C-Testing the c_TRUE function (else)',LF)
+	begin.test c_TRUE
+	
+		when 1 = 2
+			display (c_CyanFG,spaces(5),'TRUE - 1 Equals 1',LF)
+		wend
+			
+		when 2 = 3
+			display (c_CyanFG,spaces(5),'TRUE - 2 Equals 2',LF)
+		wend
+			
+		when 3 = 4
+			display (c_CyanFG,spaces(5),'TRUE - 3 Equals 3',LF)
+		wend
+			
+	    otherwise
+			display (c_CyanFG,spaces(5),'TRUE - Dropped thru to else',LF)
+				    
+	end.test
+	$Call GetUserInput
+	
+;	Test 3D
+	display (c_LightBlueFG, 'T3D-Testing the c_TRUE function [Alpabetic]',LF)
+	begin.test c_TRUE
+	
+		when TESTWORD = 'TestWord'
+			display (c_CyanFG,spaces(5),'TRUE - TESTWORD Equals literal',LF)
+		wend
+			
+		when TESTWORD = 'Test'
+			display (c_CyanFG,spaces(5),'TRUE - 2 Equals 2',LF)
+		wend
+			
+		when TESTWORD = 'Word'
+			display (c_CyanFG,spaces(5),'TRUE - 3 Equals 3',LF)
+		wend
+			
+	    otherwise
+			display (c_CyanFG,spaces(5),'TRUE - Dropped thru to else',LF)
+				    
+	end.test
+	$Call GetUserInput
+	
+;	Test 3E
+	display (c_LightBlueFG, 'T3E-Testing the c_TRUE function [Alpabetic-Qualified]',LF)
+	begin.test c_TRUE
+	
+		when {TESTWORD,1,4} = 'Test'
+			display (c_CyanFG,spaces(5),'TRUE - TESTWORD Equals literal',LF)
+		wend
+			
+		when TESTWORD = 'Test'
+			display (c_CyanFG,spaces(5),'BUG - 2 Equals 2',LF)
+		wend
+			
+		when TESTWORD = 'Word'
+			display (c_CyanFG,spaces(5),'BUG - 3 Equals 3',LF)
+		wend
+			
+	    otherwise
+			display (c_CyanFG,spaces(5),'BUG - Dropped thru to else',LF)
+				    
+	end.test
+	$Call GetUserInput
+	
+;	Test 3F
+	display (c_LightBlueFG, 'T3F-Testing the c_TRUE function [else]',LF)
+	begin.test c_TRUE
+	
+		when {TESTWORD,1,4} = 'T'
+			display (c_CyanFG,spaces(5),'TRUE - TESTWORD Equals literal',LF)
+		wend
+			
+		when TESTWORD = 'Test'
+			display (c_CyanFG,spaces(5),'TRUE - 2 Equals 2',LF)
+		wend
+			
+		when TESTWORD = 'Word'
+			display (c_CyanFG,spaces(5),'TRUE - 3 Equals 3',LF)
+		wend
+			
+	    otherwise
+			display (c_CyanFG,spaces(5),'TRUE - Dropped thru to else',LF)
+				    
+	end.test
+	$Call GetUserInput
+		
+;	Test 3G
+	display (c_LightBlueFG, 'T3G-Testing the c_TRUE,c_ALL',LF)
+	begin.test c_TRUE
+	
+		when {TESTWORD,1,4} = 'Test'
+			display (c_CyanFG,spaces(5),'TRUE - TESTWORD Equals literal',LF)
+		wend
+		
+		when 2 = 2
+			display (c_CyanFG,spaces(5),'TRUE - 2 Equals 2',LF)
+		wend
+			
+		when 4 > 3
+			display (c_CyanFG,spaces(5),'TRUE - 4 is Greater Than 3',LF)
+		wend
+			
+	end.test
+	$Call GetUserInput
+		
+END.SUB A_3_Test3
+
+;-----------------------------------------------------------------------
+;		  Test 4 thru 4
+;-----------------------------------------------------------------------
+begin.SUB A_4_Test4
+
+	display (c_ClearScreen,c_DefaultBG,c_CyanFG)
+	
+;	Test 4A
+	display (c_LightBlueFG, 'T4A-Testing simple OR',LF)
+	begin.test c_TRUE
+	
+		.when 1 = 2
+		  .or 3 = 3
+		 .end
+			display (c_CyanFG,spaces(5),'OR 3 Equals 3',LF)
+		wend
+	
+		.when 1 = 2
+		  .or 3 = 4
+	     .end
+			display (c_CyanFG,spaces(5),ErrorMessage,LF)
+		wend
+
+	end.test
+	$Call GetUserInput
+
+;	Test 4B
+	display (c_LightBlueFG, 'T4B-Testing simple AND',LF)
+	begin.test c_TRUE
+	
+		.when 1 = 1
+		 .and 2 = 3
+		 .end
+			display (c_CyanFG,spaces(5),'AND 1 Equals 1 and 2 Equals 3',LF)
+		wend
+
+		.when 1 = 1
+		 .and 2 = 2
+		 .end
+			display (c_CyanFG,spaces(5),'AND 1 Equals 1 and 2 Equals 2',LF)
+		wend
+	
+	end.test
+	$Call GetUserInput	
+	
+		
+END.SUB A_4_Test4
+
+;-----------------------------------------------------------------------
+;		  Test 5 thru 5
+;-----------------------------------------------------------------------
+begin.SUB A_5_Test5
+
+	display (c_ClearScreen,c_DefaultBG,c_CyanFG)
+	
+;	Test 5A
+	display (c_LightBlueFG, 'T5A-Testing Fixed Point Numbers',LF)
+
+	begin.test c_TRUE
+
+		when w_123point45 = {12345,'9.9999'}
+			display (c_CyanFG,spaces(5),'FALSE - should not display',LF)
+		wend
+			
+		when w_123point45 = {12345,'99.999'}
+			display (c_CyanFG,spaces(5),'FALSE - should not display',LF)
+		wend
+
+		when w_123point45 = {12345,'999.99'}
+			display (c_CyanFG,spaces(5),'(1)TRUE - ',w_123point45,' equals ',{12345,'999.99'},LF)
+		wend
+			
+		when {12345,'999.99'} = w_123point45
+			display (c_CyanFG,spaces(5),'(2)TRUE - ',{12345,'999.99'},' equals ',w_123point45,LF)
+		wend
+			
+		when {12345,'999.99'} = {12345,'999.99'}
+			display (c_CyanFG,spaces(5),'(3)TRUE - ',{12345,'999.99'},' equals ',{12345,'999.99'},LF)
+		wend
+			
+		when w_123point45 = w_123point45
+			display (c_CyanFG,spaces(5),'(4)TRUE - ',w_123point45,' equals ',w_123point45,LF)
+		wend
+				    
+		when w_123point45 = 123.45
+			display (c_CyanFG,spaces(5),'(5)TRUE - with FixedPoint Literal',LF)
+		wend
+
+	end.test
+	$Call GetUserInput	
+
+END.SUB A_5_Test5
+	
+;=======================================================================
+;		Routines that are common (can be $Called from anywhere)
+;=======================================================================
+begin.SUB GetUserInput
+
+	display (spaces(5),c_LightBlueFG,'Press <ENTER> to continue ')
+	acceptline (Char1)
+	display (LF)
+	
+END.SUB GetUserInput
+
+

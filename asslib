@@ -1,0 +1,7 @@
+cd src
+../l.assemble COMMON.LIB
+mv *.o ../lib
+cd ../lib
+ar -r languageONE.l *.o
+cd ..
+cp src/STDIO.LIB .

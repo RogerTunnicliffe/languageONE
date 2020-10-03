@@ -1,0 +1,1005 @@
+%include 'include/BEGIN.PROGRAM'
+;
+;	This demonstration program shows a "LESS THAN PERFECT" multiuser data entry
+;	program. It covers most cases other than ADD record and should be considered
+;	a transition program developed on the way to a more complete multiuser example.
+;	It does demonstrate:-
+;		1) How to load an Index and use it access records in a file
+;		2) How to lock and unlock records in that file
+
+;	Refer to VERSION.HISTORY for...well...version history
+
+;	BEGIN.SYNONYMS **************************************
+;		$.	:	WORDS.  
+;		@.	:	INTEGERS.  
+;		#.	:	NUMBERS.  
+;		f.	:	FILES.
+;		xT.	:	XTABLES. 
+;	END.SYNONYMS ****************************************
+
+;	==========================================================================
+;	This program has been taken up into the languageONE system and is provided
+;	as the languageONE GUI make utility 'GUI-makeONE'
+;	==========================================================================
+
+;=======================================================================
+;		  PROGRAM DATA
+;=======================================================================	      
+
+;-----------------------------------------------------------------------
+;		DICTIONARY
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.DICTIONARY'
+
+	insertword w_PortError,		0028,'01: Port No cannot be < 1024' 
+	insertword w_ConnectError,	0024,'02: Cannot create socket'
+
+	insertword w_Screen0,		0024,{'html/2-03-screen.html',0x00}
+	
+	insertword w_Response,		2048,''	
+	insertword x_Null,			0001,0x00
+	
+	insertword w_UserInput,		0001,''
+	
+	insertword w_AcctNo,		0005,''	
+	insertword w_Description,	0128,''
+	insertword w_Date,			0008,''
+	insertword w_Time,			0006,''
+	insertword w_DateTime,		0014,''
+
+			
+%include 'include/END.DICTIONARY'
+
+;-----------------------------------------------------------------------
+;		MATRIX
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.MATRIX'
+
+  ; Common Counters
+	INSERTNUMBER I,					0,'999999'
+	INSERTNUMBER J,					0,'999999'
+	INSERTNUMBER K,					0,'999999'
+
+  ; This programs 	
+  	insertnumber n_PortNo,		 1024,'999999'
+
+	insertnumber n_coaMaxRecords,	0,'99999'
+	insertnumber n_gjMaxRecords,	0,'99999'
+  	insertnumber b_Commit,	  c_FALSE,'9'
+  	insertnumber b_Add,		  c_FALSE,'9'
+  	
+	insertnumber n_coaIdx,			0,'99999'	
+	insertnumber n_gjIdx,			0,'99999'	
+	
+	insertnumber n_acctSrchIdx,		0,'99999'
+	insertnumber n_tranSrchIdx,		0,'99999'
+	
+	insertnumber n_point,		1.23,'9.99'
+	
+	
+%include 'include/END.MATRIX'
+
+;-----------------------------------------------------------------------
+;		FILES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.FILES'
+
+   %define c_coaRecordLength 60
+	insertfile c_INDEXED,coaFile,'./coaFile.dat'
+	  begin.record c_coaRecordLength,coaRecord
+		insertword		coaAcctNo,				05,''
+		insertword		coaDescription,  		30,''
+		insertword 		coaFlag1,				02,''
+		insertword		coaFlag2,				01,''
+		insertword		coaFlag3,				01,''
+		insertword		coaFlag4,				01,''
+		insertword		coaBalanceIndicator,	02,''
+		insertword		coaControlAcctNo,		05,''
+		insertnumber	coaDepreciation,		00,'999'
+		insertnumber	coaUnitPrice,			00,'9999.9999'
+		insertword		coaCR,					01, 0x0A
+	  end.record coaRecord
+
+   %define c_coaIdxLength 10
+	begin.record c_coaIdxLength,coaIdxRecord
+	   insertword	coaIdxAcctNo,				05,''
+	   insertnumber	coaIdxRecNo,				00,'99999'
+	end.record coaIdxRecord
+	  
+   %define c_gjRecordLength 244
+	insertfile c_INDEXED,gjFile,'./gjFile.dat'
+	  begin.record c_gjRecordLength,gjRecord
+	  	insertnumber	gjDate,					00,'99999999'
+	  	insertnumber	gjTime,					00,'999999'
+	  	insertword		gjDRAcctNo,				05,''
+	  	insertword		gjCRAcctNo,				05,''
+	  	insertword		gjDRCtrlAcctNo,			05,''
+	  	insertword		gjCRCtrlAcctNo,			05,''
+	  	insertword		gjDescription,		000128,''
+	  	insertnumber	gjValue,				00,'999999.99'
+	  	insertnumber	gjNoOfUnits,			00,'999999.9999'
+		insertword		gjReference,			10,''
+	  	insertnumber	gjINVTranType,			00,'9'
+	  	insertword		gjINVAcctNo,			05,''
+	  	insertnumber	gjINVParcelNo,			00,'999'
+	  	insertnumber	gjINVGrouping,			00,'999'
+	  	insertnumber	gjFrankedAmt,			00,'999999.99'
+	  	insertnumber	gjImputedCredit,		00,'999999.99'
+	  	insertnumber	gjSUnitPrice,			00,'999999.9999'
+	  	insertword		gjSReference,			10,''
+		insertword		gjCR,					01, 0x0A
+	  end.record gjRecord
+
+	 %define c_gjIdxLength 19
+	  begin.record c_gjIdxLength,gjIdxRecord
+	  	insertnumber	gjIdxDate,				00,'99999999'
+	  	insertnumber	gjIdxTime,				00,'999999'
+	  	insertnumber	gjIdxRecNo,				00,'99999'
+	  end.record gjIdxRecord	  
+
+%include 'include/END.FILES'
+
+;-----------------------------------------------------------------------
+;		TABLES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.TABLES'
+
+	insertXtable coaIdx
+	insertXtable gjIdx
+	
+%include 'include/END.TABLES'
+
+
+;=======================================================================
+;		PROGRAM INSTRUCTIONS
+;		Mainline  
+;=======================================================================
+%include 'include/BEGIN.INSTRUCTIONS'
+	
+	$Call A_1_Initial
+	
+	if ERROR_CODE = 0
+		www.process (w_Screen0,w_Response,0x00,C_1_POST)
+		$Call Z_1_Finalise
+	end.if
+
+%include 'include/END.INSTRUCTIONS'
+%include 'include/END.PROGRAM'      
+
+;=======================================================================
+;		PROGRAM PROCEDURES
+;=======================================================================
+
+;=======================================================================
+;		INITIALISATION
+;=======================================================================
+BEGIN.SUB A_1_Initial
+
+;	--------------------
+;	Create the test file
+;	--------------------
+	$Call A_1_1_CreateFile
+	
+;	-------------------------------
+;	GET PORT NUMBER
+;	-------------------------------
+	n_PortNo = {w_CommandLine,1,6}
+
+	if n_PortNo < 1024
+	
+		display.line w_PortError
+		TERMINATE 1
+		
+	else
+	
+	;	OPEN THE SOCKET 
+		www.open (n_PortNo)
+		if ERROR_CODE != 0
+			display.line w_ConnectError
+			TERMINATE 2
+		end.if
+		
+	end.if
+	
+;	----------------------------------------
+;	Now Bind the tables and load the indexes
+;	----------------------------------------
+	$Call A_1_2_coaFile
+	$Call A_1_3_gjFile
+		
+END.SUB A_1_Initial
+
+;-----------------------------------------------------------------------
+;		Create TestFile
+;-----------------------------------------------------------------------
+BEGIN.SUB A_1_1_CreateFile
+	
+;	-----------------
+;	Get User Response
+;	-----------------
+	display ('Would you like to reacreate the test file [y/n] ')
+	acceptline (w_UserInput)
+	$.uppercase (w_UserInput)
+	
+	if  w_UserInput != 'Y'
+		exit.sub A_1_1_CreateFile
+	end.if
+	
+;	-----------------
+;	COA - Create File
+;	-----------------
+	[section .data]
+		insertword alphabet,26,'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+	[section .text]
+	f.open (coaFile,write+beginning)
+	repeat.for I,1,10
+		coaAcctNo				= 'AAAA'
+		{coaAcctNo,5,1}			= {alphabet,I,1}
+		coaDescription			= "Description"
+		{coaDescription,13,5}	= 'AAAA'
+		{coaDescription,17,1}	= {alphabet,I,1}		
+		coaFlag1				= "A"
+		coaFlag2				= "2"
+		coaFlag3				= "3"
+		coaFlag4				= "4"
+		coaBalanceIndicator		= "CR"
+		coaControlAcctNo		= spaces(1)
+		coaDepreciation			= [I + 10]
+		coaUnitPrice			= [1.1 * I]
+		f.write (coaFile,coaRecord,I)
+	end.repeat
+	f.close coaFile
+
+;	----------------
+;	GJ - Create File
+;	----------------
+	f.open (gjFile,write+beginning)
+	repeat.for I,1,10
+		gjDate					= [20180700 + I]
+	  	gjTime					= [120000 + I]
+	  	gjDRAcctNo				= spaces(1)
+	  	gjCRAcctNo				= spaces(1)
+	  	gjDRCtrlAcctNo			= spaces(1)
+	  	gjCRCtrlAcctNo			= spaces(1)
+	  	gjDescription			= "Transaction description"
+	   {gjDescription,25}		= I
+	  	gjValue					= [100.00 + I]
+	  	gjNoOfUnits				= [23.5425 + I]
+		gjReference				= "OneRef"
+	  	gjINVTranType			= 1
+	  	gjINVAcctNo				= spaces(1)
+	  	gjINVParcelNo			= 1
+	  	gjINVGrouping			= 100
+	  	gjFrankedAmt			= [53.55 + I]
+	  	gjImputedCredit			= [27.35 + I]
+	  	gjSUnitPrice			= [10.3525 + I]
+	  	gjSReference			= "SRef"
+	  	f.Write (gjFile,gjRecord,I)
+	end.repeat
+	f.Close gjFile	
+		
+END.SUB A_1_1_CreateFile
+
+;	---------------------------
+;	coaFile - Bind Table & Load
+;	---------------------------
+BEGIN.SUB A_1_2_coaFile
+
+	f.open (coaFile,$read+$end)
+
+	J = c_coaIdxLength + 9
+	I = coaFile_SIZE / J
+	n_coaMaxRecords = I * 1.3
+	I = n_coaMaxRecords * J
+
+	xT.bind (coaIdx,coaIdxRecord,I)
+	
+	I = 0
+	coaRecord_NO = 1
+	f.Start (coaFile,coaRecord)
+	repeat.while coaFile_STATUS = 0
+		I = I + 1
+		coaIdxAcctNo[I] = coaAcctNo
+		coaIdxRecNo[I]	= coaRecord_NO
+		f.Next (coaFile,coaRecord)
+	end.repeat
+
+
+	f.close(coaFile)
+	xT.Sort (coaIdx,1,5)
+	
+	f.open(coaFile,$readwrite)
+	
+END.SUB A_1_2_coaFile
+
+;	--------------------------
+;	gjFile - Bind Table & Load
+;	--------------------------
+BEGIN.SUB A_1_3_gjFile
+
+	f.open (gjFile,$read+$end)
+	
+	J = c_gjRecordLength + 9
+	I = gjFile_SIZE / J
+	n_gjMaxRecords = I * 1.3
+	I = n_gjMaxRecords * J
+	
+	xT.bind (gjIdx,gjIdxRecord,I)
+	
+	I = 0
+	gjRecord_NO = 1
+	f.Start (gjFile,gjRecord)
+	repeat.while gjFile_STATUS = 0
+		I = I + 1	
+		gjIdxDate[I] 	= gjDate
+		gjIdxTime[I] 	= gjTime
+		gjIdxRecNo[I]	= gjRecord_NO
+		f.Next (gjFile,gjRecord)
+	end.repeat
+	
+	f.close(gjFile)	
+	xT.Sort (gjIdx,1,14)
+	
+	f.open(gjFile,$readwrite)
+	
+END.SUB A_1_3_gjFile
+
+;=======================================================================
+;	GET
+;=======================================================================
+BEGIN.SUB B_1_GET
+END.SUB B_1_GET
+
+;=======================================================================
+;	POST
+;=======================================================================
+BEGIN.SUB C_1_POST
+	
+	RETURN_CODE = 0
+	ERROR_CODE = 0
+
+	$.find ({'COMMIT=',I},w_Response)
+	if I > 0
+		ERROR_CODE = 99
+		exit.sub C_1_POST
+	end.if
+	
+	$Call C_1_1_ChartOfAccounts
+	$Call C_1_2_GeneralJournal
+
+END.SUB C_1_POST
+
+;===============================================================================
+;	Chart of Accounts
+;===============================================================================
+BEGIN.SUB C_1_1_ChartOfAccounts
+
+	$.find ({'coaACCTNO=',I},w_Response)
+	if I > 1
+	   $Call C_1_1_1_coaKEY
+		exit.sub C_1_1_ChartOfAccounts
+	end.if	
+
+	$.find ({'SEARCH=ACCT',I},w_Response)
+	if I > 1
+		$Call C_1_1_2_coaSEARCH
+		exit.sub C_1_1_ChartOfAccounts
+	end.if	
+	
+	$.find ({'acctVALIDATE=',I},w_Response)
+	if I > 1
+	   $Call X_1_acctVALIDATE
+	   exit.sub C_1_1_ChartOfAccounts
+	end.if
+
+	$.find ({'coaDESCRIPTION=',I},w_Response)
+	if I > 1
+	   $Call C_1_1_4_coaDATA
+	   exit.sub C_1_1_ChartOfAccounts
+	end.if
+	
+	$.find ({'coaDELETE=',I},w_Response)
+	if I > 1
+		if b_Add = c_FALSE
+	    	f.delete (coaFile,coaRecord,coaRecord_NO)
+	    	f.UnLock (coaFile,coaRecord,coaRecord_NO)	    
+	    	xT.delete (coaIdx,n_coaIdx,c_FALSE)	   
+	    end.if
+	    exit.sub C_1_1_ChartOfAccounts
+	end.if	
+
+	$.find ({'coaEXIT=',I},w_Response)
+	if I > 1
+		if b_Add = c_FALSE
+			f.UnLock (coaFile,coaRecord,coaRecord_NO)
+		end.if
+	    exit.sub C_1_1_ChartOfAccounts
+	end.if	
+
+END.SUB C_1_1_ChartOfAccounts
+
+;-------------------------------------------------------------------------------
+;	Chart of Accounts Key - get record
+;-------------------------------------------------------------------------------
+BEGIN.SUB C_1_1_1_coaKEY
+nop
+nop
+nop
+;	---------------
+;	Process the KEY
+;	---------------
+	I = I + 10
+	$.find ({" ",J},{w_Response,I})								; Get the end location of the field
+	if J = 0
+		$.find ({x_Null,J},{w_Response,I})
+	end.if
+	
+	if J > 0
+nop
+nop
+nop
+		w_AcctNo = {w_Response,I,[J - I + 1]}
+
+	;	-----------------
+	;	Add/Modify Record
+	;	-----------------
+		xT.search (coaIdx,1,5,w_AcctNo,n_coaIdx)					; Does the entered key exist
+		if coaIdx_STATUS = INVALIDKEY
+			if coaIdx_UBOUND = n_coaMaxRecords
+				w_Response = "INVALID"
+				RETURN_CODE = 7
+				display.line "[000004]Internal Table is full"
+				exit.sub C_1_1_1_coaKEY
+			end.if
+
+			$Call C_1_1_1_1_InitRecord
+			b_Add = c_TRUE
+			
+		else
+			coaRecord_NO = coaIdxRecNo[n_coaIdx]
+			f.Read (coaFile,coaRecord)
+			if coaFile_STATUS != 0									; Record has been deleted by another user
+	    		xT.delete (coaIdx,n_coaIdx,c_FALSE)					; so delete it in the index	 			
+	    		$Call C_1_1_1_1_InitRecord							; And treat it as an Add
+	    		b_Add = c_TRUE
+	    	else
+				f.Lock (coaFile,coaRecord)
+				if coaFile_STATUS = 90
+					w_Response = "LOCKED"
+					RETURN_CODE = 6
+					display.line "[000005]Record is Locked"
+					exit.sub C_1_1_1_coaKEY
+				end.if
+				b_Add = c_FALSE
+			end.if
+		end.if
+
+	;	-------------
+	;	Load Response
+	;	-------------	
+		w_Response			= coaDescription
+		{w_Response,31,1}	= "^"
+		{w_Response,32}		= coaFlag1
+		{w_Response,34,1}	= "^"
+		{w_Response,35} 	= coaFlag2
+		{w_Response,36,1}	= "^"				
+		{w_Response,37} 	= coaFlag3
+		{w_Response,38,1}	= "^"				
+		{w_Response,39} 	= coaFlag4
+		{w_Response,40,1}	= "^"		
+		{w_Response,41} 	= coaBalanceIndicator
+		{w_Response,43,1}	= "^"				
+		{w_Response,44} 	= coaControlAcctNo
+		{w_Response,49,1}	= "^"				
+		{w_Response,50} 	= coaDepreciation
+		{w_Response,53,1}	= "^"				
+		{w_Response,54} 	= coaUnitPrice
+		{w_Response,64,1}	= "^"
+		RETURN_CODE = 65											; tells WWW.LIB to return Response to the browser
+		
+	end.if
+	
+END.SUB C_1_1_1_coaKEY
+
+;-------------------------------------------------------------------------------
+;	Chart of Accounts Key - Initialise Record
+;-------------------------------------------------------------------------------
+BEGIN.SUB C_1_1_1_1_InitRecord
+
+	coaAcctNo				= w_AcctNo
+	coaDescription			= spaces(30)
+	coaFlag1				= "A"
+	coaFlag2				= "1"
+	coaFlag3				= "1"
+	coaFlag4				= "1"
+	coaBalanceIndicator		= "DR"
+	coaControlAcctNo		= spaces(1)
+	coaDepreciation			= 0
+	coaUnitPrice			= 0
+
+END.SUB C_1_1_1_1_InitRecord
+
+;-------------------------------------------------------------------------------
+;	Chart of Accounts Data - search
+;-------------------------------------------------------------------------------
+BEGIN.SUB C_1_1_2_coaSEARCH
+
+	@.eq coaFile_STATUS,INVALIDKEY
+	
+	repeat.if coaFile_STATUS = INVALIDKEY
+	
+		@.add n_acctSrchIdx,1
+		
+		xT.rget (coaIdx,n_acctSrchIdx)	
+		if coaIdx_STATUS != 0
+			@.eq coaFile_STATUS,coaIdx_STATUS
+		else
+			f.Read (coaFile,coaRecord,coaIdxRecNo)
+		end.if
+
+		if coaFile_STATUS = EOF	
+			n_acctSrchIdx = 0
+			w_Response = "99999"
+			RETURN_CODE = 5
+		else
+			if coaFile_STATUS = LOCKED									; Only need for Windows
+				@.eq coaFile_STATUS,INVALIDKEY							; Only need for Windows
+			else														; Only need for Windows
+				if coaFile_STATUS != INVALIDKEY
+					w_Response = spaces(1)
+					w_Response = coaAcctNo
+					{w_Response,7,30} = coaDescription
+					RETURN_CODE = 36
+				end.if
+			end.if
+		end.if
+		
+	end.repeat
+	
+END.SUB C_1_1_2_coaSEARCH
+
+;-------------------------------------------------------------------------------
+;	Chart Of Accounts Data - validate
+;-------------------------------------------------------------------------------
+BEGIN.SUB C_1_1_3_coaVALIDATE
+END.SUB C_1_1_3_coaVALIDATE
+
+;-------------------------------------------------------------------------------
+;	Chart of Accounts Data - put record
+;-------------------------------------------------------------------------------
+BEGIN.SUB C_1_1_4_coaDATA
+
+;	----------------
+;	Process the DATA
+;	----------------
+	I = I + 15
+	$.find ({'&',J},{w_Response,I})
+	w_Description = {w_Response,I,[J - I]}
+	repeat.for K,[J - I - 2],1
+		if {w_Description,K,3} = "%20"
+			{w_Description,K,1} = spaces(1)
+			{w_Description,[K + 1]} = {w_Description,[K + 3]}
+		end.if
+	end.repeat
+	coaDescription = w_Description
+	
+	$.find ({'coaFLAG1=',I},w_Response)
+	I = I + 9
+	$.find ({'&',J},{w_Response,I})
+	coaFlag1 = {w_Response,I,[J - I]}	
+	
+	$.find ({'coaFLAG2=',I},w_Response)
+	I = I + 9
+	$.find ({'&',J},{w_Response,I})
+	coaFlag2 = {w_Response,I,[J - I]}	
+
+	$.find ({'coaFLAG3=',I},w_Response)
+	I = I + 9
+	$.find ({'&',J},{w_Response,I})
+	coaFlag3 = {w_Response,I,[J - I]}	
+		
+	$.find ({'coaFLAG4=',I},w_Response)
+	I = I + 9
+	$.find ({'&',J},{w_Response,I})			
+	coaFlag4 = {w_Response,I,[J - I]}	
+
+	$.find ({'coaBALANCEINDICATOR=',I},w_Response)
+	I = I + 20	
+	$.find ({'&',J},{w_Response,I})
+	coaBalanceIndicator = {w_Response,I,[J - I]}	
+	
+	$.find ({'coaCONTROLACCTNO=',I},w_Response)
+	I = I + 17
+	$.find ({'&',J},{w_Response,I})
+	if J > I
+		coaControlAcctNo = {w_Response,I,[J - I]}
+	else
+		coaControlAcctNo = spaces(1)
+	end.if
+	
+	$.find ({'coaDEPRECIATION=',I},w_Response)
+	I = I + 16
+	$.find ({'&',J},{w_Response,I})	
+	#.eq coaDepreciation,{w_Response,I,[J - I]}	
+
+	$.find ({'coaUNITPRICE=',I},w_Response)
+	I = I + 13
+	$.find ({'&',J},{w_Response,I})	
+	#.eq coaUnitPrice,{w_Response,I,[J - I]}
+
+;	------------------------------------------
+;	Now Write the record and update the Index
+;	------------------------------------------
+	if b_Add = c_TRUE
+		coaIdx_UBOUND 				= coaIdx_UBOUND + 1
+		n_coaIdx 					= coaIdx_UBOUND
+		coaRecord_NO 				= coaIdx_UBOUND		
+		coaIdxAcctNo[n_coaIdx] 		= coaAcctNo	
+		coaIdxRecNo[n_coaIdx] 		= coaRecord_NO
+		xT.sort(coaIdx,1,5)
+	end.if
+	f.Write (coaFile,coaRecord,coaRecord_NO)
+	f.UnLock (coaFile,coaRecord,coaRecord_NO)	
+		
+END.SUB C_1_1_4_coaDATA
+
+;===============================================================================
+;	General Journal
+;===============================================================================
+BEGIN.SUB C_1_2_GeneralJournal
+
+	$.find ({'gjDATETIME=',I},w_Response)
+	if I > 1
+	   $Call C_1_2_1_gjKEY
+		exit.sub C_1_2_GeneralJournal
+	end.if	
+
+	$.find ({'SEARCH=TRAN',I},w_Response)
+	if I > 1
+		$Call C_1_2_2_gjSEARCH
+		exit.sub C_1_2_GeneralJournal
+	end.if	
+
+	$.find ({'acctVALIDATE=',I},w_Response)
+	if I > 1
+	   $Call X_1_acctVALIDATE
+	   exit.sub C_1_2_GeneralJournal
+	end.if
+
+	$.find ({'gjDRACCTNO=',I},w_Response)
+	if I > 1
+	   $Call C_1_2_4_gjDATA
+	   exit.sub C_1_2_GeneralJournal
+	end.if
+
+	$.find ({'gjDELETE=',I},w_Response)
+	if I > 1
+		if b_Add = c_FALSE
+	    	f.delete (gjFile,gjRecord,gjRecord_NO)
+	    	f.UnLock (gjFile,gjRecord,gjRecord_NO)	    
+	    	xT.delete (gjIdx,n_gjIdx,c_FALSE)	   
+	    end.if
+	    exit.sub C_1_2_GeneralJournal
+	end.if	
+
+	$.find ({'gjEXIT=',I},w_Response)
+	if I > 1
+		if b_Add = c_FALSE
+			f.UnLock (gjFile,gjRecord,gjRecord_NO)
+	    end.if
+	    exit.sub C_1_2_GeneralJournal
+	end.if	
+	
+END.SUB C_1_2_GeneralJournal
+
+;-------------------------------------------------------------------------------
+;	General Journal Key - get record
+;-------------------------------------------------------------------------------
+BEGIN.SUB C_1_2_1_gjKEY
+
+;	---------------
+;	Process the KEY
+;	---------------
+	I = I + 11
+	$.find ({" ",J},{w_Response,I})								; Get the end location of the field
+	if J = 0
+		$.find ({x_Null,J},{w_Response,I})
+	end.if
+	
+	if J > 0
+
+		w_DateTime = {w_Response,I,14}
+
+	;	-----------------
+	;	Add/Modify Record
+	;	-----------------
+		xT.search (gjIdx,1,14,w_DateTime,n_gjIdx)						; Does the entered key exist
+		if gjIdx_STATUS = INVALIDKEY
+			if gjIdx_UBOUND = n_gjMaxRecords
+				w_Response = "INVALID"
+				RETURN_CODE = 7
+				display.line "[000004]Internal Table is full"
+				exit.sub C_1_2_1_gjKEY
+			end.if
+
+			$Call C_1_2_1_1_InitRecord		
+			b_Add = c_TRUE
+		else
+			gjRecord_NO = gjIdxRecNo[n_gjIdx]
+			f.Read (gjFile,gjRecord)
+			if gjFile_STATUS != 0									; Record has been deleted by another user
+	    		xT.delete (gjIdx,n_gjIdx,c_FALSE)					; so delete it in the index	 			
+	    		$Call C_1_2_1_1_InitRecord							; And treat it as an Add
+	    		b_Add = c_TRUE
+	    	else			
+				f.Lock (gjFile,gjRecord)
+				if gjFile_STATUS = 90
+					w_Response = "LOCKED"
+					RETURN_CODE = 6
+					display.line "[000005]Record is Locked"
+					exit.sub C_1_2_1_gjKEY
+				end.if			
+				b_Add = c_FALSE
+			end.if
+		end.if
+
+	;	-------------
+	;	Load Response
+	;	-------------	
+		w_Response			= gjDRAcctNo
+		{w_Response,06,1}	= "^"
+		{w_Response,07}		= gjCRAcctNo
+		{w_Response,12,1}	= "^"
+		{w_Response,13} 	= gjDescription
+		{w_Response,43,1}	= "^"				
+		{w_Response,44} 	= gjValue
+		{w_Response,53,1}	= "^"				
+		{w_Response,54} 	= gjNoOfUnits
+		{w_Response,65,1}	= "^"		
+		{w_Response,66} 	= gjReference
+		{w_Response,76,1}	= "^"				
+		{w_Response,77} 	= gjINVTranType
+		{w_Response,78,1}	= "^"				
+		{w_Response,79} 	= gjINVAcctNo
+		{w_Response,84,1}	= "^"				
+		{w_Response,85} 	= gjINVParcelNo
+		{w_Response,88,1}	= "^"
+		{w_Response,89}		= gjINVGrouping
+		{w_Response,92,1}	= "^"
+		{w_Response,93}		= gjFrankedAmt
+		{w_Response,102,1}	= "^"
+		{w_Response,103}	= gjImputedCredit		
+		{w_Response,112,1}	= "^"		
+		RETURN_CODE = 113											; tells WWW.LIB to return Response to the browser
+		
+	end.if
+
+END.SUB C_1_2_1_gjKEY
+
+;-------------------------------------------------------------------------------
+;	General Journal - Initialise Record
+;-------------------------------------------------------------------------------
+BEGIN.SUB C_1_2_1_1_InitRecord
+
+	gjDate 			= {w_DateTime,1,8}
+	gjTime 			= {w_DateTime,9,6}
+	gjDRAcctNo		= spaces(1)
+	gjCRAcctNo		= spaces(1)
+	gjDescription	= spaces(1)
+	gjValue			= 0
+	gjNoOfUnits		= 0
+	gjReference		= spaces(1)
+	gjINVTranType	= 0
+	gjINVAcctNo		= spaces(1)
+	gjINVParcelNo	= 0
+	gjINVGrouping	= 0
+	gjFrankedAmt	= 0
+	gjImputedCredit	= 0
+	
+END.SUB C_1_2_1_1_InitRecord 
+
+;-------------------------------------------------------------------------------
+;	General Journal - search
+;-------------------------------------------------------------------------------
+BEGIN.SUB C_1_2_2_gjSEARCH
+
+	@.eq gjFile_STATUS,INVALIDKEY
+
+	repeat.if gjFile_STATUS = INVALIDKEY
+	
+		@.add n_tranSrchIdx,1
+
+		xT.rget (gjIdx,n_tranSrchIdx)
+		if gjIdx_STATUS != 0
+			@.eq gjFile_STATUS,gjIdx_STATUS
+		else		
+			f.Read (gjFile,gjRecord,gjIdxRecNo)
+		end.if
+		
+		if gjFile_STATUS = EOF	
+			n_tranSrchIdx = 0
+			w_Response = "99999"
+			RETURN_CODE = 5
+		else
+			if gjFile_STATUS = LOCKED									; Only need for Windows
+				@.eq gjFile_STATUS,INVALIDKEY							; Only need for Windows
+			else														; Only need for Windows
+				if gjFile_STATUS != INVALIDKEY
+					w_Response = spaces(1)
+					w_Date = gjDate 
+					{w_Response,1,2} = {w_Date,7,2}
+					{w_Response,3,1} = "/"
+					{w_Response,4,2} = {w_Date,5,2}
+					{w_Response,6,1} = "/"
+					{w_Response,7,4} = {w_Date,1,4}
+					w_Time = gjTime
+					{w_Response,12,2} = {w_Time,1,2}
+					{w_Response,14,1} = ":"
+					{w_Response,15,2} = {w_Time,3,2}
+					{w_Response,17,1} = ":"
+					{w_Response,18,2} = {w_Time,5,2}
+					{w_Response,21,30} = gjDescription
+					RETURN_CODE = 40
+				end.if
+			end.if
+		end.if
+		
+	end.repeat
+	
+END.SUB C_1_2_2_gjSEARCH
+
+;-------------------------------------------------------------------------------
+;	General Journal Data - validate
+;-------------------------------------------------------------------------------
+BEGIN.SUB C_1_2_3_gjVALIDATE
+END.SUB C_1_2_3_gjVALIDATE
+
+;-------------------------------------------------------------------------------
+;	General Journal Data - put record
+;-------------------------------------------------------------------------------
+BEGIN.SUB C_1_2_4_gjDATA
+
+;	----------------
+;	Process the DATA
+;	----------------
+	I = I + 11
+	$.find ({'&',J},{w_Response,I})	
+	gjDRAcctNo = {w_Response,I,[J - I + 1]}
+		
+	$.find ({'gjCRACCTNO=',I},w_Response)
+	I = I + 11
+	$.find ({'&',J},{w_Response,I})
+	gjCRAcctNo = {w_Response,I,[J - I + 1]}
+
+	$.find ({'gjDESCRIPTION=',I},w_Response)
+	I = I + 14
+	$.find ({'&',J},{w_Response,I})
+	w_Description = {w_Response,I,[J - I]}	
+	repeat.for K,[J - I - 2],1
+		if {w_Description,K,3} = "%20"
+			{w_Description,K,1} = spaces(1)
+			{w_Description,[K + 1]} = {w_Description,[K + 3]}
+		end.if
+	end.repeat
+	gjDescription = w_Description
+		
+	$.find ({'gjVALUE=',I},w_Response)
+	I = I + 8
+	$.find ({'&',J},{w_Response,I})
+	gjValue = {w_Response,I,[J - I]}	
+
+	$.find ({'gjNOOFUNITS=',I},w_Response)
+	I = I + 12
+	$.find ({'&',J},{w_Response,I})
+	gjNoOfUnits = {w_Response,I,[J - I + 1]}	
+		
+	$.find ({'gjREFERENCE=',I},w_Response)
+	I = I + 12
+	$.find ({'&',J},{w_Response,I})
+	if J > I
+		w_Description = {w_Response,I,[J - I]}	
+		repeat.for K,[J - I - 2],1
+			if {w_Description,K,3} = "%20"
+				{w_Description,K,1} = spaces(1)
+				{w_Description,[K + 1]} = {w_Description,[K + 3]}
+			end.if
+		end.repeat
+		gjReference = w_Description
+	else
+		gjReference = spaces(1)
+	end.if
+
+	$.find ({'gjINVTRANTYPE=',I},w_Response)
+	I = I + 14	
+	$.find ({'&',J},{w_Response,I})
+	#.eq gjINVTranType,{w_Response,I,[J - I + 1]}
+	
+	$.find ({'gjINVACCTNO=',I},w_Response)
+	I = I + 12	
+	$.find ({'&',J},{w_Response,I})
+	if J > I
+		gjINVAcctNo = {w_Response,I,[J - I + 1]}
+	else
+		gjINVAcctNo = spaces(1)
+	end.if
+
+	$.find ({'gjINVPARCELNO=',I},w_Response)
+	I = I + 14	
+	$.find ({'&',J},{w_Response,I})
+	gjINVParcelNo = {w_Response,I,[J - I + 1]}
+	
+	$.find ({'gjINVGROUPING=',I},w_Response)
+	I = I + 14	
+	$.find ({'&',J},{w_Response,I})
+	gjINVGrouping = {w_Response,I,[J - I + 1]}
+
+	$.find ({'gjFRANKEDAMT=',I},w_Response)
+	I = I + 13	
+	$.find ({'&',J},{w_Response,I})
+	gjFrankedAmt = {w_Response,I,[J - I + 1]}
+
+	$.find ({'gjIMPUTEDCREDIT=',I},w_Response)
+	I = I + 16	
+	$.find ({'&',J},{w_Response,I})
+	gjImputedCredit = {w_Response,I,[J - I + 1]}
+	
+;	------------------------------------------
+;	Now Write the record and update the Index
+;	------------------------------------------
+	if b_Add = c_TRUE
+		gjIdx_UBOUND 				= gjIdx_UBOUND + 1
+		n_gjIdx						= gjIdx_UBOUND
+		gjRecord_NO 				= gjIdx_UBOUND			
+		gjIdxDate[n_gjIdx] 			= gjDate
+		gjIdxTime[n_gjIdx] 			= gjTime		
+		gjIdxRecNo[n_gjIdx] 		= gjRecord_NO
+		xT.sort(gjIdx,1,14)
+	end.if
+	f.Write (gjFile,gjRecord,gjRecord_NO)	
+	f.UnLock (gjFile,gjRecord,gjRecord_NO)		
+	
+END.SUB C_1_2_4_gjDATA
+
+;-------------------------------------------------------------------------------
+;	validate Account
+;-------------------------------------------------------------------------------
+BEGIN.SUB X_1_acctVALIDATE
+
+;	-------------------
+;	Process the ACCT No
+;	-------------------
+	I = I + 13
+	$.find ({" ",J},{w_Response,I})								; Get the end location of the field
+	if J = 0
+		$.find ({x_Null,J},{w_Response,I})
+	end.if
+	
+	if J > 0
+
+		w_AcctNo = {w_Response,I,[J - I + 1]}
+
+		xT.search (coaIdx,1,5,w_AcctNo,I)							; Does the entered key exist
+		if coaIdx_STATUS = 0
+			w_Response = "VALID"
+			RETURN_CODE = 5
+			display.line "[000003]VALID Account"
+		else
+			w_Response = "INVALID"
+			RETURN_CODE = 7
+			display.line "[000003]INVALID Account"
+		end.if
+	end.if
+
+END.SUB X_1_acctVALIDATE
+
+;=======================================================================
+;	FINALISATION
+;=======================================================================
+BEGIN.SUB Z_1_Finalise
+
+;	----------------
+;	CLOSE THE SOCKET 
+;	----------------
+	www.close (n_PortNo)
+	
+END.SUB Z_1_Finalise

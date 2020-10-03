@@ -1,0 +1,228 @@
+<html>
+<head>
+	<title>V1-16-screen1</title>
+	<style type="text/css">
+     div {font-family: Verdana; font-size: 12px; font-style:normal; color: blue;}
+    </style>
+</head>
+
+<body onload='f_onload();'>
+	
+  <frameset rows="10" frameborder="0"/> 
+	<frame>
+	  <img src="LinuxPenguin.jpg" width="15%" height="15%"/>
+	  <img src="logo.jpg" width="80%" height="15%"/>
+	</frame>
+  </frameset>
+
+<!-- action	URL Specifies where to send the form data when a form is submitted	-->
+<!--		DEFAULT Current page												-->
+<!--		An absolute URL "http://www.*"										-->
+<!--		A relative URL	"home.html"											-->
+<!-- target	Specifies where to display the response that is received 			-->
+<!--		_blank			:in a new windows or tab							-->
+<!-- 		_self(DEFAULT)	:is displayed in the same frame						-->
+<!--		_Parent			:is displayed in the parent frame					-->
+<!--		_top			:is displayed in the full body of the window		-->
+<!--		framename			:is displayed in the named frame				-->
+	
+  <form name='screen1' id='screen1' action='' method='post' target=''> 
+
+	<fieldset><legend>Make Options</legend>
+
+	<table width="285" cellpadding="0" cellspacing="0">
+		<col width="130">
+		<col width="025">
+		<col width="130">
+	
+		<tr>
+			<td width="130"><div align="right">Program Name</div></td>
+			<td width="175" colspan="2">
+				<input type="text" id="PROGRAMNAME" name="PROGRAMNAME" 
+					   size="30" maxlength="128" style="width: 5cm; height: 0.80cm">
+			</td>
+		</tr>
+		
+		<tr>
+			<td width="130"><div align="right">reWrite</div></td>
+			<td width="025">
+				<input type="checkbox" id="REWRITE" name="REWRITE" 
+					  style="width: 0.35cm; height: 0.35cm">
+			</td>
+			<td width="350"></td>
+		</tr>
+				
+		<tr>		
+			<td width="130"><div align="right">Assemble</div></td>
+			<td width="025">
+				<input type="checkbox" id="ASSEMBLE" name="ASSEMBLE" 
+					  style="width: 0.35cm; height: 0.35cm">
+			</td>
+			<td width="350"></td>			
+		</tr>
+
+	</table>
+	</fieldset>
+
+	<fieldset><legend>Link Options</legend>	
+	
+	<table width="285" cellpadding="0" cellspacing="0">
+		<col width="130">
+		<col width="25">
+		<col width="030">
+		<col width="100">
+
+		<tr>
+			<td width="130"><div align="right">Link</div></td>
+			<td width="25">
+				<input type="checkbox" id="LINK" name="LINK"  
+					  style="width: 0.35cm; height: 0.35cm" onclick="return f_onclick(this.id);">
+			</td>
+			<td width="30">
+				<input type="checkbox" id="COMMON" name="COMMON" 
+					  style="width: 0.35cm; height: 0.35cm" onclick="return f_onclick(this.id);">
+			</td>
+			<td width="100"><div align="left">Common</div></td>
+		</tr>
+
+		<tr>
+			<td width="150" colspan="2"></td>
+			<td width="030">
+				<input type="checkbox" id="WORDS" name="WORDS"
+					  style="width: 0.35cm; height: 0.35cm" onclick="return f_onclick(this.id);">
+			</td>
+			<td width="100"><div>Words</div></td>
+		</tr>
+
+		<tr>
+			<td width="150" colspan="2"></td>
+			<td width="030">
+				<input type="checkbox" id="NUMBERS" name="NUMBERS"
+					  style="width: 0.35cm; height: 0.35cm" onclick="return f_onclick(this.id);">
+			</td>
+			<td width="100"><div>Numbers</div></td>
+		</tr>
+				
+		<tr>
+			<td width="150" colspan="2"></td>
+			<td width="030">
+				<input type="checkbox" id="DECISIONS" name="DECISIONS"
+					  style="width: 0.35cm; height: 0.35cm" onclick="return f_onclick(this.id);">
+			</td>
+			<td width="100"><div>Decisions</div></td>
+		</tr>
+
+		<tr>
+			<td width="150" colspan="2"></td>
+			<td width="030">
+				<input type="checkbox" id="STDIO" name="STDIO"
+					  style="width: 0.35cm; height: 0.35cm" onclick="return f_onclick(this.id);">
+			</td>
+			<td width="100"><div>Stdio</div></td>
+		</tr>
+		
+		<tr>
+			<td width="150" colspan="2"></td>
+			<td width="030">
+				<input type="checkbox" id="FILES" name="FILES"
+					  style="width: 0.35cm; height: 0.35cm" onclick="return f_onclick(this.id);">
+			</td>
+			<td width="100"><div>Files</div></td>
+		</tr>
+
+		<tr>
+			<td width="150" colspan="2"></td>
+			<td width="030">
+				<input type="checkbox" id="TABLES" name="TABLES"
+					  style="width: 0.35cm; height: 0.35cm" onclick="return f_onclick(this.id);">
+			</td>
+			<td width="100"><div>Tables</div></td>
+		</tr>
+		
+		<tr>
+			<td width="150" colspan="2"></td>
+			<td width="030">
+				<input type="checkbox" id="XTABLES" name="XTABLES"
+					  style="width: 0.35cm; height: 0.35cm" onclick="return f_onclick(this.id);">
+			</td>
+			<td width="100"><div>XTables</div></td>
+		</tr>
+
+		<tr>
+			<td width="150" colspan="2"></td>
+			<td width="030">
+				<input type="checkbox" id="WWW" name="WWW"
+					  style="width: 0.35cm; height: 0.35cm" onclick="return f_onclick(this.id);">
+			</td>
+			<td width="100"><div>WWW</div></td>
+		</tr>
+		
+	</table>
+	</fieldset>
+
+	<fieldset><legend>Debug</legend>	
+	<table width="285" cellpadding="0" cellspacing="0">
+		<col width="130">
+		<col width="25">
+		<col width="030">
+		<col width="100">
+	
+		<tr>
+			<td width="130"><div align="right">Debug</div></td>
+			<td width="025">
+				<input type="checkbox" id="DEBUG" name="DEBUG" 
+					  style="width: 0.35cm; height: 0.35cm">
+			</td>
+			<td width="350"></td>
+		</tr>
+		
+	</table>
+	</fieldset>
+
+	<p></p>
+	<input type='SUBMIT' value='SUBMIT' id='SUBMIT' name='SUBMIT' onclick='return f_onclick(this.id);'/>	
+	<input type='SUBMIT' value='EXIT' id='EXIT' name='EXIT' onclick='return f_onclick(this.id);'/>
+  
+  </form>
+ 
+</body>
+
+<script type='text/javascript'>
+	function f_onload(){}
+	function f_onsubmit(){}
+
+function f_Get(){
+
+	var xhttp = new XMLHttpRequest();
+	xhttp.open("GET","roger=GET",true);
+	xhttp.send();
+
+}
+
+function f_Post(){
+
+	var xhttp = new XMLHttpRequest();
+	xhttp.open("POST","roger=POST",true);
+	xhttp.send();
+
+}
+
+function f_onclick(ButtonID){
+//	------------------
+//	CANCEL
+//	------------------
+	if (ButtonID=='EXIT')
+		{
+		var xhttp = new XMLHttpRequest();
+		xhttp.open("POST","EXIT=EXIT",true);
+		xhttp.send();
+		} 
+	else
+		{
+		f_Get();
+		f_Post();
+		}
+}
+</script>
+</html>
+

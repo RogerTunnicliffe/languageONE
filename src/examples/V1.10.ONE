@@ -1,0 +1,1035 @@
+%include 'include/BEGIN.PROGRAM'
+
+;	Refer to VERSION.HISTORY for...well...version history
+
+;	BEGIN.SYNONYMS **************************************
+;		$.	:	WORDS.  
+;	END.SYNONYMS ****************************************
+
+;=======================================================================
+;		  PROGRAM DATA
+;=======================================================================	      
+;-----------------------------------------------------------------------
+;		CONSTANTS
+;-----------------------------------------------------------------------
+%define c_NoOfSpaces	8
+;-----------------------------------------------------------------------
+;		DICTIONARY
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.DICTIONARY'	
+	insertword outputLine,80,' '
+	
+	insertword w_Name1,		05,'ROGER'
+	insertword w_Name2,		07,'JESSICA'
+	insertword w_Name3,		07,'TIFFANI'
+	insertword w_Name4,		07,'KRYSTAL'
+	
+%include 'include/END.DICTIONARY'
+
+;-----------------------------------------------------------------------
+;		MATRIX
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.MATRIX'
+	insertnumber I,0
+%include 'include/END.MATRIX'
+
+;-----------------------------------------------------------------------
+;		FILES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.FILES'
+%include 'include/END.FILES'
+
+;-----------------------------------------------------------------------
+;		TABLES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.TABLES'		
+%include 'include/END.TABLES'
+
+;=======================================================================
+;		PROGRAM INSTRUCTIONS
+;		Mainline  
+;=======================================================================
+%include 'include/BEGIN.INSTRUCTIONS'
+
+	$Call A_1_Initial
+	$Call B_1_if
+	$Call C_1_if_OR
+	$Call D_1_if_AND
+	$Call E_1_TEST
+	$Call F_1_TEST_OR
+	$Call G_1_TEST_AND
+	$Call H_1_MISC
+	$Call J_1_IN
+	$Call K_1_V118
+	$Call Z_1_Finalise
+
+%include 'include/END.INSTRUCTIONS'
+%include 'include/END.PROGRAM'      
+
+;=======================================================================
+;		PROGRAM PROCEDURES
+;=======================================================================
+BEGIN.SUB A_1_Initial
+
+;	This proves the correction made to the $.environment function
+;	A bug was introduced in this routine at some point and this 
+;	release corrects that.
+
+	$.uppercase 	(w_CommandLine)
+	$.environment 	(w_CommandLine,outputLine)
+	display.line 	(outputLine,LF)
+	
+END.SUB A_1_Initial
+
+;=======================================================================
+;		Test if's
+;=======================================================================
+BEGIN.SUB B_1_if
+
+;	--------------------------------------------------------------------
+;	Test all EQUALS equivalents
+;	--------------------------------------------------------------------
+	display.line ('[Test:if 01]')
+	if (1 = 1)
+		display (spaces(c_NoOfSpaces),'[1] 1 does infact equal 1',LF)
+	else
+		display (spaces(c_NoOfSpaces),'[1] 1 doesnt equal 1',LF)	
+	end.if
+	if (1 EQ 1)
+		display (spaces(c_NoOfSpaces),'[2] 1 does infact equal 1',LF)
+	end.if
+	if (1 Equals 1)
+		display (spaces(c_NoOfSpaces),'[3] 1 does infact equal 1',LF)
+	end.if
+
+	display.line ('[Test:if 02]')
+	if (1 != 2)
+		display (spaces(c_NoOfSpaces),'[1] 1 is not infact equal to 2',LF)
+	end.if
+	if (1 N_EQ 2)
+		display (spaces(c_NoOfSpaces),'[2] 1 is not infact equal to 2',LF)
+	end.if
+	if (1 isNOTEqualTo 2)
+		display (spaces(c_NoOfSpaces),'[3] 1 is not infact equal to 2',LF)
+	end.if
+	display.line
+	
+	
+;	--------------------------------------------------------------------
+;	Test all LESS THAN equivalents
+;	--------------------------------------------------------------------
+	display.line ('(Test:if 03)')
+	if  1 < 2
+		display (spaces(c_NoOfSpaces),'[1] 1 is infact less than 2',LF)
+	end.if
+	if  1 LT 2
+		display (spaces(c_NoOfSpaces),'[2] 1 is infact less than 2',LF)
+	end.if
+	if  1 isLessThan 2
+		display (spaces(c_NoOfSpaces),'[3] 1 is infact less than 2',LF)
+	end.if
+
+	display.line ('(Test:if 04)')
+	if  1 !< 1
+		display (spaces(c_NoOfSpaces),'[1] 1 is infact NOT less than 1',LF)
+	end.if
+	if  1 N_LT 1
+		display (spaces(c_NoOfSpaces),'[2] 1 is infact NOT less than 1',LF)
+	end.if
+	if  1 isNOTLessThan 1
+		display (spaces(c_NoOfSpaces),'[3] 1 is infact NOT less than 1',LF)
+	end.if
+
+	display.line ('(Test:if 05)')
+	if  2 >= 1
+		display (spaces(c_NoOfSpaces),'[1] 2 is infact greater than or equal to 1',LF)
+	end.if
+	if  2 => 1
+		display (spaces(c_NoOfSpaces),'[2] 2 is infact greater than or equal to 1',LF)
+	end.if
+	if  1 isGreaterThanOREqualTo 1
+		display (spaces(c_NoOfSpaces),'[3] 2 is infact greater than or equal to 1',LF)
+	end.if
+	display.line
+	
+	
+;	--------------------------------------------------------------------
+;	Test all GREATER THAN equivalents
+;	--------------------------------------------------------------------
+	display.line ('(Test:if 06)')
+	if  2 > 1
+		display (spaces(c_NoOfSpaces),'[1] 2 is infact greater than 1',LF)
+	end.if
+	if  2 GT 1
+		display (spaces(c_NoOfSpaces),'[2] 2 is infact greater than 1',LF)
+	end.if
+	if  2 isGreaterThan 1
+		display (spaces(c_NoOfSpaces),'[3] 2 is infact greater than 1',LF)
+	end.if
+	
+	display.line ('(Test:if 07)')
+	if  1 !> 2
+		display (spaces(c_NoOfSpaces),'[1] 1 is not greater than 2',LF)
+	end.if
+	if  1 N_GT 2
+		display (spaces(c_NoOfSpaces),'[2] 1 is not greater than 2',LF)
+	end.if
+	if  1 isNOTGreaterThan 2
+		display (spaces(c_NoOfSpaces),'[3] 1 is not greater than 2',LF)
+	end.if
+
+	display.line ('(Test:if 08)')
+	if  1 <= 2
+		display (spaces(c_NoOfSpaces),'[1] 1 is infact less than or equal to 2',LF)
+	end.if
+	if  1 =< 2
+		display (spaces(c_NoOfSpaces),'[2] 1 is infact less than or equal to 2',LF)
+	end.if
+	if  1 isLessThanOREqualTo 2
+		display (spaces(c_NoOfSpaces),'[3] 1 is infact less than or equal to 2',LF)
+	end.if
+	display.line
+	
+END.SUB B_1_if
+
+;=======================================================================
+;		Test if's with Or's
+;=======================================================================
+BEGIN.SUB C_1_if_OR
+
+;	--------------------------------------------------------------------
+;	Test all EQUALS equivalents
+;	--------------------------------------------------------------------
+	display.line ('(Test:OR 01)')
+	.if  1 = 1 | .OR 1 = 1 | .end
+		display (spaces(c_NoOfSpaces),'[1] 1 does infact equal 1',LF)
+	end.if
+	.if  1 = 1 | .OR 1 EQ 1 | .end
+		display (spaces(c_NoOfSpaces),'[2] 1 does infact equal 1',LF)
+	end.if
+	.if  1 != 1 | .OR 1 Equals 1 | .end
+		display (spaces(c_NoOfSpaces),'[3] 1 does infact equal 1',LF)
+	end.if
+
+	display.line ('(Test:OR 02)')
+	.if  1 = 2 | .OR 1 != 2 | .end
+		display (spaces(c_NoOfSpaces),'[1] 1 is not infact equal to 2',LF)
+	end.if
+	.if  1 = 2 | .OR 1 N_EQ 2 | .end
+		display (spaces(c_NoOfSpaces),'[2] 1 is not infact equal to 2',LF)
+	end.if
+	.if  1 = 2 | .OR 1 isNOTEqualTo 2 | .end
+		display (spaces(c_NoOfSpaces),'[3] 1 is not infact equal to 2',LF)
+	end.if
+	display.line
+	
+;	--------------------------------------------------------------------
+;	Test all LESS THAN equivalents
+;	--------------------------------------------------------------------
+	display.line ('(Test:OR 03)')
+	.if 1 = 2 | .OR 1 < 2 | .end
+		display (spaces(c_NoOfSpaces),'[1] 1 is infact less than 2',LF)
+	end.if
+	.if  1 = 2 | .OR 1 LT 2 | .end
+		display (spaces(c_NoOfSpaces),'[2] 1 is infact less than 2',LF)
+	end.if
+	.if  1 = 2 | .OR 1 isLessThan 2 | .end
+		display (spaces(c_NoOfSpaces),'[3] 1 is infact less than 2',LF)
+	end.if
+
+	display.line ('(Test:OR 04)')
+	.if  1 = 2 | .OR 1 !< 1 | .end
+		display (spaces(c_NoOfSpaces),'[1] 1 is infact NOT less than 1',LF)
+	end.if
+	.if  1 = 2 | .OR 1 N_LT 1 | .end
+		display (spaces(c_NoOfSpaces),'[2] 1 is infact NOT less than 1',LF)
+	end.if
+	.if  1 = 2 | .OR 1 isNOTLessThan 1 | .end
+		display (spaces(c_NoOfSpaces),'[3] 1 is infact NOT less than 1',LF)
+	end.if
+
+	display.line ('(Test:OR 05)')
+	.if  1 = 2 | .OR 2 >= 1 | .end
+		display (spaces(c_NoOfSpaces),'[1] 2 is infact greater than or equal to 1',LF)
+	end.if
+	.if  1 = 2 | .OR 2 => 1 | .end
+		display (spaces(c_NoOfSpaces),'[2] 2 is infact greater than or equal to 1',LF)
+	end.if
+	.if  1 = 2 | .OR 1 isGreaterThanOREqualTo 1 | .end
+		display (spaces(c_NoOfSpaces),'[3] 2 is infact greater than or equal to 1',LF)
+	end.if
+	display.line
+	
+;	--------------------------------------------------------------------
+;	Test all GREATER THAN equivalents
+;	--------------------------------------------------------------------
+	display.line '(Test:OR 06)'
+	.if  1 = 2 | .OR 2 > 1 | .end
+		display (spaces(c_NoOfSpaces),'[1] 2 is infact greater than 1',LF)
+	end.if
+	.if  1 = 2 | .OR 2 GT 1 | .end
+		display (spaces(c_NoOfSpaces),'[2] 2 is infact greater than 1',LF)
+	end.if
+	.if  1 = 2 | .OR 2 isGreaterThan 1 | .end
+		display (spaces(c_NoOfSpaces),'[3] 2 is infact greater than 1',LF)
+	end.if
+	
+	display.line ('(Test:OR 07)')
+	.if  1 = 2 | .OR 1 !> 2 | .end
+		display (spaces(c_NoOfSpaces),'[1] 1 is not greater than 2',LF)
+	end.if
+	.if  1 = 2 | .OR 1 N_GT 2 | .end
+		display (spaces(c_NoOfSpaces),'[2] 1 is not greater than 2',LF)
+	end.if
+	.if  1 = 2 | .OR 1 isNOTGreaterThan 2 | .end
+		display (spaces(c_NoOfSpaces),'[3] 1 is not greater than 2',LF)
+	end.if
+
+	display.line '(Test:OR 08)'
+	.if  1 = 2 | .OR 1 <= 2 | .end
+		display (spaces(c_NoOfSpaces),'[1] 1 is infact less than or equal to 2',LF)
+	end.if
+	.if  1 = 2 | .OR 1 =< 2 | .end
+		display (spaces(c_NoOfSpaces),'[2] 1 is infact less than or equal to 2',LF)
+	end.if
+	.if  1 = 2 | .OR 1 isLessThanOREqualTo 2 | .end
+		display (spaces(c_NoOfSpaces),'[3] 1 is infact less than or equal to 2',LF)
+	end.if
+
+END.SUB C_1_if_OR
+
+;=======================================================================
+;		Test if's with AND's
+;=======================================================================
+BEGIN.SUB D_1_if_AND
+;
+;	As the new languageONE removes brackets you are able to code them where
+;	ever you wish. There purpose in languageONE is to provide clarity.
+;	It is at your descretion and style as to how you prefer to sue them
+;	**NOTE**
+;		The exception to this is the spaces(1) command which does in
+;		fact require the brackets
+;
+;	--------------------------------------------------------------------
+;	Test all EQUALS equivalents
+;	--------------------------------------------------------------------
+	display.line '(Test:AND 01)'
+	.if  (1 = 1) | (.AND 1 = 1) | .end
+		display (spaces(c_NoOfSpaces),'[1] 1 does infact equal 1',LF)
+	end.if
+	.if  (1 = 1) | (.AND 1 EQ 1) | .end
+		display (spaces(c_NoOfSpaces),'[2] 1 does infact equal 1',LF)
+	end.if
+	.if  (1 = 1) | (.AND 1 Equals 1) | .end
+		display (spaces(c_NoOfSpaces),'[3] 1 does infact equal 1',LF)
+	end.if
+
+	display.line ('(Test:AND 02)')
+	.if  (1 = 1) | (.AND 1 != 2) | .end
+		display (spaces(c_NoOfSpaces),'[1] 1 is not infact equal to 2',LF)
+	end.if
+	.if  (1 = 1) | (.AND 1 N_EQ 2) | .end
+		display (spaces(c_NoOfSpaces),'[2] 1 is not infact equal to 2',LF)
+	end.if
+	.if  (1 = 1) | (.AND 1 isNOTEqualTo 2) | .end
+		display (spaces(c_NoOfSpaces),'[3] 1 is not infact equal to 2',LF)
+	end.if
+	display.line
+	
+;	--------------------------------------------------------------------
+;	Test all LESS THAN equivalents
+;	--------------------------------------------------------------------
+	display.line ('(Test:AND 03)')
+	.if  (1 = 1) | (.AND 1 < 2) | .end
+		display (spaces(c_NoOfSpaces),'[1] 1 is infact less than 2',LF)
+	end.if
+	.if  (1 = 1) | (.AND 1 LT 2) | .end
+		display (spaces(c_NoOfSpaces),'[2] 1 is infact less than 2',LF)
+	end.if
+	.if  (1 = 1) | (.AND 1 isLessThan 2) | .end
+		display (spaces(c_NoOfSpaces),'[3] 1 is infact less than 2',LF)
+	end.if
+
+	display.line ('(Test:AND 04)')
+	.if  (1 = 1) | (.AND 1 !< 1) | .end
+		display (spaces(c_NoOfSpaces),'[1] 1 is infact NOT less than 1',LF)
+	end.if
+	.if  (1 = 1) | (.AND 1 N_LT 1) | .end
+		display (spaces(c_NoOfSpaces),'[2] 1 is infact NOT less than 1',LF)
+	end.if
+	.if  (1 = 1) | (.AND 1 isNOTLessThan 1) | .end
+		display (spaces(c_NoOfSpaces),'[3] 1 is infact NOT less than 1',LF)
+	end.if
+
+	display.line ('(Test:AND 05)')
+	.if  (1 = 1) | (.AND 2 >= 1) | .end
+		display (spaces(c_NoOfSpaces),'[1] 2 is infact greater than or equal to 1',LF)
+	end.if
+	.if  (1 = 1) | (.AND 2 => 1) | .end
+		display (spaces(c_NoOfSpaces),'[2] 2 is infact greater than or equal to 1',LF)
+	end.if
+	.if  (1 = 1) | (.AND 1 isGreaterThanOREqualTo 1) | .end
+		display (spaces(c_NoOfSpaces),'[3] 2 is infact greater than or equal to 1',LF)
+	end.if
+	display.line
+	
+;	--------------------------------------------------------------------
+;	Test all GREATER THAN equivalents
+;	--------------------------------------------------------------------
+	display.line ('(Test:AND 06)')
+	.if  (1 = 1) | (.AND 2 > 1) | .end
+		display (spaces(c_NoOfSpaces),'[1] 2 is infact greater than 1',LF)
+	end.if
+	.if  (1 = 1) | (.AND 2 GT 1) | .end
+		display (spaces(c_NoOfSpaces),'[2] 2 is infact greater than 1',LF)
+	end.if
+	.if  (1 = 1) | (.AND 2 isGreaterThan 1) | .end
+		display (spaces(c_NoOfSpaces),'[3] 2 is infact greater than 1',LF)
+	end.if
+	
+	display.line ('(Test:AND 07)')
+	.if  (1 = 1) | (.AND 1 !> 2) | .end
+		display (spaces(c_NoOfSpaces),'[1] 1 is not greater than 2',LF)
+	end.if
+	.if  (1 = 1) | (.AND 1 N_GT 2) | .end
+		display (spaces(c_NoOfSpaces),'[2] 1 is not greater than 2',LF)
+	end.if
+	.if  (1 = 1) | (.AND 1 isNOTGreaterThan 2) | .end
+		display (spaces(c_NoOfSpaces),'[3] 1 is not greater than 2',LF)
+	end.if
+
+	display.line ('(Test:AND 08)')
+	.if  (1 = 1) | (.AND 1 <= 2) | .end
+		display (spaces(c_NoOfSpaces),'[1] 1 is infact less than or equal to 2',LF)
+	end.if
+	.if  (1 = 1) | (.AND 1 =< 2) | .end
+		display (spaces(c_NoOfSpaces),'[2] 1 is infact less than or equal to 2',LF)
+	end.if
+	.if  (1 = 1) | (.AND 1 isLessThanOREqualTo 2) | .end
+		display (spaces(c_NoOfSpaces),'[3] 1 is infact less than or equal to 2',LF)
+	end.if
+	display.line
+
+END.SUB D_1_if_AND
+
+;=======================================================================
+;		Test TEST
+;=======================================================================
+BEGIN.SUB E_1_TEST
+
+	begin.test c_TRUE
+	;	Test Equals equivalences
+		when 1 = 1
+			display.line ('(Test:TEST 01)')
+			display (spaces(c_NoOfSpaces),'[1] 1 does infact equal 1',LF)
+		wend
+
+		when 1 EQ 1
+			display (spaces(c_NoOfSpaces),'[2] 1 does infact equal 1',LF)
+		wend
+
+		when 1 Equals 1
+			display (spaces(c_NoOfSpaces),'[3] 1 does infact equal 1',LF)
+		wend
+
+		when 1 != 2
+			display.line ('(Test:TEST 02)')
+			display (spaces(c_NoOfSpaces),'[1] 1  infact does not equal 2',LF)
+		wend
+
+		when 1 N_EQ 2
+			display (spaces(c_NoOfSpaces),'[2] 1 infact does not equal 2',LF)
+		wend
+
+		when 1 isNOTEqualTo 2
+			display (spaces(c_NoOfSpaces),'[3] 1 infact does not equal 2',LF)
+			display.line
+		wend
+
+	;	Test Less Than equivalences
+		when 1 < 2
+			display.line ('(Test:TEST 03)')		
+			display (spaces(c_NoOfSpaces),'[1] 1 is infact less than 2',LF)
+		wend
+
+		when 1 LT 2
+			display (spaces(c_NoOfSpaces),'[2] 1 is infact less than 2',LF)
+		wend
+
+		when 1 isLessThan 2
+			display (spaces(c_NoOfSpaces),'[3] 1 is infact less than 2',LF)
+		wend
+			
+		when 1 !< 1
+			display.line ('(Test:TEST 04)')
+			display (spaces(c_NoOfSpaces),'[1] 1 is infact NOT less than 1',LF)
+		wend
+
+		when 1 N_LT 1
+			display (spaces(c_NoOfSpaces),'[2] 1 is infact NOT less than 1',LF)
+		wend
+
+		when 1 isNOTLessThan 1
+			display (spaces(c_NoOfSpaces),'[3] 1 is infact NOT less than 1',LF)
+			display.line
+		wend
+
+	;	Test Greater Than equivalences
+		when 2 > 1
+			display.line ('(Test:TEST 05)')
+			display (spaces(c_NoOfSpaces),'[1] 2 is infact greater than 1',LF)
+		wend
+
+		when 2 GT 1
+			display (spaces(c_NoOfSpaces),'[2] 2 is infact greater than 1',LF)
+		wend
+
+		when 2 isGreaterThan 1
+			display (spaces(c_NoOfSpaces),'[3] 2 is infact greater than 1',LF)
+		wend
+
+		when 1 !> 2
+			display.line ('(Test:TEST 06)')
+			display (spaces(c_NoOfSpaces),'[1] 1 is infact not greater than 2',LF)
+		wend
+
+		when 1 N_GT 2
+			display (spaces(c_NoOfSpaces),'[2] 1 is infact not greater than 2',LF)
+		wend
+
+		when 1 isNOTGreaterThan 2
+			display (spaces(c_NoOfSpaces),'[3] 1 is infact not greater than 2',LF)
+			display.line
+		wend
+
+	;	Test Greater Than of Equal to equivalences
+		when 1 >= 1
+			display.line ('(Test:TEST 07)')
+			display (spaces(c_NoOfSpaces),'[1] 1 is greater than or equal to 1',LF)
+		wend
+
+		when 1 N_LT 1
+			display (spaces(c_NoOfSpaces),'[2] 1 is greater than or equal to 1',LF)
+		wend
+
+		when 1,isGreaterThanOREqualTo,1
+			display (spaces(c_NoOfSpaces),'[3] 1 is greater than or equal to 1',LF)
+		wend
+
+	;	Test Less Than of Equal to equivalences	
+		when 1 <= 1
+			display.line ('(Test:TEST 08)')
+			display (spaces(c_NoOfSpaces),'[1] 1 is less than or equal to 1',LF)
+		wend
+
+		when 1 N_GT 1
+			display (spaces(c_NoOfSpaces),'[2] 1 is less than or equal to 1',LF)
+		wend
+
+		when 1,isLessThanOREqualTo,1
+			display (spaces(c_NoOfSpaces),'[3] 1 is less than or equal to 1',LF)
+			display.line
+		wend
+		
+	end.test
+	
+END.SUB E_1_TEST
+
+;=======================================================================
+;		Test TEST with OR's
+;=======================================================================
+BEGIN.SUB F_1_TEST_OR
+
+	begin.test c_TRUE
+	;	Test Equals equivalences
+	   .when  (1 != 1) | (.OR 1 = 1) | .end	
+			display.line ('(Test:TEST/OR 01)'	)
+			display (spaces(c_NoOfSpaces), '[1] 1 is infact equal to 1',LF)
+		wend
+
+	   .when  (1 != 1) | (.OR 1 EQ 1) | .end
+			display (spaces(c_NoOfSpaces), '[2] 1 is infact equal to 1',LF)
+		wend
+
+	   .when  (1 != 1) | (.OR 1 Equals 1) | .end
+			display (spaces(c_NoOfSpaces), '[3] 1 is infact equal to 1',LF)
+			display.line
+		wend
+
+	;	Test Not Equals equivalences			
+	   .when  (1 != 1) | (.OR 1 != 2) | .end
+			display.line '(Test:TEST/OR 02)'
+			display (spaces(c_NoOfSpaces), '[1] 1 is not equal to 2',LF)
+		wend
+
+	   .when  (1 != 1) | (.OR 1 N_EQ 2) | .end
+			display (spaces(c_NoOfSpaces), '[2] 1 is not equal to 2',LF)
+		wend
+
+	   .when  (1 != 1) | (.OR 1 isNOTEqualTo 2) | .end
+			display (spaces(c_NoOfSpaces), '[3] 1 is not equal to 2',LF)
+			display.line			
+		wend
+				
+	;	Test Less than equivalences					
+	   .when  (1 != 1) | (.OR 1 < 2) | .end
+			display.line ('(Test:TEST/OR 03)')
+			display (spaces(c_NoOfSpaces), '[1] 1 is less than 2',LF)
+		wend
+
+	   .when  (1 != 1) | (.OR 1 LT 2) | .end
+			display (spaces(c_NoOfSpaces), '[2] 1 is less than 2',LF)
+		wend
+
+	   .when  (1 != 1) | (.OR 1 isLessThan 2) | .end
+			display (spaces(c_NoOfSpaces), '[3] 1 is less than 2',LF)
+			display.line
+		wend
+
+	;	Test not Less Than equivalences
+	   .when  (1 != 1) | (.OR 2 !< 1) | .end
+		  	display.line ('(Test:TEST/OR 04)')
+			display (spaces(c_NoOfSpaces), '[1] 2 is not less than 1',LF)
+		wend
+
+	   .when  (1 != 1) | (.OR 2 N_LT 1) | .end
+			display (spaces(c_NoOfSpaces), '[2] 2 is not less than 1',LF)
+		wend
+
+	   .when  (1 != 1) | (.OR 2 isNOTLessThan 1) | .end
+			display (spaces(c_NoOfSpaces), '[3] 2 is not less than 1',LF)
+			display.line
+		wend
+				
+	;	Test Greater Than equivalences					
+	   .when  (1 != 1) | (.OR 2 > 1) | .end
+			display.line ('(Test:TEST/OR 05)')
+			display (spaces(c_NoOfSpaces), '[1] 2 is greater than 1',LF)
+		wend
+
+	   .when  (1 != 1) | (.OR 2 GT 1) | .end
+			display (spaces(c_NoOfSpaces), '[2] 2 is greater than 1',LF)
+		wend
+
+	   .when  (1 != 1) | (.OR 2 isGreaterThan 1) | .end
+			display (spaces(c_NoOfSpaces), '[2] 2 is greater than 1',LF)
+			display.line		
+		wend
+				
+	;	Test Not Greater Than equivalences						
+	   .when  (1 != 1) | (.OR 1,!>,2) | .end
+			display.line ('(Test:TEST/OR 06)')
+			display (spaces(c_NoOfSpaces), '[1] 1 is not greater than 2',LF)
+		wend
+
+	   .when  (1 != 1) | (.OR 1 N_GT 2) | .end
+			display (spaces(c_NoOfSpaces), '[2] 1 is not greater than 2',LF)
+		wend
+
+	   .when  (1 != 1) | (.OR 1 isNOTGreaterThan 2) | .end
+			display (spaces(c_NoOfSpaces), '[3] 1 is not greater than 2',LF)
+			display.line			
+		wend
+				
+	;	Test Greater Than or Equal To equivalences						
+	   .when (1 != 1) | (.OR 1 >= 1) | .end
+			display.line ('(Test:TEST/OR 07)')
+			display (spaces(c_NoOfSpaces), '[1] 1 is greater than or equal to 1',LF)
+		wend
+
+	   .when  (1 != 1) | (.OR 1 N_LT 1) | .end
+			display (spaces(c_NoOfSpaces), '[2] 1 is greater than or equal to 1',LF)
+		wend
+
+	   .when  (1 != 1) | (.OR 1 isGreaterThanOREqualTo 1) | .end
+			display (spaces(c_NoOfSpaces), '[3] 1 is greater than or equal to 1',LF)
+			display.line
+		wend
+				
+	;	Test Less Than or Equal To equivalences						
+	   .when (1 != 1) | (.OR 1 <= 1) | .end
+			display.line ('(Test:TEST/OR 08)')
+			display (spaces(c_NoOfSpaces), '[1] 1 is less than or equal to 1',LF)
+		wend
+
+	   .when  (1 != 1) | (.OR 1 N_GT 1) | .end
+			display (spaces(c_NoOfSpaces), '[2] 1 is less than or equal to 1',LF)
+		wend
+
+	   .when (1 != 1) | (.OR 1 isLessThanOREqualTo 1) | .end
+			display (spaces(c_NoOfSpaces), '[3] 1 is less than or equal to 1',LF)
+			display.line
+		wend
+				
+	end.test
+		
+END.SUB F_1_TEST_OR
+
+;=======================================================================
+;		Test TEST with AND's
+;=======================================================================
+BEGIN.SUB G_1_TEST_AND
+
+	begin.test c_TRUE
+	;	Test Equals equivalences
+	   .when (1 = 1) | (.AND 1 = 1) | .end	
+			display.line ('(Test:TEST/AND 01)')
+			display (spaces(c_NoOfSpaces), '[1] 1 is infact equal to 1',LF)
+		wend
+
+	   .when (1 = 1) | (.AND 1 EQ 1) | .end
+			display (spaces(c_NoOfSpaces), '[2] 1 is infact equal to 1',LF)
+		wend
+
+	   .when (1 = 1) | (.AND 1 Equals 1) | .end
+			display (spaces(c_NoOfSpaces), '[3] 1 is infact equal to 1',LF)
+			display.line
+		wend
+	
+	;	Test Not Equals equivalences
+	   .when (1 = 1) | (.AND 1 != 2) | .end
+			display.line ('(Test:TEST/AND 02)')
+			display (spaces(c_NoOfSpaces), '[1] 1 is not equal to 2',LF)
+		wend
+
+	   .when (1 = 1) | (.AND 1 N_EQ 2) | .end
+			display (spaces(c_NoOfSpaces), '[2] 1 is not equal to 2',LF)
+		wend
+
+	   .when (1 = 1) | (.AND 1 isNOTEqualTo 2) | .end
+			display (spaces(c_NoOfSpaces), '[3] 1 is not equal to 2',LF)
+			display.line			
+		wend
+		
+	;	Test Less Than equivalences		
+	   .when (1 = 1) | (.AND 1 < 2) | .end
+			display.line ('(Test:TEST/AND 03)')
+			display (spaces(c_NoOfSpaces), '[1] 1 is less than 2',LF)
+		wend
+
+	   .when (1 = 1) | (.AND 1 LT 2) | .end
+			display (spaces(c_NoOfSpaces), '[2] 1 is less than 2',LF)
+		wend
+
+	   .when (1 = 1) | (.AND 1 isLessThan 2) | .end
+			display (spaces(c_NoOfSpaces), '[3] 1 is less than 2',LF)
+			display.line
+		wend
+
+	;	Test Not Less Than equivalences
+	   .when (1 = 1) | (.AND 2 !< 1) | .end
+		  	display.line ('(Test:TEST/AND 04)')
+			display (spaces(c_NoOfSpaces), '[1] 2 is not less than 1',LF)
+		wend
+
+	   .when (1 = 1) | (.AND 2 N_LT 1) | .end
+			display (spaces(c_NoOfSpaces), '[2] 2 is not less than 1',LF)
+		wend
+
+	   .when (1 = 1) | (.AND 2 isNOTLessThan 1) | .end
+			display (spaces(c_NoOfSpaces), '[3] 2 is not less than 1',LF)
+			display.line
+		wend
+				
+	;	Test Greater Than equivalences
+	   .when (1 = 1) | (.AND 2 > 1) | .end
+			display.line ('(Test:TEST/AND 05)')
+			display (spaces(c_NoOfSpaces), '[1] 2 is greater than 1',LF)
+		wend
+
+	   .when (1 = 1) | (.AND 2 GT 1) | .end
+			display (spaces(c_NoOfSpaces), '[2] 2 is greater than 1',LF)
+		wend
+
+	   .when (1 = 1) | (.AND 2 isGreaterThan 1) | .end
+			display (spaces(c_NoOfSpaces), '[3] 2 is greater than 1',LF)
+			display.line		
+		wend
+				
+	;	Test Not Greater equivalences
+	   .when (1 = 1 | .AND 1 !> 2) | .end
+			display.line ('(Test:TEST/AND 06)')
+			display (spaces(c_NoOfSpaces), '[1] 1 is not greater than 2',LF)
+		wend
+
+	   .when (1 = 1) | (.AND 1 N_GT 2) | .end
+			display (spaces(c_NoOfSpaces), '[2] 1 is not greater than 2',LF)
+		wend
+
+	   .when (1 = 1) | (.AND 1 isNOTGreaterThan 2) | .end
+			display (spaces(c_NoOfSpaces), '[3] 1 is not greater than 2',LF)
+			display.line			
+		wend
+				
+	;	Test Greater Than or Equal to equivalences						
+	   .when (1 = 1) | (.AND 1 >= 1) | .end
+			display.line ('(Test:TEST/AND 07)')
+			display (spaces(c_NoOfSpaces), '[1] 1 is greater than or equal to 1',LF)
+		wend
+
+	   .when (1 = 1) | (.AND 1 N_LT 1) | .end
+			display (spaces(c_NoOfSpaces), '[2] 1 is greater than or equal to 1',LF)
+		wend
+
+	   .when (1 = 1) | (.AND 1 isGreaterThanOREqualTo 1) | .end
+			display (spaces(c_NoOfSpaces), '[3] 1 is greater than or equal to 1',LF)
+			display.line
+		wend
+				
+	;	Test Less Than or Equal to equivalences
+	   .when (1 = 1) | (.AND 1 <= 1) | .end
+			display.line ('(Test:TEST/AND 08)')
+			display (spaces(c_NoOfSpaces), '[1] 1 is less than or equal to 1',LF)
+		wend
+
+	   .when (1 = 1) | (.AND 1 N_GT 1) | .end
+			display (spaces(c_NoOfSpaces), '[2] 1 is less than or equal to 1',LF)
+		wend
+
+	   .when (1 = 1) | (.AND 1 isLessThanOREqualTo 1) | .end
+			display (spaces(c_NoOfSpaces), '[3] 1 is less than or equal to 1',LF)
+			display.line
+		wend
+						
+	end.test
+		
+END.SUB G_1_TEST_AND
+
+;=======================================================================
+;		Test TEST (miscellaneous)
+;=======================================================================
+BEGIN.SUB H_1_MISC
+;	NOTE:-	You can infact define Numbers and words outside the 
+;			Dictionary or Matrix. They must be enclosed by the keywords
+;			"section .data" and "section .txt". This can be used used 
+;			for convenience maybe where you do not want to scroll up
+;			and down to view the code.
+;
+;	SPECIAL NOTE:-	Please realise though that this does not make the 
+;					data local. Local data is an abstraction of a 
+;					programming language and easily defeated. The real
+;					rule here is:-
+;					if YOU DO NOT WANT TO ACCESS DATA OUTSIDE OF THIS
+;					SUB-ROUTINE THEN DON'T ACCESS DATA OUTSIDE OF THIS
+;					SUB-ROUTINE
+
+	section .data
+		insertnumber w_Number,100,'999.99'
+	section .text
+	
+	display.line ('(Test:TEST-miscellaneous 1)'	)
+
+	if w_Number = 1
+		display (spaces(c_NoOfSpaces), '[1] 1.00 is equal to 1',LF)
+	end.if
+	
+	if w_Number = {100,'999.99'}
+		display (spaces(c_NoOfSpaces), '[2] 1.00 is equal to 1.00',LF)
+	end.if
+
+   .if w_Number > 1 | .OR w_Number < 2 | .end
+		display (spaces(c_NoOfSpaces), '[3] 1.00 is greater than 1 or its less than 2',LF)
+	end.if
+
+   .if w_Number > 0 | .AND w_Number < 2 | .end
+		display (spaces(c_NoOfSpaces), '[4] 1.00 is greater than 0 and less than 2',LF)
+	end.if
+	
+
+	display.line '(Test:TEST-miscellaneous 3)'	
+
+	begin.test w_Number
+
+		when = 0
+			display (spaces(c_NoOfSpaces), '[1] 1.00 is equal to 1',LF)
+
+			begin.test w_Number
+
+				when = {200,'999.99'}
+					display (spaces(c_NoOfSpaces), '[1] 1.00 is equal to 1.00',LF)
+					if  1 = 2
+						display (spaces(4), 'ERROR - Should not display',LF)
+					else
+						if  1 = 1
+							display (spaces(4), 'if under when',LF)
+						end.if
+					end.if
+				wend
+
+			   .when > 1 | .or  < 2 | .end
+					display (spaces(c_NoOfSpaces), '[2] 1.00 is greater than 1 or its less than 2',LF)
+				wend
+
+			   .when > 0 | .and < 2 | .end
+					display (spaces(c_NoOfSpaces), '[3] 1.00 is greater than 0 and less than 2',LF)
+				wend
+
+			end.test
+
+		wend
+
+		when = 2
+			display (spaces(c_NoOfSpaces), 'when is not functioning properly')
+		wend
+
+		otherwise
+			display.line (spaces(c_NoOfSpaces), 'This else should work')
+
+	end.test
+
+END.SUB H_1_MISC
+
+;=======================================================================
+;		Test the new _IN parameter of the IF statement
+;=======================================================================
+BEGIN.SUB J_1_IN
+
+;	Using a Dictionary List
+	if "ROGER" _IN {w_Name1,w_Name2,w_Name3,w_Name4}
+		display.line ('ROGER HAS been found')
+	else
+		display.line ('ROGER has NOT been found')
+	end.if
+
+	if "JESSICA" _IN {w_Name1,w_Name2,w_Name3,w_Name4}
+		display.line ('JESSICA HAS been found')
+	else
+		display.line ('JESSICA has NOT been found')
+	end.if
+
+	if "KRYSTAL" _IN {w_Name1,w_Name2,w_Name3,w_Name4}
+		display.line ('KRYSTAL HAS been found')
+	else
+		display.line ('KRYSTAL has NOT been found')
+	end.if
+
+	if "TIFFANI" _IN {w_Name1,w_Name2,w_Name3,w_Name4}
+		display.line ('TIFFANI HAS been found')
+	else
+		display.line ('TIFFANI has NOT been found')
+	end.if
+	
+	if "GEORGE" _IN {w_Name1,w_Name2,w_Name3,w_Name4}
+		display.line ('GEORGE HAS been found')
+	else
+		display.line ('GEORGE has NOT been found')
+	end.if
+
+;	Using a List of Literals
+	if "ROGER" _IN {'ROGER','JESSICA','KRYSTAL','TIFFANI'}
+		display.line ('ROGER HAS been found')
+	else
+		display.line ('ROGER has NOT been found')
+	end.if
+
+	if "JESSICA" _IN {'ROGER','JESSICA','KRYSTAL','TIFFANI'}
+		display.line ('JESSICA HAS been found')
+	else
+		display.line ('JESSICA has NOT been found')
+	end.if
+
+	if "KRYSTAL" _IN {'ROGER','JESSICA','KRYSTAL','TIFFANI'}
+		display.line ('KRYSTAL HAS been found')
+	else
+		display.line ('KRYSTAL has NOT been found')
+	end.if
+
+	if "TIFFANI" _IN {'ROGER','JESSICA','KRYSTAL','TIFFANI'}
+		display.line ('TIFFANI HAS been found')
+	else
+		display.line ('TIFFANI has NOT been found')
+	end.if
+	
+	if "GEORGE" _IN {'ROGER','JESSICA','KRYSTAL','TIFFANI'}
+		display.line ('GEORGE HAS been found')
+	else
+		display.line ('GEORGE has NOT been found')
+	end.if
+
+;	Qualifying a word
+;	When qualifying a search word in this statement you are inferring that
+;	that you are also qualifying a word in the list. languageONE will
+;	search for "ROG" in "ROG","JES","KRY" and "TIF"
+;
+	if {"ROGER",1,3} _IN {'ROGER','JESSICA','KRYSTAL','TIFFANI'}
+		display.line 'ROGER (QUALIFIED) HAS been found'
+	else
+		display.line 'ROGER (QUALIFIED) has NOT been found'
+	end.if
+
+;	Qualifying a word in the search list does not make sense to 
+;	languageONE and will not assemble.
+;	if {"ROGER",1,3} _IN {'ROGER',1,3},'JESSICA','KRYSTAL','TIFFANI'}
+;	if your are looking at doing something like that then you can use
+;	the find routine from the words package
+
+	$.find ({'ROG',I},{'alphabetROGalphabet',9,3}
+	display ('ROG starts in position ',I,' of alphabetROGalphabet',LF)
+	
+END.SUB J_1_IN
+
+;=======================================================================
+;		Test for changes made in V1.18
+;=======================================================================
+BEGIN.SUB K_1_V118
+
+	[section .data]
+		insertnumber V118_No1,123.45,'999.99'	
+	[section .text]
+
+
+	display (c_RedFG,c_Underlined,'V1.18] DEMONSTRATING V1.18 enhancements',LF)
+	display (c_ResetUnderlined,c_CyanFG)
+
+	begin.test V118_No1
+		when = 123.45
+			display ('[1]:TRUE - successful test'),LF
+		wend
+
+		otherwise
+			display ('[1]:Test failed'),LF
+	end.test
+
+	begin.test c_TRUE
+		when 123.45 = V118_No1
+			display ('[2]:TRUE - successful test'),LF
+		wend
+
+		otherwise
+			display ('[2]:Test failed'),LF
+	end.test
+
+	begin.test 123.45
+		when = V118_No1
+			display ('[3]:TRUE - successful test'),LF
+		wend
+
+		otherwise
+			display ('[3]:Test failed'),LF
+	end.test
+
+	begin.test c_TRUE
+		when {12345,'999.99'} = V118_No1
+			display ('[4]:TRUE - successful test'),LF
+		wend
+
+		otherwise
+			display ('[4]:Test failed'),LF
+	end.test
+	
+	begin.test c_TRUE
+		when {12345,'99.999'} = V118_No1
+			display ('[5]:TRUE - successful test'),LF
+		wend
+
+		otherwise
+			display ('[5]:Test failed (SUCCESSFULLY)'),LF
+	end.test
+
+END.SUB K_1_V118
+
+;=======================================================================
+;		Finalisation
+;=======================================================================
+BEGIN.SUB Z_1_Finalise
+END.SUB Z_1_Finalise

@@ -1,0 +1,493 @@
+	%assign debug 0	
+	%include '../include/LMACROS.CPY'
+	%include '../include/IMACROS.CPY'
+	%include '../include/CONSTANTS.INC'
+	%line 5 WORDS.LIB
+
+;	=================================================
+;	GLOBAL ROUTINES/VARIABLES defined in this library
+;	=================================================
+
+;	Routines
+;	--------
+	global _WORDS
+
+;	===============================================
+
+;	EXTERNAL ROUTINES/VARIABLES used by the library
+
+;	===============================================
+
+;	Routines
+;	--------	
+	extern _ENVIRONMENT				; COMMON
+	extern _NUMBERS					; NUMBERS
+	extern _COMPARE					; DECISIONS
+	extern _VALIDATE_SRC			; COMMON
+	extern _VALIDATE_DST			; COMMON
+	extern _SYSERROR				; COMMON
+	extern _TORECORD				; FILES
+	extern _FROMRECORD				; FILES
+
+;	------
+;	Fields
+;	------		
+	extern  w_One					; COMMON
+	extern  err07					; COMMON
+	extern  w_RecordBuffer			; COMMON		
+
+;=======================================================================
+
+;			Call parameters for _Words
+
+;=======================================================================
+
+;			+-------------------+	  +-------------------+
+;			| REPLACE value	    |	  |  FIND counter	  |
+;			+-------------------+ r15 +-------------------+	
+;			|  					|	  |					  |
+;			+-------------------+ r14 +-------------------+	
+;			|  r_DstStart		|	  |	 				  |
+;			+-------------------+ r13 +-------------------+	 	
+;			|  r_DstAddress     |	   		No -> ALPHA
+;			+-------------------+ r12 +-------------------+
+;			|  r_SrcBytes	    |	  |  r_SrcPicLength	  |
+;			+-------------------+ r11 +-------------------+
+;			|  r_SrcStart       |	  |  r_SrcPicAddress  |
+;			+-------------------+ r10 +-------------------+
+;			|  r_SrcAddress     |
+;			+-------------------+ r9  
+;			|  r_Function       |
+;			+-------------------+ r8 
+
+;-----------------------------------------------------------------------
+
+;=======================================================================
+;			DATA SEGMENT
+;=======================================================================
+;           Initialised - by program
+;-----------------------------------------------------------------------
+			section .data
+;-----------------------------------------------------------------------				
+;           UN Initialised - zero filled when loaded
+;-----------------------------------------------------------------------													  
+			section .bss
+
+;=======================================================================				
+;           CONSTANTS
+;=======================================================================	
+
+;=======================================================================
+;			CODE SEGMENT
+;=======================================================================				
+
+			section .text				
+_WORDS:
+
+	;	------------------------------------------------------------
+	;	V2.05 - words.RecordToString coaRecord,{w_Description,start}
+	;	V2.05 - words.StringToRecord {w_Description,start},coaRecord
+	;	------------------------------------------------------------
+
+	.01:cmp	r_Function,$stringtorecord										; Test for StraingToRecord
+				 jne .02													;	and bypass if not
+
+				 Call _STRINGTORECORD										; Do it 
+				 jmp _WORDS_EXIT											; and Exit
+
+	.02:cmp	r_Function,$recordtostring										; Test for RecordToString
+				 jne .03													;	and bypass if not
+
+				 Call _RECORDTOSTRING										; Do it
+				 jmp _WORDS_EXIT											; and Exit
+
+	.03:
+	;	------------------------------------------------------------
+	;	V2.05 - words.RecordToString coaRecord,{w_Description,start}
+	;	V2.05 - words.StringToRecord {w_Description,start},coaRecord
+	;	------------------------------------------------------------
+
+	;	------------------------------------------------------------
+	;	ORIGINALLY - the following is relvant to all other functions
+	;	------------------------------------------------------------				
+			cmp @fieldIndicator(r_DstAddress), '9'							; If numeric destination
+;				jne .num													;	then error
+				jne .valdst
+
+			;	Error message 
+				xor rax,rax
+				mov r14,err07
+				Call _SYSERROR	
+
+	.valdst:Call _VALIDATE_DST
+
+;-----------------------------------------------------------------------				
+;           Convert Number to Text
+;			This is done in NUMBERS but I really wanted the 
+;			call to be thru WORDS. I just makes better logic
+;-----------------------------------------------------------------------
+	.num:	cmp @fieldIndicator(r_SrcAddress),'9'							; If not numeric source
+				jne .valsrc													;	then jump over
+
+		.1if:test r_Function,$pad											; A bit of a quick and dirty
+				 jz .1endif													; incase there needs to be 					
+			$initialise r12													; padding
+		.1endif:																;
+
+			mov r_Function,0												; Setup special function for Numbers to recognise
+	;		mov r15,c_FALSE													; DONT Set the new length
+			Call _NUMBERS													; convert to ascii
+			jmp _WORDS_EXIT													;	and exit
+
+	.valsrc:call _VALIDATE_SRC												; Validate the source parameters
+
+;-----------------------------------------------------------------------				
+;           Special one here to move a environment variable into a destination
+;-----------------------------------------------------------------------	
+	.env:	test r_Function,$environment									; Test for Environment move
+				 jz .insrt													;	and bypass if none
+				 
+			call _ENVIRONMENT
+			jmp _WORDS_EXIT
+			
+;-----------------------------------------------------------------------				
+;           Prepare Insert if required
+;-----------------------------------------------------------------------	
+	.insrt:	test r_Function,$insert											; Test for Insert
+				 jz .init													;	and bypass if none
+				 
+			call _INSERT	
+			
+;-----------------------------------------------------------------------			
+;           Set everything up
+;-----------------------------------------------------------------------	
+	.init:	call _INITIALIZE
+
+;-----------------------------------------------------------------------				
+;           Do REPLACE if required and exit
+;-----------------------------------------------------------------------	
+	.alter:	test r_Function,$replace										; Test for REPLACE
+				 jz .find													;	and bypass if none
+
+			call _REPLACE				
+			jmp _WORDS_EXIT
+						     				
+;-----------------------------------------------------------------------				
+;           Do Find if required and exit
+;-----------------------------------------------------------------------	
+	.find:	test r_Function,$find											; Test for Find
+				 jz .start													;	and bypass if none
+
+			call _FIND				
+			jmp _WORDS_EXIT
+
+;-----------------------------------------------------------------------				
+;           Do the Process
+;-----------------------------------------------------------------------	
+	.start:	call _PROCESS
+			
+_WORDS_EXIT:	
+			ret
+
+;=======================================================================			
+;           INSERT routine - setup the insert prior to the move
+;=======================================================================	
+_INSERT:
+
+		  ; Destination end point
+			LEA RDI,[r_DstAddress-1]									; start - 1
+			add rdi,@fieldLength(r_DstAddress)							; + length
+
+		  ; Destination start point
+			mov rsi,rdi													; end point
+			sub rsi,r_SrcLength											; less no of bytes
+					
+		  ; No Of Bytes to move
+			mov rcx,@fieldLength(r_DstAddress)							; length of destination
+			sub rcx,r_DstStart											; less start point
+			sub rcx,r_SrcLength											; less No Of Bytes
+			inc rcx														; plus 1			 
+			std															; Work backwards
+		REP	movsb
+
+_INSERT_EXIT:
+			ret
+
+;=======================================================================				
+;           Initialisation
+;=======================================================================	
+_INITIALIZE:
+		
+			cld															; Clear direction flag (inc RSI/RDI)
+
+		;	Set the Source Start point
+			LEA RSI,[r_SrcAddress+r_SrcStart-1]							; Source + start less 1
+			
+		;	Set the Destination Start point	
+			LEA RDI,[r_DstAddress+r_DstStart-1]							; Destination + start less 1
+			
+		  ; Get Destination End point
+		;	mov rbx,r_DstAddress										; Take the Destination address
+		;	add rbx,r_DstStart											; add the start point
+		;	add rbx,r_SrcLength											; add the length	
+		;	dec rbx														; less 1
+			mov rbx,r_DstAddress										; reset rbx to 
+			add rbx, @fieldLength(r_DstAddress)							; end of destination
+
+			xor rcx,rcx													; Initialize the counter
+			
+_INITIALIZE_EXIT:
+			ret
+			
+;=======================================================================				
+;           FIND - This will rest RSI and RDI
+;=======================================================================			
+_FIND:
+
+			cld															; Clear direction flag (inc RSI/RDI)
+		  ; Reset destination end point to end of string
+			mov rbx,r_DstAddress										; Take the Destination Start point
+			add rbx,@fieldLength(r_DstAddress)							;	add the length
+			xor rcx,rcx													; Initialise the counter
+
+			mov qword[r15],0											; Initialise found position				
+			dec rdi														; before we enter the loop	
+
+	.loop:	inc rdi
+			cmp rdi,rbx													; are we at the end of the destination
+			 ja _FIND_EXIT												;	then we are done 
+			 		
+			mov al,byte[rsi]
+			mov ah,byte[rdi]
+			cmp al,ah													; Grab a byte
+			   je .count												; 	and go and count if equal
+				
+		  ; had we found any	
+			cmp rcx,0													; If we haven't started counting
+				je .loop												;	then loop back
+			
+		  ; restart search
+			xor rcx,rcx													; restart search
+			mov rsi,r_SrcAddress										; else reset to start of source
+			jmp .loop													; and continue
+				
+		  ; EQUAL (FOUND ONE)	   		
+	.count:	inc rcx														; Count the hits
+			cmp rcx,r_SrcLength											;	and if the right amount
+				 je .found
+			
+			inc rsi		 
+			jmp .loop	 											 
+				 
+;-----------------------------------------------------------------------			
+;           String has been found
+;-----------------------------------------------------------------------				 
+	.found: 
+			mov qword[r15],rdi											; save found position
+			inc qword[r15]												; pass over the last found byte
+			sub qword[r15],r_SrcLength									; subtract the No Of Bytes
+			inc qword[r15]												; add 1 byte
+			sub qword[r15],r_DstAddress									; subtract destination start address
+					
+_FIND_EXIT:
+			ret
+					
+;=======================================================================				
+;           Do REPLACE
+;=======================================================================
+_REPLACE:
+
+	section .data
+		rp_ReplacementAddress		dq 0
+		rp_SrcStartAddress			dq 0		
+	section .text						
+
+			mov r14,r15													; Store replace value as _FIND uses it for replace pos	
+			mov r15,rp_ReplacementAddress								
+			LEA RSI,[r_SrcAddress+r_SrcStart-1]							; Source + start less 1
+			mov qword[rp_SrcStartAddress],RSI							; and store it
+			
+	.loop:	mov RSI,qword[rp_SrcStartAddress]							; Setup what we is searching for
+			mov qword[rp_ReplacementAddress],0							; Initialise address
+			call _FIND													; Call FIND
+			cmp qword[rp_ReplacementAddress],0							; (from FIND) Did we find anything
+			 je .Exit													;	NO - then we are done 
+				
+		  ; Set up source
+			push RDI													; Save the position in the destination field
+			LEA RSI,[r14+r_SrcStart-1]									; r14 + start less 1
+			
+		  ; Set up destination
+			LEA RDI,[r_DstAddress-1]									; Destination less 1
+			add rdi,qword[rp_ReplacementAddress]						; plus replacement address			
+			mov rcx,r_SrcLength											; No of bytes to replace
+
+			cld															; move forward
+		REP movsb														; Do the move
+			pop RDI														; Restore RDI						
+			inc RDI														; and goto next byte
+			jmp .loop													; and proceed to find thew next one
+
+	.Exit:
+			
+_REPLACE_EXIT:
+			ret
+
+;=======================================================================				
+;           Do Process
+;=======================================================================	
+_PROCESS:
+
+;-----------------------------------------------------------------------				
+;           Load the source byte
+; source		|-----|
+; destination	|------------|
+; If destination is shorter then that is tested at the end of the loop
+; else we test to see if we have exceeded the length of the source where
+;-----------------------------------------------------------------------
+
+	section .data
+		paddingFlag		dq c_FALSE		
+	section .text	
+
+			mov qword[paddingFlag],c_FALSE								; Initialise padding flag
+				
+			cld															; Clear direction flag
+	.load:	inc rcx														; Increment counter			 
+			cmp rcx,r_SrcLength											; are we done yet
+				 ja .pad												; If so then go to padding					
+	.lde:	lodsb														; load from RSI into AL  (Increments RSI)
+
+;-----------------------------------------------------------------------				
+;           Convert to uppercase ?
+;-----------------------------------------------------------------------				 			
+	.uCase:	test r_Function,uppercase									; Continue if not uppercase
+			  jz .lCase
+	
+			cmp  al,97													; Too low
+				 jb .store
+			cmp  al,122													; Too high
+				 ja .store	
+			
+			sub  al,32													; convert to upper
+			jmp .store													; and go and store it
+
+;-----------------------------------------------------------------------				
+;           Convert to lowercase ?
+;-----------------------------------------------------------------------				 						
+	.lCase: test r_Function,lowercase									; Continue if not lowercase
+				 jz .store
+
+			cmp  al,65													; Too low
+				 jb .store
+			cmp  al,90													; Too high
+				 ja .store	
+			
+			add  al,32													; convert to upper
+			jmp .store
+
+;-----------------------------------------------------------------------				
+;           Padding ?
+;-----------------------------------------------------------------------				 									
+	.pad:	test r_Function,pad											; Test for Padding
+			  jz _PROCESS_EXIT											;	and exit if none
+
+			mov rbx,r_DstAddress										; reset rbx to 
+			add rbx, @fieldLength(r_DstAddress)							; end of destination
+		;	dec rbx														; less 1
+		;	This is then placed the same as in INITIALIZE. 
+		;	It is the address immediately following the destination
+
+			cmp rdi,rbx													; At the end of Destination ?
+				je _PROCESS_EXIT	
+
+			mov qword[paddingFlag],c_TRUE								; flag for padding
+			mov al, ' '													; move space into al  
+
+;-----------------------------------------------------------------------				
+;           Store the destination byte
+;-----------------------------------------------------------------------				
+; source		|------------|
+; destination	|-------|
+; If source is shorter then that is tested at the beginning of the loop
+; else we test to see if we have exceeded the length of the destination 
+;-----------------------------------------------------------------------								
+	.store:	stosb														; Store from AL into RDI (Increments RDI)
+
+;	RBX is calculated in INITIALIZATION. It is the address immediately following
+;	the destination - defined as DestAdd+DestStart+SrcNoOfBytes
+;	When rdi (just incremented with stosb) is equal then we have done the move
+;	but do we then need to pad it
+
+		  ; End of Destination
+			cmp rdi,rbx													; At the end of Destination ?
+				je .pad
+				  			
+		  ; Padding has not commenced
+	.all:	cmp qword[paddingFlag],c_TRUE								; Has padding commenced
+				jne .load												;	if no then get next byte
+				 
+		  ; Padding
+			jmp .store													; else store the space
+
+_PROCESS_EXIT:
+			ret
+
+;========================================================================				
+;		String To Record
+;		r10 will have record address because that is what _TORECORD wants
+;		r12 contains string address
+;		r13 contains strings starting offset
+;========================================================================				
+_STRINGTORECORD:
+
+		mov rcx,qword[r10-8]											; Get Record Length
+		mov qword[w_RecordBuffer-8],rcx									; Need to set buffer length
+		mov rax,@recordLength(r12)										; String Length
+		sub rax,r13														; less start point
+		inc rax															; plus 1
+		cmp rax,rcx														; Is the string shorter than the record
+			jnb .cont													; If so..
+
+		mov rcx,rax														;	replace the length	
+		
+	.cont:
+		cld																; Moving forward
+		lea rsi,[r12+r13-1]												; String as source+start-1
+		mov rdi,w_RecordBuffer											; RecordBuffer as destination
+	rep	movsb															; Move it		
+		mov @recordNo(r10),0											; Set record no to zero ensures _TORECORD does not check for File
+		call _TORECORD													; and do the move
+
+_STRINGTORECORD_EXIT:
+			ret
+			
+;==========================================================================				
+;           Record To String
+;		r10 will have record address because that is what _FROMRECORD wants
+;		r12 contains string address
+;		r13 contains strings starting offset
+;==========================================================================				
+_RECORDTOSTRING:
+
+		mov @recordNo(r10),0											; Set record no to zero ensures _FROMRECORD does not check for File
+		call _FROMRECORD
+
+		mov rcx,qword[r10-8]											; Get Record Length
+		mov qword[w_RecordBuffer-8],rcx									; Need to set buffer length	
+		mov rax,@recordLength(r12)										; String Length
+		sub rax,r13														; less start point
+		inc rax															; plus 1
+		cmp rax,rcx														; Is the string shorter than the record
+			ja .cont													; If so..
+
+		mov rcx,rax														;	replace the length
+		
+	.cont:
+		mov rsi,w_RecordBuffer											; Record Buffer as source
+		lea rdi,[r12+r13-1]												; String as destination+start-1
+	rep	movsb															; and move it
+	
+_RECORDTOSTRING_EXIT:
+			ret			
+

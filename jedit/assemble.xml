@@ -1,0 +1,22 @@
+<?xml version="1.0" ?>
+
+<!DOCTYPE COMMANDO SYSTEM "commando.dtd">
+
+<COMMANDO>
+	<UI>
+		<CAPTION LABEL="Assemble">
+			<ENTRY LABEL="File name" VARNAME="file" EVAL="buffer.getName()" />		
+		</CAPTION>
+	</UI>
+
+	<COMMANDS>
+		<COMMAND SHELL="System">
+			buffer.save(view,null,true);
+			buf = new StringBuffer("./l.assemble");
+			buf.append(" "+file);
+
+		//	return value
+			buf;
+		</COMMAND>
+	</COMMANDS>
+</COMMANDO>

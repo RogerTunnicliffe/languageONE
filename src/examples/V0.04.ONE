@@ -1,0 +1,281 @@
+%include 'include/BEGIN.PROGRAM'
+
+;	Refer to VERSION.HISTORY for...well...version history
+
+;	BEGIN.SYNONYMS **************************************
+;		$.	:	WORDS.  
+;		@.	:	INTEGERS.  
+;		#.	:	NUMBERS.  
+;		f.	:	FILES. 
+;		t.	:	TABLES.
+;	END.SYNONYMS ****************************************
+
+;=======================================================================
+;		  PROGRAM DATA
+;=======================================================================
+;		  CONSTANTS
+;		  are a way of giving a name to a value.  It is good programming
+;		  practise and will save you a  lot of headaches further on.  In
+;		  this program the  record length is used  in several places and
+;		  so by replacing the value [47] with the constant c_RecordLength
+;		  the  record length  can be changed  in one spot  (here) and be 
+;		  correct in every use of the constant. 	      
+%define	c_RecordLength  47
+%define c_NoOfRecords 1024
+
+%include 'include/BEGIN.DICTIONARY'		
+%include 'include/END.DICTIONARY'
+
+%include 'include/BEGIN.MATRIX'
+  ; Common Counters
+	insertnumber	I,0,'999999999'
+	insertnumber	J,0,'999999999'
+%include 'include/END.MATRIX'
+
+%include 'include/BEGIN.FILES'
+
+	insertfile c_RECORD,A01_File,'./A01_file.dat'		
+		begin.record c_RecordLength,A01_Record
+			insertnumber	A01_PartNo,	     	0,  '999'
+			insertword 		A01_PartName,		30,	' '
+			insertword		A01_Category,		01,	' '
+			insertword		A01_Location,		12, ' '
+			insertword		cr,					01, 0x0A
+		end.record A01_Record	
+
+;	Record for WorkTable2
+	begin.record 25,A02_Record
+		insertnumber	A02_No1,	     	0, '99999'
+		insertnumber	A02_No2,	     	0, '99999'
+		insertnumber	A02_No3,	     	0, '99999'
+		insertnumber	A02_No4,	     	0, '99999'
+		insertnumber	A02_No5,	     	0, '99999'
+	end.record A02_Record
+		
+%include 'include/END.FILES'
+				
+%include 'include/BEGIN.TABLES'
+;	Tables(Arrays/Lists in other terminology) are defined in languageONE
+;	as structured internal storage.  They are treated very  similarly to
+;	Files  but  unlike files must  ALLWAYS have a record associated with
+;	them and thus are almost synonymous with random access f.   This
+;	allows file records to be read  into  storage quite efficiently  and
+;	this functionality will used in the future for handling Indexed f.  
+;	You insert a table here by defining its size (Record Length) times
+;	No Of Records that you require.
+
+	INSERTTABLE WorkTable1,c_RecordLength*c_NoOfRecords
+
+;	Second Demonstration
+;	Of course Tables/Arrays can have more than 2 dimensions.
+;	LanguageONE	allows up to 9 dimensions (If you count the record as the
+;	1st dimension.). They are defined by first INSERTing a TABLE with the
+;	dimensions detailing the size and then by binding a record to the 
+;	table. ie TABLES bind,WorkTable2,A01_Record,3,4
+;	If you use an analogy like pages in a book you could say that the 
+;	record defines the words across the page, the 4 defines the lines
+;	down the page and the 3 defines the pages. You can expand this 
+;	analogy with an extra dimension defining books. So the index 3,4,5
+;	would define 3 books, 4 pages, and 5 lines leaving the record to 
+;	define the words accross the line. 
+	inserttable WorkTable2,3*4*25
+	
+%include 'include/END.TABLES'
+
+;=======================================================================
+;		PROGRAM INSTRUCTIONS
+;		Mainline  
+;=======================================================================
+%include 'include/BEGIN.INSTRUCTIONS'
+	
+	$Call A_1_Demo1
+	$Call A_2_Demo2
+	
+%include 'include/END.INSTRUCTIONS'
+%include 'include/END.PROGRAM'      
+
+;=======================================================================
+;		PROGRAM PROCEDURES
+;=======================================================================
+
+;-----------------------------------------------------------------------
+;	Demo 1 Mainline
+;-----------------------------------------------------------------------
+BEGIN.SUB A_1_Demo1
+	
+	$Call A_1_1_CreateFile
+	$Call A_1_2_LoadTable
+	$Call A_1_3_WriteFile
+	
+END.SUB A_1_Demo1
+
+;-----------------------------------------------------------------------
+;	This routine creates a file containing records in DESCENDING order
+;-----------------------------------------------------------------------
+BEGIN.SUB A_1_1_CreateFile
+
+;	Open File
+	f.open (A01_File,write+beginning)
+	
+;	PROCESS	
+;	Loop 999 Times starting @ 999 and finishing @ 001
+;	Write parts records using loop counter as PartNo
+	repeat.for (A01_PartNo,999,1)
+		A01_PartName		= 'Part'
+		{A01_PartName,5}	= A01_PartNo
+		{A01_PartName,10}	= 'Name'
+		A01_Category		= 'A'
+		A01_Location		= 'Location A'
+		f.write (A01_File,A01_Record)
+	end.repeat
+	
+;	Close File
+	f.close(A01_File)
+	
+END.SUB A_1_1_CreateFile
+
+;-----------------------------------------------------------------------
+;	This routine loads a table with the previously created file
+;-----------------------------------------------------------------------
+BEGIN.SUB A_1_2_LoadTable
+
+;	INIIAL - Bind the Table and open the file
+	t.bind (WorkTable1,A01_Record,c_NoOfRecords)
+	f.open (A01_File,read)
+	
+;	PROCESS	
+;	Loop 999 Times starting @ 999 and finishing @ 001
+;	Move Record to Table in reverse order	
+	repeat.for (I,999,1)
+		f.read (A01_File,A01_Record)
+		t.rput  (WorkTable1,I)
+	end.repeat
+	
+;	Close File	
+	f.close (A01_File)
+
+END.SUB A_1_2_LoadTable
+
+;-----------------------------------------------------------------------
+;	This routine reccreates the file from the table
+;-----------------------------------------------------------------------
+BEGIN.SUB A_1_3_WriteFile
+
+;	Open File
+	f.open (A01_File,write+beginning)
+	
+;	PROCESS - Get each Table entry and write it back to file 
+	repeat.for (I,1,999)
+		t.rget  (WorkTable1,I)
+		if WorkTable1_STATUS = 0
+			f.write(A01_File,A01_Record)
+		end.if
+	end.repeat
+	
+;	Close File
+	f.close(A01_File)
+
+END.SUB A_1_3_WriteFile
+
+;-----------------------------------------------------------------------
+;	Demo 2 Mainline
+;-----------------------------------------------------------------------
+BEGIN.SUB A_2_Demo2
+;	Demonstrates a 3 dimensional Table/Array
+;	Also demo's the use of the 'status' field (works the same as the 
+;	file status field.
+	
+	$Call A_2_1_CreateTable
+	if  WorkTable2_STATUS != INVALIDKEY
+		$Call A_2_2_DisplayTable
+	end.IF
+	
+END.SUB A_2_Demo2
+
+;-----------------------------------------------------------------------
+;	This routine creates a Table and fills it
+;-----------------------------------------------------------------------
+BEGIN.SUB A_2_1_CreateTable
+
+;	INIIAL - Bind the Table
+	t.bind (WorkTable2,A02_Record,3,4)
+
+	repeat.for (I,1,3)
+		repeat.for (J,1,4)
+	
+			$Call A_2_2_FinessTheValues
+			
+			t.rput(WorkTable2,I,J)
+			if  WorkTable2_STATUS = INVALIDKEY
+				display.line('Table Error')
+				exit.sub A_2_1_CreateTable
+			end.if
+			
+		end.repeat
+	end.repeat
+
+end.SUB A_2_1_CreateTable
+
+;-----------------------------------------------------------------------
+;	Introduces a small piece of assembler code to define table values
+;----------------------------------------------------------------------- 
+;	This is the first release that demonstrate some assembler code
+;	in a languageONE program. The beauty with this is that languageONE
+;	is assembler code (although you might not pick it) so coding some
+;	assembler is as easy as coding some assembler.
+;	The code is best done in a subroutine as all the languageONE 
+;	structures are honoured
+;-----------------------------------------------------------------------
+BEGIN.SUB A_2_2_FinessTheValues 
+
+	begin.assembler
+	
+		;	Setup field values
+			mov qword[A02_No1],1										; Move 1 to No1
+			mov qword[A02_No2],2										; Move 2 to No2
+			mov qword[A02_No3],3										; Move 3 to No3
+			mov qword[A02_No4],4										; Move 4 to No4
+			mov qword[A02_No5],5										; Move 5 to No5
+		
+		;	Produce multiplier
+			xor rdx,rdx													; Zero RDX
+			mov rax,[I]													; Grab I
+			mov rbx,10													; Set multiplier to 10
+			mul rbx														; Multiply by 10
+			mul qword[J]												; and multiply by J
+
+		;	And multiply
+			mov rbx,rax													; Store the multiplier
+			mov RSI,A02_No1												; Starting @ A02_No1
+			mov rcx,5													; Set the counter to 5
+		;	START LOOP -------------------------------------------------
+	.next:	mov rax,[rsi]												; Get the value
+			mul rbx														; Multiply it
+			mov qword[RSI],rax											; and store it back
+					
+		;	Jump over number structure
+			add RSI,[RSI-8]												; Add length of picture
+			add RSI,25													; add 25 (number)
+			loop .next
+		;	END LOOP ---------------------------------------------------
+
+	end.assembler
+	
+END.SUB A_2_2_FinessTheValues
+
+;-----------------------------------------------------------------------
+;	This routine displays Table values 
+;-----------------------------------------------------------------------
+BEGIN.SUB A_2_2_DisplayTable
+	
+	display(c_ClearScreen,c_DefaultBG,c_CyanFG)
+	
+	repeat.for (I,1,3)
+		repeat.for (J,1,4)
+			t.rget(WorkTable2,I,J)
+			display(spaces(5),A02_No1,' ',A02_No2,' ',A02_No3,' ',A02_No4,' ',A02_No5,LF)
+		end.repeat
+		display.line()
+	end.repeat
+
+END.SUB A_2_2_DisplayTable

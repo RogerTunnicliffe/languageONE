@@ -1,0 +1,837 @@
+	%include '../include/LMACROS.CPY'
+	%include '../include/IMACROS.CPY'
+;***%include '../include/CONSTANTS.INC' 	
+;***The XTABLES.bind interferes with the bind symbol in here
+	%line 3 w_WWW.LIB
+
+;	=================================================
+;	GLOBAL ROUTINES/VARIABLES defined in this library
+;	=================================================
+;	Routines
+;	--------	
+	global _WWW
+
+;	===============================================
+;	EXTERNAL ROUTINES/VARIABLES used by the library
+;	===============================================
+;	Windows
+;	------- 
+	extern CreateFileA
+	extern ReadFile
+	extern CloseHandle
+	extern WIN_ReturnCode
+	extern WriteConsoleA
+	extern WSAStartup
+	extern socket
+	extern bind
+	extern listen
+	extern accept
+	extern recv
+	extern send
+	extern connect
+	extern closesocket
+	extern WSACleanup
+	extern GetLastError
+
+;	-----------------
+;	languageONE
+;	-----------------
+;	Routines
+;	--------
+	extern WIN_ReturnCode			; COMMON
+	extern _SYSERROR				; COMMON
+
+;	------
+;	Fields
+;	------
+	extern RETURN_CODE				; COMMON
+	extern ERROR_CODE				; COMMON
+	extern StdOutHandle				; STDIO
+
+;-----------------------------------------------------------------------				
+;           DATA Section
+;-----------------------------------------------------------------------							
+[section .data]
+
+	loopback			db '127.000.000.001'
+	
+	mess1 				db 'Starting HTML Server',0x0D,0x0A
+
+	sockaddr:															; Bind Socket
+	  sin_family		dw 2 ; AF_INET
+	  sin_port			dw 0 ; Port Number
+	  sin_addr			dd 0 ; INADDR_ANY	
+	  filler1			dq 0 ; ?
+
+	responseHandle		dq 0	
+	response:
+		db "HTTP/1.1 200 OK",0x0d,0x0a,0x0d,0x0a							; Header
+	  	times 65517 db 0													; buffer
+	noContent:
+		db "HTTP/1.1 204 OK",0x0d,0x0a,0x0d,0x0a							; Header
+
+	w_8Spaces times 8	db 0x20
+			
+;-----------------------------------------------------------------------				
+;           UN Initialised - zero filled when loaded
+;-----------------------------------------------------------------------							
+[section .bss]
+
+	WSAData:																; For WSAStartup
+  		wVersion		resw 1
+  		wHighVersion	resw 1
+  		iMaxSockets		resw 1
+  		iMaxUdpDg		resw 1
+  		lpVendorInfo	resq 1
+  		szDescription	resb 257
+  		szSystemStatus	resb 257
+
+	listen_socket 		resq 1												; Listen Socket
+	accept_socket		resq 1												; Accept socket
+
+	sendmsg_socket		resq 1
+	recvmsg_socket		resq 1
+
+	inBuffer 			resb 2048
+	
+	inBuffer_len 		resq 1
+	byteCount			resd 1
+
+	n_PortNo			resq 1												; r9  PortNo
+	n_ScreenName		resq 1												; r9  Screen Name
+	n_Response			resq 1												; r10 Response address	
+	n_GetAddress		resq 1												; r11 Get callback address
+	n_PostAddress		resq 1												; r12 Post callback address
+	
+;=======================================================================				
+;           ROUTINES ADDRESS's
+;=======================================================================	
+[section .data]
+	callTable	dq _OPEN
+				dq _PROCESS
+				dq _CLOSE
+				dq _SENDMSG
+				dq _RECVMSG
+;=======================================================================
+;			CODE SEGMENT
+;=======================================================================
+;***Debug Printing
+	extern _DISPLAY
+	extern _VALIDATE_SRC
+	extern LF
+	extern w_One
+   %macro debugPrint 1
+		$pushAll r8,r9,r10,r11,r12,r13,r14,r15,rax,rbx,rcx,rdx,rsi,rdi
+		$SetupField %1
+		Call _DISPLAY
+		$SetupField LF
+		Call _DISPLAY
+		$popAll rdi,rsi,rdx,rcx,rbx,rax,r15,r14,r13,r12,r11,r10,r9,r8
+   %endmacro
+;***Debug Printing
+[section .text]
+;-----------------------------------------------------------------------
+;      		Control Section
+;-----------------------------------------------------------------------
+_WWW:
+
+			mov rbx,callTable												; Get address of jump table
+			mov rax,8														; multiply by 8  
+			mul r8															; Get Calling function
+			add rbx,rax														; add to table to get offset
+			mov rbx,[rbx]													; Load the routines address
+			Call rbx														; and call it
+			
+_WWW_EXIT:
+			ret
+
+;=======================================================================
+;			OPEN AND READY THE SOCKET
+;=======================================================================	
+_OPEN:
+
+			mov [n_PortNo],r_PortNo											; cuz these get clobbed
+			
+;------------------------------------------------------------
+;			Startup Message
+;------------------------------------------------------------
+
+  		mov rbx,rsp															; Grab the stack pointer
+  		and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes
+			push 0															; 5th Parameter on stack
+		sub RSP,32
+		cld																	; Clear Direction Flag
+			mov	rcx,qword[StdOutHandle]										; terminal window handle
+			mov rdx,mess1													; message address
+			mov r8,22														; message length
+			mov	r9,WIN_ReturnCode											; No of characters written
+			Call WriteConsoleA
+		mov rsp,rbx															; Restore Stack Pointer
+	
+;------------------------------------------------------------
+;			Create Socket
+;------------------------------------------------------------
+
+		;	------------------
+		;	INITIALISE SOCKETS
+		;	------------------
+  		mov rbx,rsp															; Grab the stack pointer
+  		and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes
+		sub RSP,32															; Create Shadow Stack
+		cld																	; Clear Direction Flag
+			mov rcx,0x101													; Version No
+			mov rdx,WSAData
+			Call WSAStartup
+		mov rsp,rbx															; Restore the Stack Pointer
+			cmp rax,0														; Check for error
+				jne .err
+
+  			;	-------------
+  			;	CREATE SOCKET
+  			;	-------------
+  		mov rbx,rsp															; Grab the stack pointer
+  		and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes
+		sub RSP,32															; Create Shadow Stack
+		cld																	; Clear Direction Flag
+			mov rcx,2														; AF_INET
+			mov rdx,1														; SOCK_STREAM
+			mov r8,6														; PROTO_TCP
+			Call socket
+		mov rsp,rbx															; Restore the stack pointer		
+			cmp rax,-1														; Check for error
+				je .err
+				
+			mov [listen_socket],rax											; save listen socket handle	
+		
+;-------------------------------------------------------------------------------
+;			Bind to port 80
+;-------------------------------------------------------------------------------
+;			When a socket is created with socket(2), it exists in a name space
+;			(address family) but has no address assigned to it. bind() assigns
+;			the address specified by addr to the socket referred to by the file
+;			descriptor sockfd. addrlen specifies the size, in bytes, of the
+;			address structure pointed to by addr. Traditionally, this operation
+;			is called assigning a name to a socket.
+;-------------------------------------------------------------------------------
+      
+			mov r_PortNo,[n_PortNo]											; convert port to network byte order - big-endian
+			mov r_PortNo,[r_PortNo]											; passed in is an address
+			mov eax,r_PortNo
+			xchg ah,al
+			mov word[sin_port],ax
+
+  		mov rbx,rsp															; Grab the stack pointer
+  		and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes
+		sub RSP,32															; Create Shadow Stack
+		cld																	; Clear Direction Flag
+			mov rcx,[listen_socket]											; listen socket handle
+			mov rdx,sockaddr												; socket structure
+			mov r8,16														; length of socket structure
+			Call bind
+		mov rsp,rbx															; Restore Stack Pointer
+			cmp rax,-1														; Check for error
+				je .err
+  	
+;-------------------------------------------------------------------------------
+;			Start listening
+;-------------------------------------------------------------------------------
+;			marks the socket refered to by the socket handle as a passive socket,
+;			that is, as a socket that will be used to accept incoming connection
+;			requests using accept.
+;-------------------------------------------------------------------------------
+
+  		mov rbx,rsp															; Grab the stack pointer
+  		and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes
+		sub RSP,32															; Create Shadow Stack
+		cld																	; Clear Direction Flag
+			mov rcx,[listen_socket]											; listen socket handle
+			mov rdx,100000000												; backlog
+			Call listen
+		mov rsp,rbx															; Restore Stack Pointer
+			cmp rax,-1														; Check for error
+				je .err
+
+			jmp .Exit
+			
+		;	-----------------------------	
+	.err:	;	ERROR MESSAGE
+		;	-----------------------------			
+			Call GetLastError
+			mov qword[WIN_ReturnCode],rax
+			Call _SYSERROR			
+	
+	.Exit:	  	
+_OPEN_EXIT:
+			ret
+			
+;=======================================================================
+;			THE PROCESS LOOP
+;=======================================================================
+_PROCESS:
+
+			mov [n_ScreenName],r_ScreenName									; cuz these get clobbed
+			mov [n_Response],r_Response										; cuz these get clobbed
+			mov [n_GetAddress],r_GetAddress									; cuz these get clobbed
+			mov [n_PostAddress],r_PostAddress								; cuz these get clobbed
+	
+;-------------------------------------------------------------------------------
+;			Accept
+;-------------------------------------------------------------------------------
+;			The accept() system call is used with connection-based socket types
+;			(SOCK_STREAM, SOCK_SEQPACKET).  It extracts the first connection
+;			request on the queue of pending connections for the listening socket,
+;			sockfd, creates a new connected socket, and returns a new file
+;			descriptor referring to that socket.  The newly created socket is not
+;			in the listening state.  The original socket sockfd is unaffected by
+;			this call.
+;-------------------------------------------------------------------------------
+	.pollingStart:
+  		mov rbx,rsp															; Grab the stack pointer
+  		and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes
+		sub RSP,32															; Create Shadow Stack
+		cld																	; Clear Direction Flag
+			mov rcx,[listen_socket]											; listen socket handle
+			xor rdx,rdx														; 0
+			xor r8,r8														; 0
+			Call accept
+		mov rsp,rbx															; Restore Stack Pointer
+			
+			mov [accept_socket],rax											; save accept socket handle 
+
+;-------------------------------------------------------------------------------
+;			Read
+;-------------------------------------------------------------------------------
+  		mov rbx,rsp															; Grab the stack pointer
+  		and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes
+		sub RSP,32															; Create Shadow Stack
+		cld																	; Clear Direction Flag
+			mov rcx,[accept_socket]											; Socket Handle
+			mov rdx,inBuffer												; Address of Buffer
+			mov r8,2048														; Record/Buffer length
+			xor r9,r9														; No flags
+			Call recv
+		mov rsp,rbx															; Restore Stack Pointer
+
+			cmp rax,0														; NULL message
+				je .close
+		
+			mov [inBuffer_len],rax											; store length	
+
+;-------------------------------------------------------------------------------
+;			Scan for end of file and mark with null
+;-------------------------------------------------------------------------------
+; 			GET / HTTP/1.1
+;			GET /screen1.html HTTP/1.1
+;			POST /screen1.html HTTP/1.1
+		
+			mov rcx,rax														; Grab buffer length
+			mov rdi,inBuffer												; Grab the buffer offset
+			add rdi,5														; go to 6th byte
+			mov al,' '														; setup al with space		
+			cld																; work forwards
+	repne	scasb															; and scan
+			dec rdi															; rdi will have flicked over
+			mov byte[rdi],0x00												; and add null terminator
+
+;-------------------------------------------------------------------------------
+;			Program Callback
+;-------------------------------------------------------------------------------
+	.If1:	cmp byte[inBuffer],'G'											; If its a GET
+				jne .EndIf1
+			.If1a:	cmp qword[n_GetAddress],0x00							; And we have a GET callback
+					je .EndIf1
+					Call _LOAD_RESPONSE										; load up the response
+					call [n_GetAddress]										; and do the call back
+			.EndIf1a:
+	.EndIf1:
+
+	.If2:	cmp byte[inBuffer],'P'											; If its a POST
+				jne .EndIf2
+			.If2b:	cmp qword[n_PostAddress],0x00							; And we have a POST callback
+					je .EndIf2
+					Call _LOAD_RESPONSE										; load up the response
+					call [n_PostAddress]									; and do the call back
+			.EndIf2b:
+	.EndIf2:
+
+		;	-----------------------
+		;	received an END request
+		;	-----------------------
+	.If3:	cmp qword[ERROR_CODE],99										; Did we receive a close request from 
+				jne .EndIf3													; the called back procedure
+	.Else3:
+		;	You need to respond as the webpage is waiting for you
+  		mov rbx,rsp															; Grab the stack pointer
+  		and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes
+		sub RSP,32															; Create Shadow Stack
+		cld																	; Clear Direction Flag
+			mov rcx,[accept_socket]											; socket handle
+			mov rdx,response												; response
+			mov r8d,19														; set length of write	
+			xor r9,r9														; flags		
+			Call send
+		mov rsp,rbx	
+			call _CLOSE														;	the Call Close
+			jmp _PROCESS_EXIT												;	and exit
+	.EndIf3:
+
+		;	--------------------------------------
+		;	Callback program is providing response
+		;	--------------------------------------
+	.If4:	cmp qword[RETURN_CODE],0						; Did we receive a "I'll handle it" from 
+				je .EndIf4									; the called back procedure
+	.Else4:
+	
+		;	Load it up		
+			mov rsi,[n_Response]							; grab the source
+			lea rdi,[response+19]							; grab the destination
+
+			mov rax,[RETURN_CODE]							; Grab the length
+			add rax,19										; add 19 to it
+	;		add rax,4										; for CR/LF CR/LF
+		;*	mov qword[n_FileLength],rax						; set length of write	
+			mov dword[byteCount],eax
+
+			mov rcx,[RETURN_CODE]							; Grab the length
+			cld												; Do the move
+		.l:	movsb
+			loop .l
+	;		mov dword[rdi],0x0d0a0d0a						; terminate it
+			jmp .write
+	.EndIf4:
+
+;-------------------------------------------------------------------------------
+;			NOW Figure it out
+;-------------------------------------------------------------------------------
+		;	IS IT THE FIRST
+			mov rsi,inBuffer												; buffer offset
+			add rsi,5
+	.If5:	cmp byte[rsi],0x00
+				jne .Else5	
+			mov rcx,[n_ScreenName]											; external name
+			jmp .EndIf5														; and jump
+	.Else5:
+			mov rcx,inBuffer												; external name
+			add rcx,5
+	.EndIf5:
+
+		;	OPEN
+		;	----
+  		mov rbx,rsp															; Grab the stack pointer
+  		and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes		
+			push 0x00														; Template File
+			push 0x80														; FILE ATTRIBUTE NORMAL
+			push 0x03														; OPEN EXISTING
+  		sub rsp,32															; Create Shadow Stack
+  		cld																	; Clear Directon Flag
+			mov rdx,0x80000000												; GENERIC READ
+			mov r8, 0x00000001												; FILE SHARE READ
+			xor r9,r9														; Security Attribute
+  			Call CreateFileA
+  		mov rsp,rbx															; Restore Stack Pointer
+ 		
+  			mov [responseHandle],rax
+					
+;-------------------------------------------------------------------------------
+;			Response
+;-------------------------------------------------------------------------------
+	.If6:	cmp qword[responseHandle],0										; Is there a file to read
+			jg .Else6
+
+  		mov rbx,rsp															; Grab the stack pointer
+  		and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes	
+		sub rsp,32															; Create Shadow Stack
+		cld																	; Clear Direction Flag
+			mov rcx,[accept_socket]											; socket handle
+			mov rdx,noContent												; noContent
+			mov r8d,19														; set length of write	
+			xor r9,r9														; flags
+			Call send
+		mov rsp,rbx															; Restore Stack Pointer
+			jmp .EndIf6	
+						
+	.Else6:			
+
+  		mov rbx,rsp															; Grab the stack pointer
+  		and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes
+			push 0x00														; Overlapped ??
+		sub rsp,32															; Create Shadow Stack
+		cld																	; Clear Direction Flag
+			mov rcx,[responseHandle]										; file handle
+			lea rdx,[response+19]											; buffer
+			xor r8,r8
+		   	mov r8d,65517													; No Of Bytes			
+			mov r9,byteCount												; Returns bytes read
+			Call ReadFile
+		mov rsp,rbx															; Restore Stack Pointer
+			add dword[byteCount],19											; Set length of output
+
+  		mov rbx,rsp															; Grab the stack pointer
+  		and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes	
+		sub rsp,32															; Create Shadow Stack
+		cld																	; Clear Direction Flag
+			mov rcx,[responseHandle]										; Response file
+			Call CloseHandle
+		mov rsp,rbx															; Restore Stack Pointer
+		
+	.write:	
+  		mov rbx,rsp															; Grab the stack pointer
+  		and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes	
+		sub rsp,32															; Create Shadow Stack
+		cld																	; Clear Direction Flag
+			mov rcx,[accept_socket]											; socket handle
+			mov rdx,response												; response
+			mov r8d,dword[byteCount]										; set length of write	
+			xor r9,r9														; flags		
+			Call send
+		mov rsp,rbx															; Restore Stack Pointer
+
+	.EndIf6:
+
+;-------------------------------------------------------------------------------
+;			Close
+;-------------------------------------------------------------------------------
+	.close:
+  		mov rbx,rsp															; Grab the stack pointer
+  		and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes	
+		sub rsp,32															; Create Shadow Stack
+		cld																	; Clear Direction Flag
+			mov rcx,[accept_socket]											; Accept socket
+			Call closesocket
+		mov rsp,rbx															; Restore Stack Pointer
+		
+			jmp .pollingStart												; and loop
+	
+_PROCESS_EXIT:
+			ret
+
+;-----------------------------------------------------------------------
+;			Store response in buffer
+;			So that the Callback has the input t work with
+;-----------------------------------------------------------------------
+_LOAD_RESPONSE:
+
+		;	Initialise Response
+			mov al,' '										; setup a space
+			mov rdi,[n_Response]							; grab the destination
+			mov rcx,[rdi-8]									; grab the length
+	.l1:	stosb
+			loop .l1
+
+		;	Load it up		
+			mov rsi,inBuffer								; grab the source
+			mov rdi,[n_Response]							; grab the destination
+			mov rcx,[inBuffer_len]							; Grab the length
+	.l2:	movsb
+	  .1If:	cmp byte[rdi-1],0x00							; Replace a null with a space
+				jne .1EndIf
+			mov byte[rdi-1],0x20	
+	  .1EndIf:					
+			loop .l2		
+			
+_LOAD_RESPONSE_EXIT:
+			ret
+;=======================================================================
+;			CLOSE THE SOCKET
+;=======================================================================
+_CLOSE:
+
+  		mov rbx,rsp															; Grab the stack pointer
+  		and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes	
+		sub rsp,32															; Create Shadow Stack
+		cld																	; Clear Direction Flag
+			mov rcx,[listen_socket]											; Listen socket
+			Call closesocket
+		mov rsp,rbx															; Restore Stack Pointer
+
+  		mov rbx,rsp															; Grab the stack pointer
+  		and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes	
+		sub rsp,32															; Create Shadow Stack
+		cld																	; Clear Direction Flag
+			Call WSACleanup
+		mov rsp,rbx															; Restore Stack Pointer
+			
+_CLOSE_EXIT:
+			ret
+
+;=======================================================================
+;			SEND MESSAGE
+;=======================================================================
+;			r9  = Address of IP Address	= r13
+;			r10 = Address of Port No	= r14
+;			r11 = Address of Message	= r15
+_SENDMSG:
+
+			mov r13,r9
+			mov r14,r10
+			mov r15,r11
+			
+		;------------------------------------------------------------
+		;	Create Socket
+		;------------------------------------------------------------
+
+		;	------------------
+		;	INITIALISE SOCKETS
+		;	------------------
+  		mov rbx,rsp															; Grab the stack pointer
+  		and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes	
+		sub rsp,32															; Create Shadow Stack
+		cld																	; Clear Direction Flag
+			mov rcx,0x101													; Version No
+			mov rdx,WSAData
+			Call WSAStartup
+		mov rsp,rbx															; Restore Stack Pointer
+			cmp rax,0														; Check for error
+				jne .err
+  	
+  			;	-------------
+  			;	CREATE SOCKET
+  			;	-------------
+  		mov rbx,rsp															; Grab the stack pointer
+  		and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes	
+		sub rsp,32															; Create Shadow Stack
+		cld																	; Clear Direction Flag
+			mov rcx,2														; AF_INET
+			mov rdx,2														; SOCK_DGRAM
+			mov r8,17														; IPPROTO_UDP
+			Call socket
+		mov rsp,rbx															; Restore Stack Pointer
+			cmp rax,-1														; Check for error
+				je .err
+				
+			mov [sendmsg_socket],rax
+			
+		;------------------------------------------------------------
+		;	Connect
+		;------------------------------------------------------------
+			Call _MSG_IP_Address
+			Call _MSG_PortNo
+
+  		mov rbx,rsp															; Grab the stack pointer
+  		and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes	
+		sub rsp,32															; Create Shadow Stack
+		cld																	; Clear Direction Flag
+			mov rcx,[sendmsg_socket]	; SocketFD
+			mov rdx,sockaddr			; Address
+			mov r8,16					; Address Length
+			Call connect
+		mov rsp,rbx															; Restore Stack Pointer
+			cmp rax,-1														; Check for error
+				je .err
+
+		;------------------------------------------------------------
+		;	Write
+		;------------------------------------------------------------
+  		mov rbx,rsp															; Grab the stack pointer
+  		and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes	
+		sub rsp,32															; Create Shadow Stack
+		cld																	; Clear Direction Flag
+			mov rcx,[sendmsg_socket]										; socket handle
+			mov rdx,r15														; response
+			mov r8d,[r15-8]													; Message Length	
+			xor r9,r9														; flags
+			Call send
+		mov rsp,rbx															; Restore Stack Pointer
+			cmp rax,-1														; Check for error
+				je .err
+	
+		;------------------------------------------------------------
+		;	Close
+		;------------------------------------------------------------
+  		mov rbx,rsp															; Grab the stack pointer
+  		and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes	
+		sub rsp,32															; Create Shadow Stack
+		cld																	; Clear Direction Flag
+			mov rcx,[sendmsg_socket]										; Accept socket
+			Call closesocket
+		mov rsp,rbx															; Restore Stack Pointer
+			cmp rax,-1														; ; Check for error
+				je .err
+				
+			jmp .Exit
+
+		;	-----------------------------	
+	.err:	;	ERROR MESSAGE
+		;	-----------------------------			
+			Call GetLastError
+			mov qword[WIN_ReturnCode],rax
+			Call _SYSERROR
+	
+	.Exit:
+_SENDMSG_EXIT:
+			ret
+
+;=======================================================================
+;			RECV MESSAGE
+;=======================================================================
+;			r9  = Address of IP Address	= r13
+;			r10 = Address of Port No	= r14
+;			r11 = Address of Message	= r15
+_RECVMSG:
+
+			mov r13,r9
+			mov r14,r10
+			mov r15,r11
+	
+		;------------------------------------------------------------
+		;	INITIALISE SOCKETS
+		;------------------------------------------------------------
+  		mov rbx,rsp															; Grab the stack pointer
+  		and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes	
+		sub rsp,32															; Create Shadow Stack
+		cld																	; Clear Direction Flag
+			mov rcx,0x101													; Version No
+			mov rdx,WSAData
+			Call WSAStartup
+		mov rsp,rbx															; Restore Stack Pointer
+			cmp rax,0														; Check for error
+				jne .err
+		
+		;------------------------------------------------------------
+		;	Create Socket
+		;------------------------------------------------------------
+  		mov rbx,rsp															; Grab the stack pointer
+  		and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes	
+		sub rsp,32															; Create Shadow Stack
+		cld																	; Clear Direction Flag
+			mov rcx,2														; AF_INET
+			mov rdx,2														; SOCK_DGRAM
+			mov r8,17														; IPPROTO_UDP
+			Call socket
+		mov rsp,rbx															; Restore Stack Pointer
+			cmp rax,-1														; Check for error
+				je .err
+				
+			mov [recvmsg_socket],rax			
+	
+		;-------------------------------------------------------------------------------
+		;	Bind to port No
+		;-------------------------------------------------------------------------------
+		;	Not sure why but cannot bind to the socket with a fixed IP
+			Call _MSG_IP_Address		
+			Call _MSG_PortNo
+
+  		mov rbx,rsp															; Grab the stack pointer
+  		and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes	
+		sub rsp,32															; Create Shadow Stack
+		cld																	; Clear Direction Flag
+			mov rcx,[recvmsg_socket]										; listen socket handle
+			mov rdx,sockaddr												; socket structure
+			mov r8,16														; length of socket structure
+			Call bind
+		mov rsp,rbx															; Restore Stack Pointer
+			cmp rax,-1														; Check for error
+				je .err
+	
+		;-------------------------------------------------------------------------------
+		;	Read
+		;-------------------------------------------------------------------------------
+  		mov rbx,rsp															; Grab the stack pointer
+  		and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes	
+		sub rsp,32															; Create Shadow Stack
+		cld																	; Clear Direction Flag
+			mov rcx,[recvmsg_socket]										; Socket Handle
+			mov rdx,r15														; Address of Buffer
+			mov r8,[r15-8]													; Record/Buffer length
+			xor r9,r9														; No flags
+			Call recv
+		mov rsp,rbx															; Restore Stack Pointer
+			cmp rax,-1														; Check for error
+				je .err
+
+		;---------------------------------------------------------------------------
+		;	Close
+		;---------------------------------------------------------------------------
+  		mov rbx,rsp															; Grab the stack pointer
+  		and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes	
+		sub rsp,32															; Create Shadow Stack
+		cld																	; Clear Direction Flag
+			mov rcx,[recvmsg_socket]										; Accept socket
+			Call closesocket
+		mov rsp,rbx															; Restore Stack Pointer								
+			cmp rax,-1														; Check for error
+				je .err
+	
+			jmp .Exit		
+
+		;	-----------------------------	
+	.err:	;	ERROR MESSAGE
+		;	-----------------------------
+			Call GetLastError
+			mov qword[WIN_ReturnCode],rax
+			Call _SYSERROR
+
+	.Exit:
+_RECVMSG_EXIT:
+			ret
+
+	%define r_DecimalMultiplier	r9
+	%define r_Offset			rdi
+	%define r_Idx				r10
+	%define r_DestByte			rbx
+	
+;-----------------------------------------------------------------------
+;			Convert IP Address
+;-----------------------------------------------------------------------
+_MSG_IP_Address:
+
+			mov dword[sin_addr],0					; Initialise Address
+			
+			mov r_DestByte,3						; Destination field byte no
+			mov r_Offset,r13						; Offset of IP Address				' 
+			mov r_Idx,@fieldLength(r13)				; Length of IP Address		
+			mov r_DecimalMultiplier,1				; Decimal multiplyer
+
+	.loop:	dec r_Idx								; Set Index		
+			cmp r_Idx,0								; If its < 0 then
+				jl .Exit							;	we are done
+		
+			cmp byte[r_Offset+r_Idx],'.'			; Have we found a period
+				jne .DoIt							;	
+				dec r_DestByte						; 	Step back one on destination
+				mov r_DecimalMultiplier,1			;	Start the decimal multiplier at 1
+				jmp .loop							;	and loop back
+				
+	.DoIt:	mov al,byte[r_Offset+r_Idx]				; Grab the byte	
+			xor al,0x30								; Reduce it from ASCII
+			mul r_DecimalMultiplier					; Multiply it by the column value	
+			add byte[sin_addr+r_DestByte],al		; add it to the destination byte	
+			imul r_DecimalMultiplier,10				; next decimal column
+			jmp .loop								; and loop back
+		
+	.Exit:
+_MSG_IP_Address_EXIT:
+			ret
+
+;-----------------------------------------------------------------------
+;			Convert Port No
+;-----------------------------------------------------------------------
+_MSG_PortNo:
+
+			mov word[sin_port],0					; Initialise Port No
+			
+			mov r_Offset,r14						; Offset of Port No				' 
+			mov r_Idx,@fieldLength(r14)				; Length of Port No		
+			mov r_DecimalMultiplier,1				; Decimal multiplyer
+			xor rbx,rbx								; initialise result
+
+	.loop:	dec r_Idx								; Set Index		
+			cmp r_Idx,0								; If its < 0 then
+				jl .Exch							;	we are done
+			cmp byte[r_Offset+r_Idx],0x20			; If it a space
+				je .loop							;	ignore it		
+				
+	.DoIt:	xor rax,rax								; Initialise
+			mov al,byte[r_Offset+r_Idx]				; Grab the byte	
+			xor al,0x30								; Reduce it from ASCII
+			mul r_DecimalMultiplier					; Multiply it by the column value	
+			add bx,ax								; add it to the destination byte	
+			imul r_DecimalMultiplier,10				; next decimal column
+			jmp .loop								; and loop back
+			
+	.Exch:	xchg bh,bl
+			mov word[sin_port],bx
+
+	.Exit:
+_MSG_PortNo_EXIT:
+			ret

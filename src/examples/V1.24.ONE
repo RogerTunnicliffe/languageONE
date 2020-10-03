@@ -1,0 +1,1074 @@
+%include 'include/BEGIN.PROGRAM'
+
+;	Refer to VERSION.HISTORY for...well...version history
+
+;	BEGIN.SYNONYMS **************************************
+;		$.	:	WORDS.  
+;		@.	:	INTEGERS.  
+;		#.	:	NUMBERS.  
+;		f.	:	FILES. 
+;		T.	:	TABLES.
+;		xT.	:	XTABLES.
+;	END.SYNONYMS ****************************************
+
+   %FP_DefaultPicture '9999.999999'
+
+;=======================================================================
+;		  PROGRAM DATA
+;=======================================================================	      
+
+;-----------------------------------------------------------------------
+;		DICTIONARY
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.DICTIONARY'	
+
+	insertword alphabet,26,'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+	insertword w_Char,	01,''
+	insertword x_Tab,	01,0x09
+
+%include 'include/END.DICTIONARY'
+
+;-----------------------------------------------------------------------
+;		MATRIX
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.MATRIX'
+
+  ; Common Counters
+	INSERTNUMBER I,				00,'999999'
+	INSERTNUMBER J,				00,'999999'
+	INSERTNUMBER K,				00,'999999'
+
+  ; This programs 
+	insertnumber n_FP,			00,'9.9'
+
+	insertnumber n_RubixFace,	00,'9'
+	insertnumber n_RubixX,		00,'9'
+	insertnumber n_RubixY,		00,'9'
+	insertnumber n_No,			00,'9999999'
+
+	insertnumber b_Exit,		c_FALSE
+
+%include 'include/END.MATRIX'
+
+;-----------------------------------------------------------------------
+;		FILES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.FILES'
+
+		%define T_reclen		39 
+		%define T_noOfRecs		26
+	begin.record T_reclen,TestRecord
+		insertnumber	T_Int1,	01,'999999'
+		insertnumber	T_Int2,	02,'999'
+		insertnumber	T_Int3,	03,'99'
+		insertnumber	T_Int4,	04,'999'
+		insertnumber	T_Num1,	1.1,'9.9'
+		insertnumber	T_Num2,	2.2,'9.99'
+		insertnumber	T_Num3,	3.3,'9.9'
+		insertnumber	T_Num4,	4.4,'9.99'
+		insertword		T_Char,  11,'Hello World'
+	end.record TestRecord
+
+		%define X_reclen		39
+		%define X_noOfRecs		26		
+	begin.record X_reclen,XestRecord
+		insertnumber	X_Int1,	01,'999999'
+		insertnumber	X_Int2,	02,'999'
+		insertnumber	X_Int3,	03,'99'
+		insertnumber	X_Int4,	04,'999'
+		insertnumber	X_Num1,	1.1,'9.9'
+		insertnumber	X_Num2,	2.2,'9.99'
+		insertnumber	X_Num3,	3.3,'9.9'
+		insertnumber	X_Num4,	4.4,'9.99'
+		insertword		X_Char,  11,'Hello World'
+	end.record XestRecord
+
+		%define C_reclen		02
+		%define C_noOfRecs		06	
+	begin.record C_reclen,CountersRecord
+		insertnumber	C_Count,00,'99'
+	end.record CountersRecord
+
+		%define N_reclen		01
+		%define N_noOfRecs		06 * 03 * 03	
+	begin.record N_reclen,NumbersRecord
+		insertnumber	N_No,	00,'9'
+	end.record NumbersRecord
+
+%include 'include/END.FILES'
+
+;-----------------------------------------------------------------------
+;		TABLES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.TABLES'
+
+	inserttable TestTable,T_reclen*T_noOfRecs
+	insertxtable XestTable
+
+	inserttable CountersTable,C_reclen*C_noOfRecs
+	inserttable NumbersTable,N_reclen*N_noOfRecs
+
+%include 'include/END.TABLES'
+
+;=======================================================================
+;		PROGRAM INSTRUCTIONS
+;		Mainline  
+;=======================================================================
+%include 'include/BEGIN.INSTRUCTIONS'
+ 
+	$Call A_1_Initial
+
+	if RETURN_CODE = 0
+		call B_1_Process
+		$Call Z_1_Finalise
+	end.if
+
+%include 'include/END.INSTRUCTIONS'
+%include 'include/END.PROGRAM'      
+
+;=======================================================================
+;		PROGRAM PROCEDURES
+;=======================================================================
+
+;-------------------------------------------------------------------------------
+;		INITIALISATION
+;-------------------------------------------------------------------------------
+BEGIN.SUB A_1_Initial
+
+;	---------------------------
+;	Load and Display for TABLES
+;	---------------------------
+	tables.bind TestTable,TestRecord,T_noOfRecs
+	tables.rput (TestTable,1)
+	repeat.for I,1,26
+		T_Int1[I] = I * 1
+		T_Int2[I] = T_Int1[I] * 2
+		T_Int3[I] = T_Int1[I] * 3
+		T_Int4[I] = T_Int1[I] * 4
+		T_Num1[I] = T_Int1[I] * 1.1
+		T_Num2[I] = T_Int1[I] * 2.22
+		T_Num3[I] = T_Int1[I] * 3.3
+		T_Num4[I] = T_Int1[I] * 4.44
+		T_Char[I] = {alphabet,T_Int1[I],1}
+	end.repeat
+	repeat.for I,1,26
+		display T_Int1[I],' ',T_Int2[I],' ',T_Int3[I],' ',T_Int4[I],LF
+		display T_Num1[I],' ',T_Num2[I],' ',T_Num3[I],' ',T_Num4[I],LF
+		display T_Char[I],LF
+	end.repeat
+	$Call GetUserInput
+
+;	----------------------------
+;	Load and Display for XTABLES
+;	----------------------------
+	integers.calc I,=,X_reclen,+,9,*,X_noOfRecs
+	xtables.bind XestTable,XestRecord,I	
+	XestTable_UBOUND = 26
+
+	repeat.for I,1,26
+		X_Int1[I] = I * 1
+		X_Int2[I] = X_Int1[I] * 2
+		X_Int3[I] = X_Int1[I] * 3
+		X_Int4[I] = X_Int1[I] * 4
+		X_Num1[I] = X_Int1[I] * 1.1
+		X_Num2[I] = X_Int1[I] * 2.22
+		X_Num3[I] = X_Int1[I] * 3.3
+		X_Num4[I] = X_Int1[I] * 4.44
+		X_Char[I] = {alphabet,X_Int1[I],1}
+	end.repeat
+	repeat.for I,1,26
+		display X_Int1[I],' ',X_Int2[I],' ',X_Int3[I],' ',X_Int4[I],LF
+		display X_Num1[I],' ',X_Num2[I],' ',X_Num3[I],' ',X_Num4[I],LF
+		display X_Char[I],LF
+	end.repeat
+
+	$Call GetUserInput
+
+;	-----------------------------------
+;	Load Rubix Cube with random numbers
+;	-----------------------------------
+;	We are loading an imaginary Rubix Cube with numbers (1 thru 6)
+
+	Display c_ClearScreen,c_CyanFG,'Random Loading of Rubix Cube',LF
+	Display c_WhiteFG
+
+	TABLES.bind NumbersTable,NumbersRecord,6,3,3							; So bind our table
+	tables.bind CountersTable,CountersRecord,C_noOfRecs						; So bind our table
+
+	n_RubixFace = 1															; Represents the number of faces
+	n_RubixY = 1															; Represents the Y Axis
+	n_RubixX = 0															; Represents the X Axis
+
+	repeat _01
+
+		NUMBERS.RANDOM (1,n_No)
+		INTEGERS.AND (n_No,0x07)
+
+	   .if n_No > 0															; and look for 1 thru 6
+	  .and n_No < 7
+	  .end
+
+			if A_1_f_NotComplete											; Check to see if we done
+
+				IF C_Count[n_No] < 9										; Check to see if we have 9 of these nos 
+
+					integers.add n_RubixX,1									; Move along the X Axis
+					if n_RubixX > 3											; If we have exceeded the cube
+						integers.eq n_RubixX,1								;	reset X to 1
+						integers.add n_RubixY,1								;	and move along the Y axis
+						if n_RubixY > 3										;	If we have exceeded the cube 
+							integers.eq n_RubixY,1							;		reset Y to 1 
+							integers.add n_RubixFace,1						;		and move to the next face
+							if n_RubixFace > 6								;		if we have exceede the cube
+								EXIT.REPEAT	_01								;			then we are out
+							end.if
+						end.if
+					end.if
+
+					N_No[n_RubixFace,n_RubixY,n_RubixX] = n_No				; Store the value in the table
+					C_Count[n_No] = C_Count[n_No] + 1						; and keep a tally of each number
+
+				end.if 
+			else
+				EXIT.REPEAT _01
+			end.if						
+	
+		end.if
+
+	end.repeat _01
+
+;	--------------
+;	And display it
+;	--------------
+	$Call X_1_DisplayCube
+	$Call GetUserInput
+
+END.SUB A_1_Initial
+
+;-------------------------------------------------------------------------------
+;	Function to check if we are done
+;-------------------------------------------------------------------------------
+BEGIN.FUNCTION A_1_f_NotComplete
+
+;	Check thru the table of counts (we need 9 per face of each number
+
+	repeat.for I,1,6
+		if C_Count[I] < 9
+			RETURN_CODE = c_TRUE
+			exitRepeat = c_TRUE
+		end.if
+	end.repeat
+
+END.FUNCTION A_1_f_NotComplete
+
+;-------------------------------------------------------------------------------
+;	Process
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_1_Process
+
+;	--------------
+;	Testing TABLES
+;	--------------
+	$Call B_1_1_STDIO
+	$Call B_1_2_WORDS
+	$Call B_1_3_INTEGERS
+	$Call B_1_4_NUMBERS
+	$Call B_1_5_IFORAND
+	$Call B_1_6_TEST
+	$Call B_1_7_REPEAT
+	$Call B_1_8_DATES
+	$Call B_1_9_MISC
+
+;	---------------
+;	Testing XTABLES
+;	---------------
+	$Call B_2_1_STDIO
+	$Call B_2_2_WORDS
+	$Call B_2_3_INTEGERS
+	$Call B_2_4_NUMBERS
+	$Call B_2_5_IFORAND
+	$Call B_2_6_TEST
+	$Call B_2_7_REPEAT
+	$Call B_2_8_DATES
+	$Call B_2_9_MISC
+
+END.SUB B_1_Process
+
+;-------------------------------------------------------------------------------
+;	Test STDIO
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_1_1_STDIO
+
+;	-------------
+;	Testing STDIO
+;	-------------
+	Display c_ClearScreen,c_CyanFG,'Test Field Level Tables access with STDIO',LF
+	Display c_WhiteFG
+
+	I = T_Int2[1] + T_Int4[1]
+	Cursor T_Int1[[[1 + 2 / 3] * 2]],6
+	Display T_Int1[1],LF
+
+	Display.at T_Int3[T_Int1[1]],[T_Int2[1] + T_Int4[1]],T_Char[1]
+
+	Display.at [2 + 2],[[50 / 10] + 1],'Please Enter some text'
+	Display c_YellowFG
+	Accept.at [2 + 2],[[50 / 10] + 26],T_Char[2]
+	Cursor 5,6 | Display c_GreenFG
+	Display.line T_Char[2]
+
+	Display.line
+	$Call GetUserInput
+
+END.SUB B_1_1_STDIO
+
+;-------------------------------------------------------------------------------
+;	Test WORDS
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_1_2_WORDS
+
+;	-------------
+;	Testing WORDS
+;	-------------
+	Display c_ClearScreen,c_CyanFG,'Test Field Level Tables access with WORDS',LF
+	Display c_WhiteFG
+
+	{T_Char[1],1} = {'1st Text Test',1,5}
+	Display.at 2,6,T_Char[1]					
+
+	words.copy {T_Char[1],1,5},{T_Char[2],5}		; left READ, right WRITE
+	Display.at 3,6,T_Char[2]	
+
+	words.pad 'Hello',T_Char[2]						; left READ, right WRITE
+	Display.at 4,6,T_Char[2]	
+
+	words.lowercase T_Char[1]						; READ and WRITE
+	Display.at 5,6,T_Char[1]
+
+	words.uppercase T_Char[2],T_Char[1]				; left READ, right WRITE
+	Display.at 6,6,T_Char[1]
+
+	words.insert {T_Char[1],1,3},T_Char[2]				; left READ, right WRITE
+	Display.at 7,6,T_Char[2]
+
+	words.find {T_Char[1],T_Int1[2]},T_Char[2]		; left READ, right READ
+	Display.at 8,6,T_Int1[2]
+
+	T_Char[2] = 'OoO'
+	words.replace {T_Char[1],T_Char[2]},T_Char[3]	; 1 read, 2 read, 3 WRITE
+	Display.at 9,6,T_Char[3]
+
+	words.length T_Char[I],T_Int1[1]				; read
+	Display.at 10,6,T_Int1[1]
+
+	repeat.for I,1,26
+		display.at 11,[I + 5],T_Char[I]
+	end.repeat
+
+	display.line
+	$Call GetUserInput
+
+END.SUB B_1_2_WORDS
+
+;-------------------------------------------------------------------------------
+;	Test INTEGERS
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_1_3_INTEGERS
+
+;	----------------
+;	Testing INTEGERS
+;	----------------
+	Display c_ClearScreen,c_CyanFG,'Test Field Level Tables access with INTEGERS',LF
+	Display c_WhiteFG
+
+	repeat.for I,1,26
+		cursor [I + 1],6
+		display T_Int1[I],' ',T_Int2[I],' ',T_Int3[I],' ',T_Int4[I]
+	end.repeat
+	display.line
+	$Call GetUserInput
+
+	Display c_ClearScreen,c_CyanFG,'Test Field Level Tables access with INTEGERS',LF
+	Display c_WhiteFG
+
+	T_Int1[1] = 1
+	display.at 02,06,T_Int1[1]
+		integers.eq  T_Int1[1],T_Int2[2]
+		display.at 02,16,T_Int1[1]
+
+	T_Int1[1] = T_Int2[2] + 1
+	display.at 03,06,T_Int1[1]
+		integers.add T_Int2[2],1
+		display.at 03,16,T_Int2[2]
+
+	T_Int1[1] = T_Int1[2] - 1
+	display.at 04,06,T_Int1[1]
+		integers.sub T_Int1[1],T_Int2[2]
+		display.at 04,16,T_Int1[1]
+
+	T_Int1[1] = T_Int1[2] * 1
+	display.at 05,06,T_Int1[1]
+		integers.mul T_Int1[1],T_Int2[2]
+		display.at 05,16,T_Int1[1]
+
+	T_Int1[1] = T_Int1[2] / 1
+	display.at 06,06,T_Int1[1]
+		integers.div T_Int1[1],T_Int2[2]
+		display.at 06,16,T_Int1[1]
+
+	T_Int1[1] = T_Int2[2] + 1 - 1 * 1 / 1
+	display.at 07,06,T_Int1[1]
+		integers.calc T_Int1[1] = T_Int2[2] + 1 - 1 * 1 / 1
+		display.at 07,16,T_Int1[1]
+
+	display.line
+	$Call GetUserInput
+
+END.SUB B_1_3_INTEGERS
+
+;-------------------------------------------------------------------------------
+;	Test NUMBERS
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_1_4_NUMBERS
+
+;	---------------
+;	Testing NUMBERS
+;	---------------
+	Display c_ClearScreen,'Test Field Level Tables access with NUMBERS',LF
+	Display c_WhiteFG
+
+	repeat.for I,1,26
+		cursor [I + 1],5
+		display T_Num1[I],' ',T_Num2[I],' ',T_Num3[I],' ',T_Num4[I]
+	end.repeat
+	display.line
+	$Call GetUserInput
+
+	Display c_ClearScreen,'Test Field Level Tables access with NUMBERS',LF
+	Display c_WhiteFG
+
+	T_Num2[1] = 1
+	display.at 02,06,T_Num2[1]
+		numbers.eq  T_Num2[1],T_Num4[1]
+		display.at 02,16,T_Num2[1]
+
+	T_Num2[1] = T_Num1[2] + 1
+	display.at 03,06,T_Num2[1]
+		numbers.add T_Num2[2],1.11
+		display.at 03,16,T_Num2[2]
+
+	T_Num2[1] = T_Num2[1] - 1.11
+	display.at 04,06,T_Num2[1]
+		numbers.sub T_Num1[2],T_Num2[2]
+		display.at 04,16,T_Num2[1]
+
+	T_Num2[1] = T_Num1[2] * 1.11
+	display.at 05,06,T_Num2[1]
+		numbers.mul T_Num2[1],T_Num1[1]
+		display.at 05,16,T_Num2[1]
+
+	T_Num2[1] = T_Num1[1] / 1
+	display.at 06,06,T_Num2[1]
+		numbers.div T_Num2[1],T_Num2[2]
+		display.at 06,16,T_Num2[1]
+
+	T_Num2[1] = T_Num1[2] + 1 - 1 * 1 / 1
+	display.at 07,06,T_Num2[1]
+		numbers.calc T_Num2[1] = T_Num1[2] + 1 - 1 * 1 / 1
+		display.at 07,16,T_Num2[1]
+
+	display.line
+	$Call GetUserInput
+
+END.SUB B_1_4_NUMBERS
+
+;-------------------------------------------------------------------------------
+;	Test IFORAND
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_1_5_IFORAND
+
+;	-----------------
+;	Testing IF OR AND
+;	-----------------
+	Display c_ClearScreen,'Test Field Level Tables access with IF OR AND',LF
+	Display c_WhiteFG
+
+	T_Int1[1] = 1
+	T_Int2[1] = 2
+	T_Int3[1] = 3
+	T_Int4[1] = 4
+
+	if 1 = 1
+		if T_Int1[1] = [T_Int4[1] / 4]
+			display x_Tab,'Test 1:Successful',LF
+		end.if
+	end.if
+
+	if T_Int1[1] = 1
+	   .if T_Int1[1] = 99
+       .or T_Int4[1] = [T_Int2[1] + T_Int3[1] - T_Int1[1]]
+	  .end 
+			display x_Tab,'Test 2:Successful',LF
+		end.if
+	end.if
+
+	if T_Int2[1] = 2
+	   .if T_Int1[1] = 1
+      .and T_Int4[1] = [[T_Int2[1] * T_Int3[1]] - [T_Int1[1] * T_Int3[1]] + T_Int1[1]]
+	  .end  
+			display x_Tab,'Test 3:Successful',LF
+		end.if
+	end.if
+		
+	$Call GetUserInput	
+
+END.SUB B_1_5_IFORAND
+
+;-------------------------------------------------------------------------------
+;	Test TEST
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_1_6_TEST
+
+;	------------
+;	Testing TEST
+;	------------
+	Display c_ClearScreen,'Test Field Level Tables access with TEST',LF
+	Display c_WhiteFG
+
+	repeat.for I,1,26
+		T_Num1[I] = I * 1.1
+		T_Num2[I] = I * 2.2
+		T_Num3[I] = I * 3.3
+		T_Num4[I] = I * 4.4
+	end.repeat
+
+;	----------------------------------------------------------------------------
+;	A table element can be used in the BEGIN.TEST statement but sadly cannot 
+;	be used in the WHEN statement
+
+	BEGIN.TEST [T_Num1[1] * T_Num1[2]]
+		when = 2.42
+			display x_Tab,'Test 1a:Successful',LF
+		wend
+		when > 2
+			display x_Tab,'Test 1b:Successful',LF
+		wend
+		when < 3
+			display x_Tab,'Test 1c:Successful',LF
+		wend
+		otherwise
+			display x_Tab,'Test 1:UNSuccessful',LF
+	END.TEST
+			
+	$Call GetUserInput	
+
+END.SUB B_1_6_TEST
+
+;-------------------------------------------------------------------------------
+;	Test REPEAT
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_1_7_REPEAT
+
+;	--------------
+;	Testing REPEAT
+;	--------------
+	Display c_ClearScreen,'Test Field Level Tables access with REPEAT',LF
+	Display c_WhiteFG
+
+;	----------------------------------------------------------------------------
+;	Sadly, a table element cannot be used directly in the repeat statement if
+;	it is an item that changes each pass. As per	
+
+;		I = 1
+;		repeat.while T_Num1[I] < 7.7
+;			display.line T_Num1[I]
+;			I = I + 1
+;		end.repeat
+
+;	In order to code in this way you need to use an intermediate variable as per
+;	the following example
+;	----------------------------------------------------------------------------
+	I = 1 | n_FP = T_Num1[I]
+	repeat.while n_FP < 7.7
+		display.line n_FP
+		I = I + 1
+		n_FP = T_Num1[I]
+	end.repeat
+
+	$Call GetUserInput	
+		
+END.SUB B_1_7_REPEAT
+
+;-------------------------------------------------------------------------------
+;	Test DATES
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_1_8_DATES
+
+;	-------------
+;	Testing DATES
+;	-------------
+	Display c_ClearScreen,'Test Field Level Tables access with DATE',LF
+	Display c_WhiteFG
+
+	[section .data]
+		insertword w_Date,10,''
+	[section .text]
+
+	date.get T_Int1[1],w_Date
+		Display 'Todays Date=',w_Date,' No of Days=',T_Int1[1],LF
+
+	T_Int1[1] = T_Int1[1] + 1
+	date.datefromdays (T_Int1[1],w_Date)
+		Display 'Date from Days (Today+1)=',w_Date,LF	
+	
+	date.daysfromdate (T_Int1[1],'2017/03/23')
+		Display 'Days from Date (2017/03/23)=',T_Int1[1],LF
+
+	date.seconds (T_Int1[1])
+		Display 'Seconds=',T_Int1[1],LF
+
+	$Call GetUserInput	
+
+END.SUB B_1_8_DATES
+
+;-------------------------------------------------------------------------------
+;	Test MISC
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_1_9_MISC
+
+;	----------------
+;	Solve Rubix Cube
+;	----------------
+;	This is not supposed to be brilliant code but rather a decent way to test
+;	table element processing
+
+	repeat.for n_RubixFace,1,5												; Run thru the 1st 5 faces
+	  repeat.for n_RubixY,1,3												; Run down the Y Axis
+		repeat.for n_RubixX,1,3												; Run thru the X Axis
+
+		  if N_No[n_RubixFace,n_RubixY,n_RubixX] != n_RubixFace				; If our number does not belong
+			 b_Exit = c_FALSE												; in this face then
+			 repeat.for I,[n_RubixFace + 1],6								; Search thru the other faces
+			   repeat.for J,1,3												; searching down the Y Axis
+				 repeat.for K,1,3											; searching thru the X Axis
+
+				   if N_No[I,J,K] = n_RubixFace								; If we find one belonging to the current face
+				      N_No[I,J,K] = N_No[n_RubixFace,n_RubixY,n_RubixX]		;	swap in from the original number
+					  N_No[n_RubixFace,n_RubixY,n_RubixX] = n_RubixFace		;	store the current face no
+					  b_Exit = c_TRUE										;	and exit the loop
+					  exitRepeat = c_TRUE
+				   end.if
+
+				 end.repeat
+				 if b_Exit = c_TRUE											; exit if need be
+					exitRepeat = c_TRUE
+				 end.if
+
+			   end.repeat
+			   if b_Exit = c_TRUE											; exit if need be
+				  exitRepeat = c_TRUE
+			   end.if
+
+			 end.repeat
+
+		  end.if
+								
+		end.repeat
+	  end.repeat
+	end.repeat
+
+;	--------------
+;	And display it
+;	--------------
+	$Call X_1_DisplayCube
+	$Call GetUserInput
+
+END.SUB B_1_9_MISC
+
+;-------------------------------------------------------------------------------
+;	Test STDIO
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_2_1_STDIO
+
+;	-------------
+;	Testing STDIO
+;	-------------
+	Display c_ClearScreen,c_CyanFG,'Test Field Level Tables access with STDIO',LF
+	Display c_WhiteFG
+
+	I = X_Int2[1] + X_Int4[1]
+	Cursor X_Int1[[[1 + 2 / 3] * 2]],6
+	Display X_Int1[1],LF
+
+	Display.at X_Int3[X_Int1[1]],[X_Int2[1] + X_Int4[1]],X_Char[1]
+
+	Display.at [2 + 2],[[50 / 10] + 1],'Please Enter some text'
+	Display c_YellowFG
+	Accept.at [2 + 2],[[50 / 10] + 26],X_Char[2]
+	Cursor 5,6 | Display c_GreenFG
+	Display.line X_Char[2]
+
+	Display.line
+	$Call GetUserInput
+
+END.SUB B_2_1_STDIO
+
+;-------------------------------------------------------------------------------
+;	Test WORDS
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_2_2_WORDS
+
+;	-------------
+;	Testing WORDS
+;	-------------
+	Display c_ClearScreen,c_CyanFG,'Test Field Level Tables access with WORDS',LF
+	Display c_WhiteFG
+
+	{X_Char[1],1} = {'1st Text Test',1,5}
+	Display.at 2,6,X_Char[1]					
+
+	words.copy {X_Char[1],1,5},{X_Char[2],5}		; left READ, right WRITE
+	Display.at 3,6,X_Char[2]	
+
+	words.pad 'Hello',X_Char[2]						; left READ, right WRITE
+	Display.at 4,6,X_Char[2]	
+
+	words.lowercase X_Char[1]						; READ and WRITE
+	Display.at 5,6,X_Char[1]
+
+	words.uppercase X_Char[2],X_Char[1]				; left READ, right WRITE
+	Display.at 6,6,X_Char[1]
+
+	words.insert {X_Char[1],1,3},X_Char[2]				; left READ, right WRITE
+	Display.at 7,6,X_Char[2]
+
+	words.find {X_Char[1],X_Int1[2]},X_Char[2]		; left READ, right READ
+	Display.at 8,6,X_Int1[2]
+
+	X_Char[2] = 'OoO'
+	words.replace {X_Char[1],X_Char[2]},X_Char[3]	; 1 read, 2 read, 3 WRITE
+	Display.at 9,6,X_Char[3]
+
+	words.length X_Char[I],X_Int1[1]				; read
+	Display.at 10,6,X_Int1[1]
+
+	repeat.for I,1,26
+		display.at 11,[I + 5],X_Char[I]
+	end.repeat
+
+	display.line
+	$Call GetUserInput
+
+END.SUB B_2_2_WORDS
+
+;-------------------------------------------------------------------------------
+;	Test INTEGERS
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_2_3_INTEGERS
+
+;	----------------
+;	Testing INTEGERS
+;	----------------
+	Display c_ClearScreen,c_CyanFG,'Test Field Level Tables access with INTEGERS',LF
+	Display c_WhiteFG
+
+	repeat.for I,1,26
+		cursor [I + 1],6
+		display X_Int1[I],' ',X_Int2[I],' ',X_Int3[I],' ',X_Int4[I]
+	end.repeat
+	display.line
+	$Call GetUserInput
+
+	Display c_ClearScreen,c_CyanFG,'Test Field Level Tables access with INTEGERS',LF
+	Display c_WhiteFG
+
+	X_Int1[1] = 1
+	display.at 02,06,X_Int1[1]
+		integers.eq  X_Int1[1],X_Int2[2]
+		display.at 02,16,X_Int1[1]
+
+	X_Int1[1] = X_Int2[2] + 1
+	display.at 03,06,X_Int1[1]
+		integers.add X_Int2[2],1
+		display.at 03,16,X_Int2[2]
+
+	X_Int1[1] = X_Int1[2] - 1
+	display.at 04,06,X_Int1[1]
+		integers.sub X_Int1[1],X_Int2[2]
+		display.at 04,16,X_Int1[1]
+
+	X_Int1[1] = X_Int1[2] * 1
+	display.at 05,06,X_Int1[1]
+		integers.mul X_Int1[1],X_Int2[2]
+		display.at 05,16,X_Int1[1]
+
+	X_Int1[1] = X_Int1[2] / 1
+	display.at 06,06,X_Int1[1]
+		integers.div X_Int1[1],X_Int2[2]
+		display.at 06,16,X_Int1[1]
+
+	X_Int1[1] = X_Int2[2] + 1 - 1 * 1 / 1
+	display.at 07,06,X_Int1[1]
+		integers.calc X_Int1[1] = X_Int2[2] + 1 - 1 * 1 / 1
+		display.at 07,16,X_Int1[1]
+
+	display.line
+	$Call GetUserInput
+
+END.SUB B_2_3_INTEGERS
+
+;-------------------------------------------------------------------------------
+;	Test NUMBERS
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_2_4_NUMBERS
+
+;	---------------
+;	Testing NUMBERS
+;	---------------
+	Display c_ClearScreen,'Test Field Level Tables access with NUMBERS',LF
+	Display c_WhiteFG
+
+	repeat.for I,1,26
+		cursor [I + 1],5
+		display X_Num1[I],' ',X_Num2[I],' ',X_Num3[I],' ',X_Num4[I]
+	end.repeat
+	display.line
+	$Call GetUserInput
+
+	Display c_ClearScreen,'Test Field Level Tables access with NUMBERS',LF
+	Display c_WhiteFG
+
+	X_Num2[1] = 1
+	display.at 02,06,X_Num2[1]
+		numbers.eq  X_Num2[1],X_Num4[1]
+		display.at 02,16,X_Num2[1]
+
+	X_Num2[1] = X_Num1[2] + 1
+	display.at 03,06,X_Num2[1]
+		numbers.add X_Num2[2],1.11
+		display.at 03,16,X_Num2[2]
+
+	X_Num2[1] = X_Num2[1] - 1.11
+	display.at 04,06,X_Num2[1]
+		numbers.sub X_Num1[2],X_Num2[2]
+		display.at 04,16,X_Num2[1]
+
+	X_Num2[1] = X_Num1[2] * 1.11
+	display.at 05,06,X_Num2[1]
+		numbers.mul X_Num2[1],X_Num1[1]
+		display.at 05,16,X_Num2[1]
+
+	X_Num2[1] = X_Num1[1] / 1
+	display.at 06,06,X_Num2[1]
+		numbers.div X_Num2[1],X_Num2[2]
+		display.at 06,16,X_Num2[1]
+
+	X_Num2[1] = X_Num1[2] + 1 - 1 * 1 / 1
+	display.at 07,06,X_Num2[1]
+		numbers.calc X_Num2[1] = X_Num1[2] + 1 - 1 * 1 / 1
+		display.at 07,16,X_Num2[1]
+
+	display.line
+	$Call GetUserInput
+
+END.SUB B_2_4_NUMBERS
+
+;-------------------------------------------------------------------------------
+;	Test IFORAND
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_2_5_IFORAND
+
+;	-----------------
+;	Testing IF OR AND
+;	-----------------
+	Display c_ClearScreen,'Test Field Level Tables access with IF OR AND',LF
+	Display c_WhiteFG
+
+	X_Int1[1] = 1
+	X_Int2[1] = 2
+	X_Int3[1] = 3
+	X_Int4[1] = 4
+
+	if 1 = 1
+		if X_Int1[1] = [X_Int4[1] / 4]
+			display x_Tab,'Test 1:Successful',LF
+		end.if
+	end.if
+
+	if X_Int1[1] = 1
+	   .if X_Int1[1] = 99
+       .or X_Int4[1] = [X_Int2[1] + X_Int3[1] - X_Int1[1]]
+	  .end 
+			display x_Tab,'Test 2:Successful',LF
+		end.if
+	end.if
+
+	if X_Int2[1] = 2
+	   .if X_Int1[1] = 1
+      .and X_Int4[1] = [[X_Int2[1] * X_Int3[1] ] - [X_Int1[1] * X_Int3[1]] + X_Int1[1]]
+	  .end  
+			display x_Tab,'Test 3:Successful',LF
+		end.if
+	end.if
+		
+	$Call GetUserInput	
+
+END.SUB B_2_5_IFORAND
+
+;-------------------------------------------------------------------------------
+;	Test TEST
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_2_6_TEST
+
+;	------------
+;	Testing TEST
+;	------------
+	Display c_ClearScreen,'Test Field Level Tables access with TEST',LF
+	Display c_WhiteFG
+
+	repeat.for I,1,26
+		X_Num1[I] = I * 1.1
+		X_Num2[I] = I * 2.2
+		X_Num3[I] = I * 3.3
+		X_Num4[I] = I * 4.4
+	end.repeat
+
+;	----------------------------------------------------------------------------
+;	A table element can be used in the BEGIN.TEST statement but sadly cannot 
+;	be used in the WHEN statement
+
+	BEGIN.TEST [X_Num1[1] * X_Num1[2]]
+		when = 2.42
+			display x_Tab,'Test 1a:Successful',LF
+		wend
+		when > 2
+			display x_Tab,'Test 1b:Successful',LF
+		wend
+		when < 3
+			display x_Tab,'Test 1c:Successful',LF
+		wend
+		otherwise
+			display x_Tab,'Test 1:UNSuccessful',LF
+	END.TEST
+			
+	$Call GetUserInput	
+
+END.SUB B_2_6_TEST
+
+;-------------------------------------------------------------------------------
+;	Test REPEAT
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_2_7_REPEAT
+
+;	--------------
+;	Testing REPEAT
+;	--------------
+	Display c_ClearScreen,'Test Field Level Tables access with REPEAT',LF
+	Display c_WhiteFG
+
+;	----------------------------------------------------------------------------
+;	Sadly, a table element cannot be used directly in the repeat statement if
+;	it is an item that changes each pass. As per	
+
+;		I = 1
+;		repeat.while X_Num1[I] < 7.7
+;			display.line X_Num1[I]
+;			I = I + 1
+;		end.repeat
+
+;	In order to code in this way you need to use an intermediate variable as per
+;	the following example
+;	----------------------------------------------------------------------------
+	I = 1 | n_FP = X_Num1[I]
+	repeat.while n_FP < 7.7
+		display.line n_FP
+		I = I + 1
+		n_FP = X_Num1[I]
+	end.repeat
+
+	$Call GetUserInput	
+		
+END.SUB B_2_7_REPEAT
+
+;-------------------------------------------------------------------------------
+;	Test DATES
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_2_8_DATES
+
+;	-------------
+;	Testing DATES
+;	-------------
+	Display c_ClearScreen,'Test Field Level Tables access with DATE',LF
+	Display c_WhiteFG
+
+	date.get X_Int1[1],w_Date
+		Display 'Todays Date=',w_Date,' No of Days=',X_Int1[1],LF
+
+	X_Int1[1] = X_Int1[1] + 1
+	date.datefromdays (X_Int1[1],w_Date)
+		Display 'Date from Days (Today+1)=',w_Date,LF	
+	
+	date.daysfromdate (X_Int1[1],'2017/03/23')
+		Display 'Days from Date (2017/03/23)=',X_Int1[1],LF
+
+	date.seconds (X_Int1[1])
+		Display 'Seconds=',X_Int1[1],LF
+
+	$Call GetUserInput	
+
+END.SUB B_2_8_DATES
+
+;-------------------------------------------------------------------------------
+;	Test MISC
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_2_9_MISC
+
+	www.open (X_Int1[1])
+	www.process (X_Char[1],X_Char[2],B_1_9_MISC,B_1_9_MISC)
+	www.close (X_Int1[1])
+
+	TERMINATE X_Int1[1]
+
+END.SUB B_2_9_MISC
+
+;-------------------------------------------------------------------------------
+;	Display Rubix Cube
+;-------------------------------------------------------------------------------
+BEGIN.SUB X_1_DisplayCube
+
+	repeat.for n_RubixY,1,3
+		repeat.for n_RubixFace,1,6
+			repeat.for n_RubixX,1,3
+				Display N_No[n_RubixFace,n_RubixY,n_RubixX], ' '
+			end.repeat
+			display spaces(5)
+		end.repeat
+		display.line
+	end.repeat
+	display.line  
+	
+END.SUB X_1_DisplayCube
+
+;-------------------------------------------------------------------------------
+;	FINALISATION
+;-------------------------------------------------------------------------------
+BEGIN.SUB Z_1_Finalise
+
+	www.open (T_Int1[1])
+	www.process (T_Char[1],T_Char[2],B_1_9_MISC,B_1_9_MISC)
+	www.close (T_Int1[1])
+
+	TERMINATE T_Int1[1]
+	
+END.SUB Z_1_Finalise
+
+;=======================================================================
+;		Routines that are common (can be Called from anywhere)
+;=======================================================================
+BEGIN.SUB GetUserInput
+
+	display (spaces(5),c_LightBlueFG,'Press <ENTER> to continue ')
+	acceptline (w_Char)
+	display c_WhiteFG,(LF)
+	
+END.SUB GetUserInput

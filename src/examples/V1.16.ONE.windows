@@ -1,0 +1,443 @@
+%line 1 V1.16.ASM
+;			==========================================================================
+; NOTE:		This program has been taken up into the languageONE system and is provided
+;			as the languageONE GUI make utility 'GUI-makeONE'
+;			==========================================================================
+;
+;		  languageONE V1.16
+;		  The languageONE GUI make utility
+
+;	Introduced Synonyms in V1.17
+;	The idea is to be able to dynamically rename macros if
+;		you find the originals too verbose
+;	Only macros following begin.program can have synonyms 
+;	Synonyms cannot be longer than the original macro name
+;	The Synonym directives must be coded as comments
+;	BEGIN.SYNONYMS **************************************
+;		$.	:	WORDS.  
+;		@.	:	INTEGERS.  
+;		#.	:	NUMBERS.  
+;		f.	:	FILES. 
+;	END.SYNONYMS ****************************************
+
+%include 'include/BEGIN.PROGRAM'
+;=======================================================================
+;		  PROGRAM DATA
+;=======================================================================
+;-----------------------------------------------------------------------
+;		DICTIONARY
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.DICTIONARY'
+
+	insertword w_PortError,		0028,'01: Port No cannot be < 1024' 
+	insertword w_ConnectError,	0024,'02: Cannot create socket'
+
+	insertword w_Screen0,		0024,{'html/V1-16-screen0.html',0x00}
+	
+	insertword w_Response,		2048,''	
+	insertword w_Buffer,		0256,''
+	insertword w_Command,		0156,''
+		insertword w_reWrite,	0156,''
+		insertword w_Assemble,	0156,''
+		insertword w_Link,		0156,''
+	insertword w_Out,			0152,''
+	insertword w_Enter,			0001,''
+		
+%include 'include/END.DICTIONARY'
+
+;-----------------------------------------------------------------------
+;		MATRIX
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.MATRIX'
+
+  ; Common Counters
+	INSERTNUMBER I,					0,'999999'
+	INSERTNUMBER J,					0,'999999'
+	INSERTNUMBER K,					0,'999999'
+
+  ; This programs 	
+  	insertnumber n_PortNo,		 	0,'999999'
+	insertnumber j_start,			0,'999999'
+	insertnumber k_NoOfBytes,		0,'999999'
+	insertnumber srcLen,			0,'9999'
+	insertnumber dstPosition,		0,'9999'
+
+	insertnumber b_reWrite,			c_FALSE
+	insertnumber b_Assemble,		c_FALSE
+	insertnumber b_Link,			c_FALSE
+	insertnumber b_Debug,			c_FALSE
+	
+%include 'include/END.MATRIX'
+
+;-----------------------------------------------------------------------
+;		FILES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.FILES'
+
+;	These files are used as recepticles for stdout and stderr
+;	used by a child process. As such they are opened by the run
+;	command and only need to be closed by the parent program (this one) 
+	insertfile c_LF,RSP1_FILE,'pipe'
+	insertfile c_LF,RSP2_FILE,'pipe'
+	insertfile c_LF,RSP3_FILE,'pipe'
+
+;	formatted output	
+	insertfile c_LF,HTM_FILE,'html/V1-16.htm'
+
+%include 'include/END.FILES'
+
+;=======================================================================
+;		PROGRAM INSTRUCTIONS
+;		Mainline  
+;=======================================================================
+%include 'include/BEGIN.INSTRUCTIONS'
+
+	$Call A_1_Initial
+
+	if ERROR_CODE = 0
+	;	www.process (w_Screen0,w_Response,B_1_GET,C_1_POST)
+		www.process (w_Screen0,w_Response,0x00,C_1_POST)
+		$Call Z_1_Finalise
+	end.if
+
+%include 'include/END.INSTRUCTIONS'
+%include 'include/END.PROGRAM'      
+
+;=======================================================================
+;		PROGRAM PROCEDURES
+;=======================================================================
+
+;-------------------------------------------------------------------------------
+;		INITIALISATION
+;-------------------------------------------------------------------------------
+BEGIN.SUB A_1_Initial
+	
+;	-------------------------------
+;	GET PORT NUMBER
+;	-------------------------------
+	#.eq (n_PortNo,{w_CommandLine,1,6})
+
+	if n_PortNo < 1024
+	
+		display.line w_PortError
+		TERMINATE 1
+		
+	else
+	
+	;	OPEN THE SOCKET 
+		www.open (n_PortNo)
+		if ERROR_CODE != 0
+			display.line w_ConnectError
+			TERMINATE 2
+		end.if
+		
+	end.if
+
+;	--------------
+;	OPEN HTML FILE
+;	--------------
+	f.open (HTM_FILE,$write+$beginning)
+
+END.SUB A_1_Initial
+
+;-------------------------------------------------------------------------------
+;	GET
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_1_GET
+END.SUB B_1_GET
+
+;-------------------------------------------------------------------------------
+;	POST
+;-------------------------------------------------------------------------------
+BEGIN.SUB C_1_POST
+	
+;	---------------------------
+;	GRAB OPTIONS
+;	---------------------------
+	$Call C_1_1_GetOptions
+	if ERROR_CODE != 0
+		exit.sub C_1_POST
+	end.if
+	
+;	@.eq(ERROR_CODE,0)
+	ERROR_CODE = 0
+
+;	---------------------------
+;	REWRITE
+;	---------------------------
+;	run('bin/languageONE -d ProgramName)
+
+	if b_reWrite > 0
+
+		$Call C_1_2_reWriteCommand	
+		w_reWrite = w_Out
+
+		run (w_Command,RSP1_FILE)
+		
+		wait(CHILD_PID)
+		
+	end.if
+
+;	---------------------------
+;	ASSEMBLE
+;	---------------------------	
+;	run('nasm -f elf64 -F dwarf ProgramName.ASM')
+   .if b_Assemble > 0
+  .and ERROR_CODE = 0
+  .end
+
+		$Call C_1_3_AssembleCommand
+		w_Assemble = w_Out	
+
+		run (w_Command,RSP2_FILE)
+		wait(CHILD_PID)
+
+	else
+		b_Assemble = 0	
+	end.if
+
+;	---------------------------
+;	LINK
+;	---------------------------	
+;	run('ld -o ProgramName.o Libraries.o')
+
+   .if b_Link > 0
+  .and ERROR_CODE = 0
+  .end
+  
+		$Call C_1_4_LinkCommand	
+		w_Link = w_Out
+
+		run (w_Command,RSP3_FILE)
+		wait(CHILD_PID)
+	
+	else
+		b_Link = 0		
+	end.if
+
+;	---------------------------
+;	FORMAT OUTPUT
+;	---------------------------	
+	$Call C_1_5_FormatOutput
+	
+;	-----------
+;	CLOSE FILES
+;	-----------
+	files $close,HTM_FILE
+		
+END.SUB C_1_POST
+
+;-------------------------------------------------------------------------------
+;	Get ENTERED OPTIONS
+;------------------------------------------------------------------------------
+BEGIN.SUB C_1_1_GetOptions
+
+;	-----------
+;	CANCEL
+;	-----------	
+	$.find ({'EXIT=EXIT',I},w_Response)
+	if I > 0
+		ERROR_CODE = 99
+		exit.sub C_1_1_GetOptions
+	end.if
+
+;	------------
+;	PROGRAM NAME
+;	------------
+	$.find ({'PROGRAMNAME=',I},w_Response)
+	j_start = I + 12
+	k_NoOfBytes = j_start
+	$.find ({'&',k_NoOfBytes},w_Response)
+	k_NoOfBytes = k_NoOfBytes - j_start
+	
+;	-----------
+;	FLAGS
+;	-----------
+	$.find ({'REWRITE=on',		b_reWrite},			w_Response)
+	$.find ({'ASSEMBLE=on',		b_Assemble},		w_Response)
+	$.find ({'LINK=on',			b_Link},			w_Response)
+	$.find ({'DEBUG=on',		b_Debug},			w_Response)
+
+END.SUB C_1_1_GetOptions
+
+;-------------------------------------------------------------------------------
+;	FORM TRANSLATE COMMAND LINE
+;-------------------------------------------------------------------------------
+BEGIN.SUB C_1_2_reWriteCommand
+
+;	Command Line
+;	????? WINDOWS REQUIRES 2 SPACES FOLLOWING THE PROGRAM BEFORE
+;	????? SETTING UP THE PARAMETERS ????. dstPosition = 62 NOT 61
+
+	w_Command = 'C:\Users\roger\_dev1\source\languageONE\bin\languageONE.exe'
+	dstPosition = 62
+	if b_Debug > 0
+		{w_Command,dstPosition} = '-d'
+		dstPosition = dstPosition + 3
+	end.if
+	{w_Command,dstPosition} =  {w_Response,j_start,k_NoOfBytes}
+	
+;	HTML Display
+	srcLen = k_NoOfBytes + dstPosition
+	$Call C_1_X_HTML
+	
+END.SUB C_1_2_reWriteCommand
+
+;-------------------------------------------------------------------------------
+;	FORM ASSEMBLE COMMAND LINE
+;-------------------------------------------------------------------------------
+BEGIN.SUB C_1_3_AssembleCommand
+
+;	Command Line
+;	????? WINDOWS REQUIRES 2 SPACES FOLLOWING THE PROGRAM BEFORE
+;	????? SETTING UP THE PARAMETERS ????. dstPosition = 66 NOT 65
+
+	w_Command = 'C:\Users\roger\_dev1\source\languageONE\_NASM\nasm.exe  -f win64'
+	dstPosition = 66
+	if b_Debug > 0
+		{w_Command,dstPosition} = '-g' 
+		dstPosition = dstPosition + 3
+	end.if	
+	{w_Command,dstPosition} = {w_Response,j_start,k_NoOfBytes} 
+	dstPosition = dstPosition + k_NoOfBytes
+	{w_Command,dstPosition} = '.ASM'
+	I = I + 4
+
+;	HTML Display
+	srcLen = k_NoOfBytes + dstPosition
+	$Call C_1_X_HTML
+
+END.SUB C_1_3_AssembleCommand
+
+;-------------------------------------------------------------------------------
+;	FORM LINK COMMAND LINE
+;-------------------------------------------------------------------------------
+BEGIN.SUB C_1_4_LinkCommand
+
+;	Command Line
+;	????? WINDOWS REQUIRES 2 SPACES FOLLOWING THE PROGRAM BEFORE
+;	????? SETTING UP THE PARAMETERS ????. dstPosition = 96 NOT 95
+
+	w_Command = 'C:\Users\roger\_dev1\source\languageONE\_GOLINK\golink.exe  /Console /entry _start /debug coff'
+	{w_Command,96} = {w_Response,j_start,k_NoOfBytes}
+
+	dstPosition = 96 + k_NoOfBytes + 1
+	{w_Command,dstPosition} = {w_Response,j_start,k_NoOfBytes} 
+	dstPosition = dstPosition + k_NoOfBytes	
+	{w_Command,dstPosition} = '.obj' 
+	dstPosition = dstPosition + 5 
+
+	{w_Command,dstPosition} = '@w.golink.libraries'
+	dstPosition = dstPosition + 17
+	
+;	HTML Display
+	srcLen = dstPosition
+	$Call C_1_X_HTML
+	
+END.SUB C_1_4_LinkCommand
+
+;-------------------------------------------------------------------------------
+;	DISPLAY COMMANDS
+;-------------------------------------------------------------------------------
+BEGIN.SUB C_1_X_HTML
+
+	dstPosition = 1
+	w_Out = '<p style="color:blue;">'
+
+	dstPosition = 24
+	{w_Out,dstPosition} = {w_Command,1,srcLen}
+
+	dstPosition = dstPosition + srcLen - 1
+	{w_Out,dstPosition} = '</p>'
+	dstPosition = dstPosition + 4
+
+END.SUB C_1_X_HTML
+
+;-------------------------------------------------------------------------------
+;	FORMAT OUTPUT
+;-------------------------------------------------------------------------------
+BEGIN.SUB C_1_5_FormatOutput
+
+	if b_reWrite > 0
+	;	---------------------------------
+		files $write,HTM_FILE,w_reWrite
+	;	-----------------------
+	;	RESPONSE FILE 1
+	;	-----------------------
+		files $read,RSP1_FILE,w_Buffer
+		repeat.while RSP1_FILE_STATUS = 0
+
+			I = RSP1_FILE_READLENGTH	
+			$Call C_1_5_1_FormatLineOut
+
+			files $write,HTM_FILE,{w_Out,1,I}
+			files $read,RSP1_FILE,w_Buffer
+
+		end.repeat
+		files $close,RSP1_FILE
+	end.if
+
+	if b_Assemble > 0
+	;	----------------------------------
+		files $write,HTM_FILE,w_Assemble	
+	;	-----------------------
+	;	RESPONSE FILE 2
+	;	-----------------------
+		files $read,RSP2_FILE,w_Buffer
+		repeat.while RSP2_FILE_STATUS = 0
+
+			I = RSP2_FILE_READLENGTH	
+			$Call C_1_5_1_FormatLineOut
+
+			files $write,HTM_FILE,{w_Out,1,I}
+			files $read,RSP2_FILE,w_Buffer
+		
+		end.repeat
+		files $close,RSP2_FILE	
+	end.if
+
+	if b_Link > 0
+	;	----------------------------
+		files $write,HTM_FILE,w_Link
+	;	-----------------------
+	;	RESPONSE FILE 3
+	;	-----------------------
+		files $read,RSP3_FILE,w_Buffer
+		repeat.while RSP3_FILE_STATUS = 0
+
+			I = RSP3_FILE_READLENGTH	
+			$Call C_1_5_1_FormatLineOut
+
+			files $write,HTM_FILE,{w_Out,1,I}
+			files $read,RSP3_FILE,w_Buffer
+		
+		end.repeat
+		files $close,RSP3_FILE		
+	end.if
+			
+END.SUB C_1_5_FormatOutput
+
+;-------------------------------------------------------------------------------
+;	FORMAT OUTPUT LINE
+;-------------------------------------------------------------------------------
+BEGIN.SUB C_1_5_1_FormatLineOut
+
+	w_Out = '<p>'
+	{w_Out,4} = {w_Buffer,1,I}
+	I = I + 4	
+	{w_Out,I} = '</p>'
+	I = I + 3
+
+END.SUB C_1_5_1_FormatLineOut
+
+;-------------------------------------------------------------------------------
+;	FINALISATION
+;-------------------------------------------------------------------------------
+BEGIN.SUB Z_1_Finalise
+
+;	-----------------------------------------
+;	CLOSE THE SOCKET 
+;	-----------------------------------------
+	www.close (n_PortNo)
+	
+END.SUB Z_1_Finalise

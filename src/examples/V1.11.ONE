@@ -1,0 +1,328 @@
+%include 'include/BEGIN.PROGRAM'
+
+;	Refer to VERSION.HISTORY for...well...version history
+
+;	BEGIN.SYNONYMS **************************************
+;		$.	:	WORDS.  
+;		@.	:	INTEGERS.  
+;		#.	:	NUMBERS.  
+;	END.SYNONYMS ****************************************
+
+;=======================================================================
+;		  PROGRAM DATA
+;=======================================================================	      
+;-----------------------------------------------------------------------
+;		CONSTANTS
+;-----------------------------------------------------------------------
+;%define 
+
+;-----------------------------------------------------------------------
+;		DICTIONARY
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.DICTIONARY'
+	insertword		name,	5,' '
+	insertword      date1, 10,'1970/01/01'		
+%include 'include/END.DICTIONARY'
+
+;-----------------------------------------------------------------------
+;		MATRIX
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.MATRIX'
+
+  ; Common Counters
+	insertnumber	I,					0,'999999'
+	insertnumber	J,					0,'999999'
+	insertnumber	seconds,			0,'999999'
+	insertnumber	noOfDays,			0,'999999'
+
+%include 'include/END.MATRIX'
+
+;-----------------------------------------------------------------------
+;		FILES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.FILES'
+%include 'include/END.FILES'
+
+;-----------------------------------------------------------------------
+;		TABLES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.TABLES'		
+%include 'include/END.TABLES'
+
+;=======================================================================
+;		PROGRAM INSTRUCTIONS
+;		Mainline  
+;=======================================================================
+%include 'include/BEGIN.INSTRUCTIONS'
+
+	$Call A_1_Initial
+	$Call B_1_Process
+	$Call Z_1_Finalise
+
+%include 'include/END.INSTRUCTIONS'
+%include 'include/END.PROGRAM'      
+
+;=======================================================================
+;		PROGRAM PROCEDURES
+;=======================================================================
+;		Initial
+;-----------------------------------------------------------------------
+BEGIN.SUB A_1_Initial	
+END.SUB A_1_Initial
+
+;-----------------------------------------------------------------------
+;		Process
+;-----------------------------------------------------------------------
+BEGIN.SUB B_1_Process
+
+	$Call B_1_1_IF
+	$Call B_1_2_WHEN
+	$Call B_1_3_DATE
+
+END.SUB B_1_Process
+
+;-----------------------------------------------------------------------
+;		Test IF statements
+;-----------------------------------------------------------------------
+BEGIN.SUB B_1_1_IF
+
+	;	Standard IF
+		I = 2
+		if I = 1
+			display ('[IF]: ',{I,'9'},' is equal to 1',LF)
+		else
+			display ('[IF]: ',{I,'9'},' is NOT equal to 1',LF)
+		end.if
+
+	;	Standard IF/OR
+		I = 3
+	   .if I = 1 | .or I = 2 | .end
+			display ('[IF/OR]: ',{I,'9'},' is equal to 1 or 2',LF)
+		else
+			display ('[IF/OR]: ',{I,'9'},' is NOT equal to 1 or 2',LF)
+		end.if
+
+	;	Standard IF/OR
+		I = 1
+	   .if I > 1 | .and I < 3 | .end
+			display ('[IF/AND]: ',{I,'9'},' is > 1 and < 3',LF)
+		else
+			display ('[IF/AND]: ',{I,'9'},' is NOT > 1 and < 3',LF)
+		end.if
+
+	;	Standard IF _IN
+		I = 4
+		if I _IN {1,2,3}
+			display ('[IF/_IN]: ',{I,'9'},' is in 1,2,3',LF)
+		else
+			display ('[IF/_IN]: ',{I,'9'},' is NOT in 1,2,3',LF)
+		end.if
+
+	;	Standard IF/OR _IN
+		I = 4
+	   .if I = 9 | .or I _IN {1,2,3} | .end		
+			display ('[IF/OR_IN]: ',{I,'9'},' is = 9 or in 1,2,3',LF)
+		else
+			display ('[IF/OR_IN]: ',{I,'9'},' is NOT = 9 or in 1,2,3',LF)
+		end.if
+
+	;	Standard IF/AND _IN
+		I = 1
+	   .if I = 1 | .and I _IN {2,3,4} | .end		
+			display ('[IF/AND_IN]: ',{I,'9'},' is = 1 and in 1,2,3',LF)
+		else
+			display ('[IF/AND_IN]: ',{I,'9'},' is = 1 but NOT in 2,3,4',LF)
+		end.if
+
+	;	Standard IF FUNCTION
+		I = 6
+		if ValidI
+			display ('[IF FUNCTION]: ',{I,'9'},' is a valid value',LF)
+		else
+			display ('[IF FUNCTION]: ',{I,'9'},' is NOT a valid value',LF)
+		end.if
+
+	;	Standard IF/OR FUNCTION
+		I = 0
+	   .if I = 6 | .or ValidI | .end
+			display ('[IF/OR FUNCTION]: ',{I,'9'},' is a valid value',LF)
+		else
+			display ('[IF/OR FUNCTION]: ',{I,'9'},' is NOT a valid value',LF)
+		end.if
+
+	;	Standard IF/AND FUNCTION
+		I = 6
+	   .if I > 0 | .and ValidI | .end
+			display ('[IF/AND FUNCTION]: ',{I,'9'},' is > 0 AND a valid value',LF)
+		else
+			display ('[IF/AND FUNCTION]: ',{I,'9'},' is > 0 but NOT a valid value',LF)
+		end.if
+
+		display.line
+		
+END.SUB B_1_1_IF
+
+;-----------------------------------------------------------------------
+;		Test WHEN statements
+;-----------------------------------------------------------------------
+BEGIN.SUB B_1_2_WHEN
+
+;	Testing _IN with the when keyword (Alpha)
+	name = 'ROGER'
+	begin.test name
+		when _IN {'ROGER','JESSI','KRYST','TIFFA'}
+			display '[WHEN-Alpha] ',name,' has been found in the list',LF
+		wend
+
+		otherwise
+			display name,' has NOT been found in the list',LF
+	end.test
+	
+;	Testing _IN with the when keyword (Integer)
+	I = 1
+	begin.test I
+		when _IN {1,2,3,4,5}
+			display ('[WHEN]-Integer ',{I,'9'},' has been found in the list',LF)
+		wend
+
+		otherwise
+			display ('[WHEN]-Integer ',{I,'9'},' has NOT been found in the list',LF)
+	end.test
+	
+;	Testing _IN with the _or keyword 
+	I = 1
+	begin.test I
+	   .when > 1 | .or _IN {1,2,3,4,5} | .end
+			display ('[WHEN:_OR] ',{I,'9'},' has been found in the list',LF)
+		wend
+
+		otherwise
+			display ('[WHEN:_OR] ',{I,'9'},' has NOT been found in the list',LF)
+
+	end.test
+	
+;	Testing _IN with the _and keyword 
+	I = 2
+	begin.test I
+	   .when > 1 | .and _IN {1,2,3,4,5} | .end
+			display ('[WHEN:_AND] ',{I,'9'},' has been found in the list',LF)
+		wend
+
+		otherwise
+			display ('[WHEN:_AND] ',{I,'9'},' has NOT been found in the list',LF)
+	end.test
+		
+;	Testing a FUNCTION with the when keyword
+	I = 1
+	begin.test I
+		when ValidI
+			display ('[FUNCTION] ',{I,'9'},' has been found to be valid',LF)
+		wend
+
+		otherwise
+			display ('[FUNCTION] ',{I,'9'},' has NOT been found to be valid',LF)
+	end.test
+	
+;	Testing a FUNCTION with the _OR keyword
+	I = 1
+	begin.test I
+	   .when = 2 | .or ValidI | .end
+			display ('[FUNCTION/OR] ',{I,'9'},' has been found to be valid',LF)
+		wend
+
+		otherwise
+			display ('[FUNCTION/OR] ',{I,'9'},' has NOT been found to be valid',LF)
+	end.test
+
+;	Testing a FUNCTION with the _AND keyword
+	I = 5
+	begin.test I
+	   .when = 4 | .and ValidI | .end
+			display ('[FUNCTION/AND] ',{I,'9'},' has been found to be valid',LF)
+		wend
+
+		otherwise
+			display ('[FUNCTION/AND] ',{I,'9'},' has NOT been found to be valid',LF)
+	end.test
+
+	display.line
+	
+END.SUB B_1_2_WHEN
+
+
+;-----------------------------------------------------------------------
+;		Test new DATE functions
+;-----------------------------------------------------------------------
+BEGIN.SUB B_1_3_DATE
+
+;	Get Todays Date
+	date.get (noOfDays,date1)
+	display (' GET ',noOfDays,' ',date1,LF)
+
+;	Validate a date
+	date1 = '2016/05/26'
+	date.daysfromdate (noOfDays,date1)
+	If ERROR_CODE != 0
+		display.line "Invalid date"
+	else
+		display ('DAYSFROMDATE ',date1,' ',noOfDays,LF)
+	end.if
+
+;	Get the date 7 days ago
+	noOfDays = noOfDays - 7
+	date.datefromdays (noOfDays,date1)
+	If ERROR_CODE != 0
+		display.line "Invalid date"
+	else
+		display ('DATEFROMDAYS ',noOfDays,' ',date1,' ',LF)
+	end.if
+
+;	Get all valid dates in February
+	date1 = '2016/02/01'
+	repeat.while ValidDate
+		display.line date1
+
+		#.eq I,({date1,9,2})			; In this instance we are converting a WORD ino a NUMBER
+										; so [I = {date1,9,2}] is not appropriate in this version							
+		I = I + 1
+		{date1,9,2} = {I,'99'}
+	
+	end.repeat
+
+END.SUB B_1_3_DATE
+
+;-----------------------------------------------------------------------
+;		Validate I Function
+;-----------------------------------------------------------------------
+BEGIN.FUNCTION ValidI
+
+	begin.test I
+	   .when = 1
+		 .or = 2
+		 .or = 3
+		 .or = 4
+		 .or = 5
+		.end
+			@.eq(RETURN_CODE,c_TRUE)
+		wend
+	end.test
+	
+END.FUNCTION ValidI
+;-----------------------------------------------------------------------
+;		Validate Date Function
+;-----------------------------------------------------------------------
+BEGIN.FUNCTION ValidDate
+	
+	date.daysfromdate (noOfDays,date1)
+	
+	If ERROR_CODE = 0
+		@.eq(RETURN_CODE,c_TRUE)
+	end.if
+
+END.FUNCTION ValidDate
+
+;-----------------------------------------------------------------------
+;		Finalise
+;-----------------------------------------------------------------------
+BEGIN.SUB Z_1_Finalise
+END.SUB Z_1_Finalise

@@ -1,0 +1,97 @@
+%include 'include/BEGIN.PROGRAM'
+
+;	Refer to VERSION.HISTORY for...well...version history
+
+;	BEGIN.SYNONYMS **************************************
+;		xT.	:	XTABLES.
+;		$.	:	WORDS.  
+;		@.	:	INTEGERS.  
+;		#.	:	NUMBERS.  
+;		f.	:	FILES. 
+;	END.SYNONYMS ****************************************
+
+;=======================================================================
+;		  PROGRAM DATA
+;=======================================================================	      
+;-----------------------------------------------------------------------
+;		CONSTANTS
+;-----------------------------------------------------------------------
+;%define c_Constant 10*10
+
+;-----------------------------------------------------------------------
+;		DICTIONARY
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.DICTIONARY'
+
+	insertword w_Response,	01,''
+
+%include 'include/END.DICTIONARY'
+
+;-----------------------------------------------------------------------
+;		MATRIX
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.MATRIX'
+
+  ; Common Counters
+	INSERTNUMBER I,					0
+	INSERTNUMBER J,					0
+	INSERTNUMBER K,					0
+
+  ; This programs 	
+
+		 
+	
+%include 'include/END.MATRIX'
+
+;-----------------------------------------------------------------------
+;		FILES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.FILES'	
+%include 'include/END.FILES'
+
+;-----------------------------------------------------------------------
+;		TABLES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.TABLES'	
+%include 'include/END.TABLES'
+
+;=======================================================================
+;		PROGRAM INSTRUCTIONS
+;		Mainline  
+;=======================================================================
+%include 'include/BEGIN.INSTRUCTIONS'
+
+	display c_ResetAll,c_ClearScreen,c_DarkGreyFG,c_DarkGreyBG				; Clear the screen
+	repeat.for I,1,24
+		display.at I,01,spaces(80)
+	end.repeat
+
+	display c_WhiteFG														; rest the FG to white 	
+	display.at 09,15,"This program demonstrates the use of the RUN"			; Display the opening text
+	display.at 10,15,"interactive call invoked as part of the the"			;
+	display.at 11,15,"       languageONE lcurses package"					;
+	display.at 12,15," This terminal has been spawned from V2.13"			;
+
+	accept.at 13,37,w_Response												; Accept a response
+
+
+%include 'include/END.INSTRUCTIONS'
+%include 'include/END.PROGRAM'      
+
+;=======================================================================
+;		Initialise  
+;=======================================================================
+BEGIN.SUB A_1_Initial
+END.SUB A_1_Initial
+
+;=======================================================================
+;		Process  
+;=======================================================================
+BEGIN.SUB B_1_Process
+END.SUB B_1_Process
+
+;=======================================================================
+;		Finalise  
+;=======================================================================
+BEGIN.SUB Z_1_Finalise
+END.SUB Z_1_Finalise

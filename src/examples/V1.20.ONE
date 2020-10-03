@@ -1,0 +1,699 @@
+%include 'include/BEGIN.PROGRAM'
+
+;	BEGIN.SYNONYMS **************************************
+;		$.	:	WORDS.  
+;		@.	:	INTEGERS.   
+;		f.	:	files. 
+;	
+;	END.SYNONYMS ****************************************
+
+;		====================================================================================
+;		+ languageONE
+;			l.pre.sh					; commandline pre assemble tools
+;			l.assemble.sh				; commandline assemble script
+;			l.link.sh					; commandline link script
+;			l.makeONE.sh				; commandline make utility
+;			l.makeTinyCore				; TinyCore make utulity
+;			+-----ARCHIVE				: THE SOURCE FOR ALL PREVIOUS VERSIONS
+;			+-----bin					: LANGUAGEONE EXECUTABLES
+;			|		l.languageONE		: the reWriter
+;			|		l.GUI.makeONE		: the (GUI) make utility
+;			+-----doc					: DOCUMENTATION
+;			|		languageONE.html	: the manual
+;			|		languageONE.odt		: the manual
+;			|		languageONE.pdf		: the manual
+;			|		LICENSE				: gnu general public license
+;			|		README.MD			: github readme
+;			|		VERSION.HISTORY		: Version Control Document
+;			+-----html					; HTML SCREENS
+;			|		GUI-makeONE...		; GUI make utility screens
+;			|		V1-15...			; demo program V1.15 screens
+;			|		V1-16...			; demo program V1.16 screens
+;			+-----include				; LANGUAGEONE CORE COMPONENTS
+;			+-----jedit					; JEDIT CONFIG FILES FOR LANGUAGEONE
+;			+-----lib					: STATI$CallY LINKED LANGUAGEONE LIBRARIES
+;			+-----src					: LANGUAGEONE SOURCE CODE
+;				  +examples				: LANGUAGEONE DEMONSTRATION PROGRAMS
+;		===================================================================================
+;		+ TinyCore
+;			+usr
+;				+local
+;					+bin
+;					|	l.pre							; commandline pre assemble tools
+;					|	l.assemble						; commandline assemble script
+;					|	l.link							; commandline link script
+;					|	l.makeONE						; commandline make utility
+;					|	l.languageONE					; languageONE translator
+;					+doc
+;					|	+languageONE
+;					|	|	+examples
+;					|	|		Demonstration programs (V0.01 thru V????)
+;					|	|	languageONE.html			: the manual
+;					|	|	languageONE.odt				: the manual
+;					|	|	languageONE.pdf				: the manual
+;					|	|	languageONE-LICENSE			: gnu general public license
+;					|	|	languageONE-VERSION.HISTORY	: this document
+;					+include
+;					|	+languageONE
+;					|		Macros (Keywords)			; BEGIN.* END.* *.CPY *.INC
+;					+lib
+;					|	+languageONE
+;					|		+src
+;					|			object Libraries		; *.LIB
+;					|			Templates				; *.ONE
+;					|			languageONE.ASM			; reWriter
+;					|	*.o								; OBject Files
+;					+share
+;						+languageONE
+;							+html
+;								Screens and JPegs
+;
+;	==========================================================================================
+;	    *					--> TinyCore/usr/local/bin/*
+;	bin/* 					--> TinyCore/usr/local/bin/*
+;	
+;	src/examples/*.ONE		--> TinyCore/usr/local/doc/languageONE/examples/*
+;	doc/languageONE.html	--> TinyCore/usr/local/doc/languageONE/languageONE.html
+;	doc/languageONE.odt		--> TinyCore/usr/local/doc/languageONE/languageONE.odt
+;	doc/languageONE.pdf		--> TinyCore/usr/local/doc/languageONE/languageONE.pdf
+;	doc/LICENSE				--> TinyCore/usr/local/doc/languageONE/languageONE-LICENSE
+;	doc/VERSION.HISTORY		--> TinyCore/usr/local/doc/languageONE/languageONE-VERSION.HISTORY
+;	
+;	include/*				--> TinyCore/usr/local/include/languageONE/*
+;	
+;	lib/*.o					--> TinyCore/usr/local/lib/*.o languageONE.l
+;	src/*.LIB				--> TinyCore/usr/local/lib/languageONE/src/*.LIB
+;	src/0.GUI-TEMPLATE.ONE	--> TinyCore/usr/local/lib/languageONE/src/0.GUI-TEMPLATE.ONE
+;	src/0.TEMPLATE.ONE		--> TinyCore/usr/local/lib/languageONE/src/0.TEMPLATE.ONE	
+;	src/0.GUI-makeONE.ONE	--> TinyCore/usr/local/lib/languageONE/src/0.GUI-makeONE.ONE
+;	src/languageONE.ASM		--> TinyCore/usr/local/lib/languageONE/src/languageONE.ASM
+;	
+;	html/*					--> TinyCore/usr/local/share/languageONE/html/*	
+;	==========================================================================================
+
+;-----------------------------------------------------------------------
+;		CONSTANTS
+;-----------------------------------------------------------------------
+
+;=======================================================================
+;		  PROGRAM DATA
+;=======================================================================	      
+
+;-----------------------------------------------------------------------
+;		DICTIONARY
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.DICTIONARY'
+
+	insertword w_dirEntry,32,''
+	insertword w_Buffer,256,''
+	insertword w_Temporary,24,''
+	insertword x_Null,01,0x00
+
+%include 'include/END.DICTIONARY'
+
+;-----------------------------------------------------------------------
+;		MATRIX
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.MATRIX'
+
+  ; Common Counters
+	INSERTNUMBER I,					0,'999999'
+	INSERTNUMBER J,					0,'999999'
+	INSERTNUMBER K,					0,'999999'
+
+  ; This programs 
+  	insertnumber n_dirNo,			0,'99'
+  		 %define c_Root				1
+  		 %define c_Bin				2
+  		 %define c_Lib1				3
+  		 %define c_Lib2				4
+  		 %define c_Html				5
+  		 %define c_Src				6
+  		 %define c_Doc				7
+  		 %define c_Include			8
+  	%define c_NoOfDirs				8
+		 
+  	insertnumber n_LineCtr,			0,'999999'
+	
+%include 'include/END.MATRIX'
+
+;-----------------------------------------------------------------------
+;		FILES
+;-----------------------------------------------------------------------
+%include 'include/BEGIN.FILES'
+
+	insertfile c_DIRECTORY,IN_DIR	
+	insertfile c_LF,IN_FILE
+	insertfile c_LF,OUT_FILE
+	
+%include 'include/END.FILES'
+
+;=======================================================================
+;		PROGRAM INSTRUCTIONS
+;		Mainline  
+;=======================================================================
+%include 'include/BEGIN.INSTRUCTIONS'
+
+;	NEW MACRO/KEYWORD ================================================
+%macro m_Nullterminate 1
+;	Work backwards to find the last character of the string and then
+;	NULL terminate it
+
+	words.length (%1,J)
+	repeat.for I,J,1
+		if {%1,I,1} != spaces(1)
+			integers.add I,1 | words.copy x_Null,{%1,I,1}
+			integers.eq exitRepeat,c_TRUE
+		end.if
+	end.repeat
+
+;	%%Exit:
+%endmacro
+;	NEW MACRO/KEYWORD ================================================
+
+	repeat.for n_dirNo,1,c_NoOfDirs
+		$Call B_1_Process
+	end.repeat
+
+%include 'include/END.INSTRUCTIONS'
+%include 'include/END.PROGRAM'      
+
+;=======================================================================
+;		PROGRAM PROCEDURES
+;=======================================================================
+
+;-------------------------------------------------------------------------------
+;	Process
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_1_Process
+
+;	==========================================================================================
+;	    *					--> TinyCore/usr/local/bin/*
+;	bin/* 					--> TinyCore/usr/local/bin/*
+;	
+;	src/examples/*.ONE		--> TinyCore/usr/local/doc/languageONE/examples/*
+;	doc/languageONE.html	--> TinyCore/usr/local/doc/languageONE/languageONE.html
+;	doc/languageONE.odt		--> TinyCore/usr/local/doc/languageONE/languageONE.odt
+;	doc/languageONE.pdf		--> TinyCore/usr/local/doc/languageONE/languageONE.pdf
+;	doc/LICENSE				--> TinyCore/usr/local/doc/languageONE/languageONE-LICENSE
+;	doc/VERSION.HISTORY		--> TinyCore/usr/local/doc/languageONE/languageONE-VERSION.HISTORY
+;	
+;	include/*				--> TinyCore/usr/local/include/languageONE/*
+;	
+;	lib/languageONE.a		--> TinyCore/usr/local/lib/languageONE.a
+;	src/*.LIB				--> TinyCore/usr/local/lib/languageONE/src/*.LIB
+;	src/0.GUI-TEMPLATE.ONE	--> TinyCore/usr/local/lib/languageONE/src/0.GUI-TEMPLATE.ONE
+;	src/0.TEMPLATE.ONE		--> TinyCore/usr/local/lib/languageONE/src/0.TEMPLATE.ONE	
+;	src/0.GUI-makeONE.ONE	--> TinyCore/usr/local/lib/languageONE/src/0.GUI-makeONE.ONE
+;	src/languageONE.ASM		--> TinyCore/usr/local/lib/languageONE/src/languageONE.ASM
+;	
+;	html/*					--> TinyCore/usr/local/share/languageONE/html/*	
+;	==========================================================================================
+
+	begin.test n_dirNo
+	
+		when = c_Root													; These files are moved one by one
+			$Call B_1_1_Root
+		wend
+
+		when = c_Doc													; Thes files are moved one by one 
+			$Call B_1_2_Doc
+		wend
+
+	   .when = c_Bin													; These directories are searched
+		 .or = c_Lib1													; and files moved/altered as 
+		 .or = c_Lib2													; required
+		 .or = c_Html													
+		 .or = c_Src		 
+		 .or = c_Include
+		.end
+			$Call C_1_StepThruDIR
+		wend
+
+	end.test		
+		
+END.SUB B_1_Process
+;	EXIT
+
+;-------------------------------------------------------------------------------
+;	FILES IN ROOT
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_1_1_Root
+
+;	--------
+;	ASSEMBLE
+;	--------
+	IN_FILE = 'l.assemble'
+	m_Nullterminate (IN_FILE)		
+	OUT_FILE = 'TinyCore/usr/local/bin/l.assemble'
+	m_Nullterminate (OUT_FILE)
+	$Call X_1_Copy
+
+;	---
+;	PRE
+;	---
+	IN_FILE = 'l.pre'
+	m_Nullterminate (IN_FILE)		
+	OUT_FILE = 'TinyCore/usr/local/bin/l.pre'
+	m_Nullterminate (OUT_FILE)
+	$Call X_1_Copy
+
+;	-------
+;	MAKEONE
+;	-------
+	IN_FILE = 'l.makeONE'
+	m_Nullterminate (IN_FILE)		
+	OUT_FILE = 'TinyCore/usr/local/bin/l.makeONE'
+	m_Nullterminate (OUT_FILE)
+	$Call X_2_MODIFY
+	
+;	----
+;	LINK
+;	----
+	IN_FILE = 'l.link'
+	m_Nullterminate (IN_FILE)		
+	OUT_FILE = 'TinyCore/usr/local/bin/l.link'
+	m_Nullterminate (OUT_FILE)
+	$Call X_2_MODIFY
+	
+END.SUB B_1_1_Root
+;	EXIT
+
+;-------------------------------------------------------------------------------
+;	FILES IN DOC
+;-------------------------------------------------------------------------------
+BEGIN.SUB B_1_2_Doc
+
+;	-----------
+;	MANUAL.HTML
+;	-----------
+	IN_FILE = 'doc/languageONE.html'
+	m_Nullterminate (IN_FILE)		
+	OUT_FILE = 'TinyCore/usr/local/doc/languageONE/languageONE.html'
+	m_Nullterminate (OUT_FILE)
+	$Call X_1_Copy
+
+;	----------
+;	MANUAL.ODT
+;	----------
+	IN_FILE = 'doc/languageONE.odt'
+	m_Nullterminate (IN_FILE)		
+	OUT_FILE = 'TinyCore/usr/local/doc/languageONE/languageONE.odt'
+	m_Nullterminate (OUT_FILE)
+	$Call X_1_Copy
+	
+;	----------
+;	MANUAL.PDF
+;	----------
+	IN_FILE = 'doc/languageONE.pdf'
+	m_Nullterminate (IN_FILE)		
+	OUT_FILE = 'TinyCore/usr/local/doc/languageONE/languageONE.pdf'
+	m_Nullterminate (OUT_FILE)
+	$Call X_1_Copy
+	
+;	-------
+;	LICENSE
+;	-------
+	IN_FILE = 'doc/LICENSE'
+	m_Nullterminate (IN_FILE)		
+	OUT_FILE = 'TinyCore/usr/local/doc/languageONE/languageONE-LICENSE'
+	m_Nullterminate (OUT_FILE)
+	$Call X_1_Copy
+
+;	---------------
+;	VERSION.HISTORY
+;	---------------
+	IN_FILE = 'doc/VERSION.HISTORY'
+	m_Nullterminate (IN_FILE)		
+	OUT_FILE = 'TinyCore/usr/local/doc/languageONE/languageONE-VERSION.HISTORY'
+	m_Nullterminate (OUT_FILE)
+	$Call X_1_Copy
+	
+END.SUB B_1_2_Doc
+;	EXIT
+
+;-------------------------------------------------------------------------------
+;	COMMON WALK THRU DIRECTORY
+;-------------------------------------------------------------------------------
+BEGIN.SUB C_1_StepThruDIR
+
+;	-------------------
+;	SETUP THE DIRECTORY
+;	-------------------
+	begin.test n_dirNo
+		when = c_Bin		| IN_DIR = './bin'			| wend
+		when = c_Lib1		| IN_DIR = './lib'			| wend
+		when = c_Lib2		| IN_DIR = './src'			| wend
+		when = c_Html		| IN_DIR = './html'			| wend
+		when = c_Src		| IN_DIR = './src/examples'	| wend
+		when = c_Include	| IN_DIR = './include'		| wend
+	end.test
+	m_Nullterminate (IN_DIR)
+
+;	--------------
+;	OPEN DIRECTORY
+;	--------------
+	f.open IN_DIR,read
+	if IN_DIR_STATUS != 0
+		display.line 'Directory ',n_dirNo,' Open Error'	
+		TERMINATE 1
+	end.if
+
+;	------------
+;	INITIAL READ
+;	------------
+	f.read (IN_DIR, w_dirEntry)
+	
+;	----------------
+;	AND WALK THRU IT
+;	----------------
+	repeat.while IN_DIR_STATUS = 0
+	
+		if RETURN_CODE = 8													; Looking for files only
+
+		;	EXAMPLES SOURCE DIRECTORY
+			if n_dirNo = c_Src												; SOURCE DIRECTORY
+			 	if {w_dirEntry,1,9} != 'V1.20.ONE' 							; but NOT yourself			
+					$Call C_1_1_Source
+				end.if
+			end.if
+			
+	 	;	BIN/HTML/INCLUDE DIRECTORIES	  
+		   .if n_dirNo = c_Bin												; BIN DIRECTORY
+		   .or n_dirNo = c_Html												; HTML DIRECTORY
+		   .or n_dirNo = c_Include											; INCLUDE FDIRECTORY
+		  .end
+				$Call C_1_2_Various
+			end.if
+			
+	 	;	LIB1/LIB2 DIRECTORIES	  
+		   .if n_dirNo = c_Lib1												; LIB1 DIRECTORY
+		   .or n_dirNo = c_Lib2												; LIB2 DIRECTORY
+		  .end
+		   		$Call C_1_3_Libraries		   
+			end.if			
+			
+		end.if
+		
+	;	----------------------
+	;	GRAB THE NEXT FILENAME
+	;	----------------------
+		f.read (IN_DIR, w_dirEntry)
+		
+	end.repeat
+
+;	---------------
+;	CLOSE DIRECTORY
+;	---------------
+	f.close IN_DIR
+
+END.SUB C_1_StepThruDIR
+;	EXIT
+
+;-------------------------------------------------------------------------------
+;	SOURCE DIRECTORY
+;-------------------------------------------------------------------------------
+BEGIN.SUB C_1_1_Source
+
+	 IN_FILE = './src/examples/'											; Setup the IN_FILE name
+	 {IN_FILE,16} = w_dirEntry
+	 m_Nullterminate (IN_FILE)												; Null Terminate for Linux			
+	 OUT_FILE = 'TinyCore/usr/local/doc/languageONE/examples/'				; Setup the OUT_FILE name
+	 {OUT_FILE,45} = w_dirEntry
+	 m_Nullterminate (OUT_FILE)												; Null Terminate for Linux	 			
+	 $Call X_3_AlterInclude													; Fix the include statements
+
+END.SUB C_1_1_Source
+;	EXIT
+
+;-------------------------------------------------------------------------------
+;	VARIOUS DIRECTORIES
+;-------------------------------------------------------------------------------
+BEGIN.SUB C_1_2_Various
+
+	begin.test n_dirNo
+		when = c_Bin														; BIN DIRECTORY				
+			IN_FILE = './bin/'												; Setup the IN_FILE name
+			{IN_FILE,7} = w_dirEntry			
+			OUT_FILE = 'TinyCore/usr/local/bin/'							; Setup the OUT_FILE name
+			{OUT_FILE,24} = w_dirEntry
+		wend
+						
+		when = c_Html														; HTML DIRECTORY
+			IN_FILE = './html/'												; Setup the IN_FILE name
+			{IN_FILE,8} = w_dirEntry
+
+			if {w_dirEntry,1,3} = 'TC-'										; If special TinyCore html
+				w_dirEntry = {w_dirEntry,4}									; then change the name
+			else															; ELSE
+			   .if {w_dirEntry,1,18} = 'V1-15-screen0.html'					;	don't want these ones that
+			   .or {w_dirEntry,1,18} = 'V1-16-screen0.html'					;	are being renamed
+			   .or {w_dirEntry,1,24} = 'GUI-makeONE-screen0.html'
+			  .end
+			   		exit.sub C_1_2_Various
+			   	end.if
+			end.if															; 
+			
+			OUT_FILE = 'TinyCore/usr/local/share/languageONE/html/'			; Setup the OUT_FILE name
+			{OUT_FILE,43} = w_dirEntry
+		wend
+
+		when = c_Include													; INCLUDE DIRECTORY
+		    IN_FILE = './include/'											; Setup the IN_FILE name
+		    {IN_FILE,11} = w_dirEntry			
+		    OUT_FILE = 'TinyCore/usr/local/include/languageONE/'			; Setup the OUT_FILE name
+		    {OUT_FILE,40} = w_dirEntry				  
+		wend
+				  
+	end.test
+
+	m_Nullterminate (IN_FILE)												; Null terminate for Linux
+	m_Nullterminate (OUT_FILE)												; Null terminate for Linux
+
+   .if n_dirNo = c_Include													; SPECIAL CASE - included BEGIN.PROGRAM
+  .and w_dirEntry = 'BEGIN.PROGRAM'											;	has the %include for all programs
+  .end
+		$Call X_3_AlterInclude												;	so it needs to be altered
+	else																	; ELSE
+		$Call X_1_Copy														;	and kernel copy
+	end.if
+
+END.SUB C_1_2_Various
+;	EXIT
+
+;-------------------------------------------------------------------------------
+;	LIBRARY DIRECTORIES
+;-------------------------------------------------------------------------------
+BEGIN.SUB C_1_3_Libraries
+
+	begin.test n_dirNo
+		when = c_Lib1														; LIB DIRECTORY
+			words.find {"obj",I},w_dirEntry
+			if I = 0
+				IN_FILE = './lib/'											; Setup the IN_FILE name			
+				{IN_FILE,7} = w_dirEntry			
+				OUT_FILE = 'TinyCore/usr/local/lib/'						; Setup the OUT_FILE name
+				{OUT_FILE,24} = w_dirEntry
+
+				m_Nullterminate (IN_FILE)									; Null terminate for Linux
+				m_Nullterminate (OUT_FILE)									; Null terminate for Linux
+				$Call X_1_Copy												; and kernel copy
+			end.if
+		wend
+			
+		when = c_Lib2														; SOURCE
+			IN_FILE = './src/'												; Setup the IN_FILE name			
+			{IN_FILE,7} = w_dirEntry			
+			OUT_FILE = 'TinyCore/usr/local/lib/languageONE/src/'			; Setup the OUT_FILE name
+			{OUT_FILE,40} = w_dirEntry
+
+			m_Nullterminate (IN_FILE)										; Null terminate for Linux
+			m_Nullterminate (OUT_FILE)										; Null terminate for Linux						
+			$Call X_3_AlterInclude
+		wend
+
+	end.test
+
+END.SUB C_1_3_Libraries
+;	EXIT
+
+;-------------------------------------------------------------------------------
+;	KERNEL COPY
+;-------------------------------------------------------------------------------
+BEGIN.SUB X_1_Copy
+
+;	----------
+;	OPEN FILES
+;	----------
+	f.Open (IN_FILE,read)
+		if IN_FILE_STATUS != 0
+			display IN_FILE," Open Error",LF
+			TERMINATE 1
+		end.if
+			
+	f.Open (OUT_FILE,write)
+		if OUT_FILE_STATUS != 0
+			display OUT_FILE," Open Error",LF
+			TERMINATE 1
+		end.if
+
+;	-----------
+;	KERNEL COPY
+;	-----------
+	f.copy (IN_FILE,OUT_FILE)
+
+;	-----------
+;	CLOSE FILES
+;	-----------
+	f.Close IN_FILE
+	f.Close OUT_FILE
+
+END.SUB X_1_Copy
+;	EXIT
+
+;-------------------------------------------------------------------------------
+;	COPY WITH MODIFICATIONS
+;-------------------------------------------------------------------------------
+BEGIN.SUB X_2_MODIFY
+
+;	----------
+;	OPEN FILES
+;	----------
+	f.Open (IN_FILE,read)
+		if IN_FILE_STATUS != 0
+			display IN_FILE," Open Error",LF
+			TERMINATE 1
+		end.if
+			
+	f.Open (OUT_FILE,write+beginning)
+		if OUT_FILE_STATUS != 0
+			display OUT_FILE," Open Error",LF
+			TERMINATE 1
+		end.if
+
+;	----------
+;	FIRST LINE
+;	----------
+	f.Read (IN_FILE,w_Buffer)
+
+	begin.test c_TRUE
+		when {IN_FILE,1,13} = 'BEGIN.PROGRAM'
+			w_Buffer = "%include 'usr/local/include/languageONE/LMACROS.CPY'"
+			integers.eq IN_FILE_READLENGTH,52
+		wend
+
+		when {IN_FILE,1,09} = 'l.makeONE'	
+			w_Buffer = 'path1=""'
+			integers.eq IN_FILE_READLENGTH,08
+		wend
+
+		when {IN_FILE,1,12} = 'l.GUImakeONE'	
+			w_Buffer = 'path=""'
+			integers.eq IN_FILE_READLENGTH,07
+		wend
+
+		when {IN_FILE,1,6} = 'l.link'	
+			w_Buffer = 'ld -o $1 $1.o /usr/local/lib/languageONE.l'
+			integers.eq IN_FILE_READLENGTH,42
+		wend
+
+	end.test
+
+;	---------------
+;	ALL OTHER LINES
+;	---------------
+	n_LineCtr = 1
+	repeat.while IN_FILE_STATUS = 0	 
+		f.Write (OUT_FILE,{w_Buffer,1,IN_FILE_READLENGTH})
+		f.Read  (IN_FILE,w_Buffer)
+		integers.add n_LineCtr,1
+
+		If n_LineCtr = 2
+			begin.test c_TRUE		
+				when  {IN_FILE,1,13} = 'BEGIN.PROGRAM'
+					w_Buffer = "%include 'usr/local/include/languageONE/IMACROS.CPY'"
+					integers.eq IN_FILE_READLENGTH,52
+				wend
+				when {IN_FILE,1,09} = 'l.makeONE'
+					w_Buffer = 'path2=""'
+					integers.eq IN_FILE_READLENGTH,08
+				wend
+			end.test			
+		end.if
+		
+	end.repeat
+
+;	-----------
+;	CLOSE FILES
+;	-----------	
+	f.Close IN_FILE
+	f.Close OUT_FILE
+
+END.SUB X_2_MODIFY
+;	EXIT
+
+;-------------------------------------------------------------------------------
+;	ALTER INCLUDEs
+;-------------------------------------------------------------------------------
+BEGIN.SUB X_3_AlterInclude
+
+;	----------
+;	OPEN FILES
+;	----------
+	f.Open (IN_FILE,read)
+		if IN_FILE_STATUS != 0
+			display IN_FILE," Open Error",LF
+			TERMINATE 1
+		end.if
+
+	f.Open (OUT_FILE,write+beginning)
+		if OUT_FILE_STATUS != 0
+			display OUT_FILE," Open Error",LF
+			TERMINATE 1
+		end.if
+
+;	----------
+;	FIRST LINE
+;	----------
+	f.Read (IN_FILE,w_Buffer)
+
+	repeat.while IN_FILE_STATUS = 0	 
+
+		$.find ({'%include',I},w_Buffer)														
+		$.find ({'include/',J},w_Buffer)									
+	   .if I > 0															; Definitely an Include statement
+	  .and J > 0															; Definitely an Include statement
+	  .end
+	  
+			$.find ({';',K},w_Buffer)
+		   .if K > 0														; If its has a comment
+		  .and K !> I														; that preceeds the include statement
+		  .end
+		  	else															; Do Nothing ELSE
+		  	
+				J = J + 1													; MODIFY THE INCLUDE STATEMENT
+				$.find ({'/',J},{w_Buffer,J}
+				K = IN_FILE_READLENGTH - J + 1
+				w_Temporary	= {w_Buffer,J,K}
+				w_Buffer 	= "%include '/usr/local/include/languageONE'"
+				{w_Buffer,41} = w_Temporary
+				integers.add IN_FILE_READLENGTH,23
+				
+			end.if
+			 
+		end.if
+	
+		f.Write (OUT_FILE,{w_Buffer,1,IN_FILE_READLENGTH})
+		f.Read  (IN_FILE,w_Buffer)
+	end.repeat
+
+;	-----------
+;	CLOSE FILES
+;	-----------	
+	f.Close IN_FILE
+	f.Close OUT_FILE
+
+END.SUB X_3_AlterInclude
+;	EXIT
+
+

@@ -1,0 +1,294 @@
+%include 'include/BEGIN.PROGRAM'
+
+;	Refer to VERSION.HISTORY for...well...version history
+
+;	BEGIN.SYNONYMS **************************************
+;		$.	:	WORDS.  
+;		@.	:	INTEGERS.  
+;		#.	:	NUMBERS.  
+;		f.	:	FILES. 
+;	END.SYNONYMS ****************************************
+
+;=======================================================================
+;		  PROGRAM DATA
+;=======================================================================	      
+%include 'include/BEGIN.DICTIONARY' 
+
+	insertword	alphabet,		26, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+	insertword	Scr_BlankLine,	80, ' '
+	insertword	Scr_Head1,		80, 'Test Data Entry Program'
+	insertword	Scr_Response,	02, ' '
+	
+%include 'include/END.DICTIONARY'
+
+%include 'include/BEGIN.MATRIX'
+
+	insertnumber I,				0, '999999999'
+	insertnumber ErrorCode,		0, '999'
+	
+%include 'include/END.MATRIX'
+
+%include 'include/BEGIN.FILES'
+
+	insertfile c_RANDOM,A01_File,'./a01_file.dat'
+		begin.record 46,A01_Record
+			insertnumber	A01_PartNo,	     	999,	'999'
+			insertword 		A01_PartName,		30,		'123456789012345678901234567890'
+			insertword		A01_Category,		01,		' '
+			insertword		A01_Location,		12,		' '
+		end.record A01_Record
+		
+%include 'include/END.FILES'
+
+;=======================================================================
+;		PROGRAM INSTRUCTIONS
+;		Mainline  
+;=======================================================================
+%include 'include/BEGIN.INSTRUCTIONS'
+
+	$Call A_1_Initial
+
+	repeat.if A01_PartNo N_EQ 0
+		$Call B_1_Process
+	end.repeat
+
+	$Call Z_1_Finalise
+
+%include 'include/END.INSTRUCTIONS'
+%include 'include/END.PROGRAM'      
+
+;=======================================================================
+;		PROGRAM PROCEDURES
+;=======================================================================
+;-----------------------------------------------------------------------
+;		Program INITIALISATION
+;-----------------------------------------------------------------------
+BEGIN.SUB A_1_Initial
+
+	$Call X_1_CreateFile
+	$Call X_2_displayScreen	
+	
+	f.open(A01_File,readwrite)
+		
+END.SUB A_1_Initial
+
+;-----------------------------------------------------------------------
+;		Programs Main PROCESS
+;-----------------------------------------------------------------------
+BEGIN.SUB B_1_Process
+
+;	Get the key
+	Scr_BlankLine = 'Enter Part No or 0 to Exit'
+	display.at (23,02,Scr_BlankLine)
+	
+	A01_PartNo = 0
+	repeat.if A01_PartNo = 0
+
+		display.at (05,22,spaces(3))
+		acceptline.at (05,22,A01_PartNo)
+
+		if  A01_PartNo = 0
+			EXIT.SUB B_1_Process
+		end.If 
+
+	end.repeat
+			
+;	Get the record				
+	A01_Record_NO = A01_PartNo
+	f.read (A01_File,A01_Record)	
+	if A01_File_STATUS != 0
+		A01_PartName = spaces(1)
+		A01_Category = spaces(1)
+		A01_Location = spaces(1)
+	end.if
+
+;	display Data
+	display.at (07,22,A01_PartName)
+	display.at (08,22,A01_Category)
+	display.at (09,22,A01_Location)
+
+;	Get Part Name
+	Scr_BlankLine = 'key "DELETE" over Part Name if you wish to delete this record'
+	display.at (23,02,Scr_BlankLine)
+
+	ErrorCode = 99
+	repeat.if ErrorCode != 0
+
+		acceptline.at (07,22,A01_PartName)
+		if  A01_PartName = spaces(30)
+			ErrorCode = 1
+			$Call B_1_1_displayError
+		else
+			ErrorCode = 0
+		end.if
+		
+	end.repeat		
+
+;	Delete record
+	.if  A01_File_STATUS != INVALIDKEY
+   .and {A01_PartName,1,6} = 'DELETE'
+   .end
+	
+		Scr_BlankLine = 'Are you sure you wish to delete this record [y/n]'
+		display.at (23,02,Scr_BlankLine)
+		acceptline.at (23,79,Scr_Response)
+		$.uppercase (Scr_Response)
+		
+		if  Scr_Response = 'Y'	
+			f.delete (A01_File,A01_Record)
+		end.if
+		
+		EXIT.SUB B_1_Process
+		
+	end.if	
+
+;	Get Category
+	Scr_BlankLine = 'Please Enter Category Code' 	
+	display.at (23,02,Scr_BlankLine)
+	
+	ErrorCode = 99
+	repeat.if ErrorCode != 0
+		
+		acceptline.at (08,22,A01_Category)
+		If  A01_Category = spaces(1)
+			ErrorCode = 2	
+			$Call B_1_1_displayError
+		Else
+			ErrorCode = 0	
+		End.If
+		
+	End.Repeat
+
+;	Get Location
+	Scr_BlankLine = 'Please Enter Location Code'	
+	display.at (23,02,Scr_BlankLine)
+	 
+	ErrorCode = 99	
+	repeat.if ErrorCode != 0
+
+		acceptline.at (09,22,A01_Location)
+		if  A01_Location = spaces(12)
+			ErrorCode = 3
+			$Call B_1_1_displayError
+		else
+			ErrorCode = 0
+		end.If
+		
+	end.repeat
+
+;	Write Record	
+	Scr_BlankLine = 'All OKAY [y/n]'
+	display.at (23,02,Scr_BlankLine)
+	acceptline.at (23,79,Scr_Response)
+	$.uppercase (Scr_Response)
+		 
+	if  Scr_Response = 'Y'		
+		f.write (A01_File,A01_Record)
+		if  A01_File_STATUS != 0
+			ErrorCode = 4
+			$Call B_1_1_displayError
+		end.if
+	end.if
+
+END.SUB B_1_Process
+
+;-----------------------------------------------------------------------
+;		display Errors
+;-----------------------------------------------------------------------		
+BEGIN.SUB B_1_1_displayError
+
+	if ErrorCode = 1
+		Scr_BlankLine = 'Part Name cannot be spaces - Press <ENTER> to continue' 
+	else
+		if ErrorCode = 2
+			Scr_BlankLine = 'Category cannot be spaces - Press <ENTER> to continue' 
+		else
+			if ErrorCode = 3
+				Scr_BlankLine = 'Location cannot be spaces - Press <ENTER> to continue'
+			else			
+				if ErrorCode = 4
+					Scr_BlankLine = 'File Write error - inform supervisor - Press <ENTER> to continue' 
+				end.If
+			end.If
+		end.If
+	end.If
+
+	display (c_Blink,c_RedFG)
+	display.at (23,02,Scr_BlankLine)
+	acceptline.at (23,79,Scr_Response)
+	display (c_ResetBlink,c_CyanFG)
+	
+	display.at (23,02,Scr_BlankLine)
+
+END.SUB B_1_1_displayError
+
+;-----------------------------------------------------------------------
+;		Create TestFile
+;-----------------------------------------------------------------------
+BEGIN.SUB X_1_CreateFile
+
+;	Ask if we would like to recreate the test file
+	display ('Would you like to reacreate the test file [y/n] ')
+	acceptline (Scr_Response)
+	$.uppercase (Scr_Response)
+	
+;	Create Parts File for this demonstration program
+	if  Scr_Response = 'Y'
+	
+		f.open (A01_File,write+beginning)
+		
+		I = 0
+		repeat.for (A01_PartNo,1,199)
+	
+			A01_PartName 		= 'Part'
+			{A01_PartName,6}	= {A01_PartNo,'999'}
+			{A01_PartName,10}	= 'Description' 
+		
+			I = I + 1
+			if  I > 26
+				I = 1	
+			end.If
+			A01_Category		= {alphabet,I,1}
+			A01_Location		= 'Location '
+			{A01_Location,10}	= {A01_PartNo,'999'} 
+			
+			A01_Record_NO = A01_PartNo
+			f.write (A01_File,A01_Record)
+			
+		end.repeat
+
+		f.close (A01_File)
+		 	 
+	end.if
+
+END.SUB X_1_CreateFile
+
+;-----------------------------------------------------------------------
+;		display Screen
+;-----------------------------------------------------------------------
+BEGIN.SUB X_2_displayScreen
+
+;	display Headings
+	display (c_ClearScreen,c_DefaultBG,c_LightGreenFG,c_Underlined)
+		display.at (01,02,Scr_BlankLine)
+		display.at (02,02,Scr_Head1)
+		display.at (22,02,Scr_BlankLine)
+	display (c_ResetUnderlined)
+	
+;	display Body
+	display (c_CyanFG	)
+		display.at (05,05,'Part No........:')
+		display.at (07,05,'Part Name......:')
+		display.at (08,05,'Category.......:')
+		display.at (09,05,'Location.......:')
+
+END.SUB X_2_displayScreen
+
+;-----------------------------------------------------------------------
+;		Program Finalise
+;-----------------------------------------------------------------------
+BEGIN.SUB Z_1_Finalise
+
+	f.close (A01_File)
+	
+END.SUB Z_1_Finalise

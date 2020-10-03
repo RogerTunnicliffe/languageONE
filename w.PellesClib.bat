@@ -1,0 +1,1 @@
+_PELLESC\bin\polib /machine:x64 /out:lib\languageONE.lib lib\*.obj

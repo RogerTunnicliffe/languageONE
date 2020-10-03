@@ -1,0 +1,804 @@
+	%assign debug 0
+	%include '../include/LMACROS.CPY'
+	%include '../include/IMACROS.CPY'
+	%include '../include/CONSTANTS.INC'
+	%line 5 STDIO.LIB
+
+;	=================================================
+;	GLOBAL ROUTINES/VARIABLES defined in this library
+;	=================================================
+;	Routines
+;	--------
+	global _getCommandLine
+	global _getSTDIOhandles
+	global _CURSOR
+	global _ACCEPTLINE
+	global _ACCEPT.AT                
+	global _DISPLAY
+
+;	------
+;	Fields
+;	------
+	global StdInHandle
+	global StdOutHandle
+	global StdErrHandle
+	global w_CommandLine	
+	global w_AcceptAt
+	
+	global w_Function
+	
+	global Col9
+	global Row9
+	global ColX
+	global RowX
+	global c_ClearScreen
+	global c_Cursor
+	global c_BottomRight						
+	global c_TopRight
+	global c_TopLeft
+	global c_BottomLeft
+	global c_Cross
+	global c_Line
+	global c_MiddleLeft
+	global c_MiddleRight
+	global c_MiddleBottom
+	global c_MiddleTop
+	global c_Bar
+	
+	global c_DefaultFG
+	global c_BlackFG
+	global c_RedFG
+	global c_GreenFG
+	global c_YellowFG
+	global c_BlueFG
+	global c_MagentaFG
+	global c_CyanFG
+	global c_LightGreyFG
+	global c_DarkGreyFG
+	global c_LightRedFG
+	global c_LightGreenFG
+	global c_LightYellowFG
+	global c_LightBlueFG
+	global c_LightMagentaFG
+	global c_LightCyanFG
+	global c_WhiteFG
+
+	global c_DefaultBG
+	global c_BlackBG
+	global c_RedBG
+	global c_GreenBG
+	global c_YellowBG
+	global c_BlueBG
+	global c_MagentaBG
+	global c_CyanBG
+	global c_LightGreyBG
+	global c_DarkGreyBG
+	global c_LightRedBG
+	global c_LightGreenBG
+	global c_LightYellowBG
+	global c_LightBlueBG
+	global c_LightMagentaBG
+	global c_LightCyanBG
+	global c_WhiteBG
+
+	global c_ResetAll
+	global c_Bold
+	global c_Dim
+	global c_Underlined
+	global c_Blink
+	global c_Reverse
+	global c_Hidden
+	global c_ResetBold
+	global c_ResetDim
+	global c_ResetUnderlined
+	global c_ResetBlink
+	global c_ResetReverse
+	global c_ResetHidden
+;V2.13 - lcurses
+	global c_HideCursor
+	global c_ShowCursor
+;V2.13 - lcurses
+		
+;	===============================================
+;	EXTERNAL ROUTINES/VARIABLES used by the library
+;	===============================================
+;	Routines
+;	--------
+	extern _WORDS					; NUMBERS
+	extern _NUMBERS					; NUMBERS
+
+;	------
+;	Fields
+;	------
+	extern w_Spaces					; COMMON
+	extern w_One					; COMMON
+	extern w_Temp					; COMMON
+	extern RETURN_CODE				; COMMON
+
+;=======================================================================
+;			DATA SEGMENT
+;=======================================================================
+;           Initialised - by program
+;-----------------------------------------------------------------------
+			section .data
+
+	insertnumber 	Col9,				00,'99'
+	insertnumber	Row9,				00,'99'	
+	insertword 		ColX,				02,'99'
+	insertword		RowX,				02,'99'	
+
+	insertword 		c_ClearScreen,		02,{27,'c'}		
+	insertword		c_Cursor,			08,{27,'[00;00H'}
+					saveCursor 			 db 27,'[00;00H'
+
+	insertword 		c_BottomRight,		07,{27,'(0',0x6a,27,'(B'}						
+	insertword 		c_TopRight,			07,{27,'(0',0x6b,27,'(B'}
+	insertword 		c_TopLeft,			07,{27,'(0',0x6c,27,'(B'}
+	insertword 		c_BottomLeft,		07,{27,'(0',0x6d,27,'(B'}	
+	insertword 		c_Cross,			07,{27,'(0',0x6e,27,'(B'}
+	insertword 		c_Line,				07,{27,'(0',0x71,27,'(B'}
+	insertword 		c_MiddleLeft,		07,{27,'(0',0x74,27,'(B'}
+	insertword 		c_MiddleRight,		07,{27,'(0',0x75,27,'(B'}
+	insertword 		c_MiddleBottom,		07,{27,'(0',0x76,27,'(B'}
+	insertword 		c_MiddleTop,		07,{27,'(0',0x77,27,'(B'}
+	insertword		c_Bar,				07,{27,'(0',0x78,27,'(B'}
+
+	insertword 		c_DefaultFG,		05,{27,'[39m'}
+	insertword 		c_BlackFG,			05,{27,'[30m'}	
+	insertword 		c_RedFG,			05,{27,'[31m'}	
+	insertword		c_GreenFG,			05,{27,'[32m'}	
+	insertword 		c_YellowFG,			05,{27,'[33m'}	
+	insertword 		c_BlueFG,			05,{27,'[34m'}	
+	insertword 		c_MagentaFG,		05,{27,'[35m'}	
+	insertword 		c_CyanFG,			05,{27,'[36m'}	
+	insertword 		c_LightGreyFG,		05,{27,'[37m'}	
+	insertword 		c_DarkGreyFG,		05,{27,'[90m'}	
+	insertword 		c_LightRedFG,		05,{27,'[91m'}
+	insertword 		c_LightGreenFG,		05,{27,'[92m'}
+	insertword 		c_LightYellowFG,	05,{27,'[93m'}
+	insertword 		c_LightBlueFG,		05,{27,'[94m'}
+	insertword 		c_LightMagentaFG,	05,{27,'[95m'}
+	insertword 		c_LightCyanFG,		05,{27,'[96m'}
+	insertword 		c_WhiteFG,			05,{27,'[97m'}	
+
+	insertword 		c_DefaultBG,		05,{27,'[49m'}
+	insertword 		c_BlackBG,			05,{27,'[40m'}	
+	insertword 		c_RedBG,			05,{27,'[41m'}	
+	insertword 		c_GreenBG,			05,{27,'[42m'}	
+	insertword 		c_YellowBG,			05,{27,'[43m'}	
+	insertword 		c_BlueBG,			05,{27,'[44m'}	
+	insertword 		c_MagentaBG,		05,{27,'[45m'}	
+	insertword 		c_CyanBG,			05,{27,'[46m'}	
+	insertword 		c_LightGreyBG,		05,{27,'[47m'}	
+	insertword 		c_DarkGreyBG,		06,{27,'[100m'}	
+	insertword 		c_LightRedBG,		06,{27,'[101m'}
+	insertword 		c_LightGreenBG,		06,{27,'[102m'}
+	insertword 		c_LightYellowBG,	06,{27,'[103m'}
+	insertword 		c_LightBlueBG,		06,{27,'[104m'}
+	insertword 		c_LightMagentaBG,	06,{27,'[105m'}
+	insertword 		c_LightCyanBG,		06,{27,'[106m'}
+	insertword 		c_WhiteBG,			06,{27,'[107m'}	
+
+	insertword 		c_ResetAll,			04,{27,'[0m'}
+	insertword 		c_Bold,				04,{27,'[1m'}
+	insertword 		c_Dim,				04,{27,'[2m'}
+	insertword 		c_Underlined,		04,{27,'[4m'}
+	insertword 		c_Blink,			04,{27,'[5m'}
+	insertword 		c_Reverse,			04,{27,'[7m'}
+	insertword 		c_Hidden,			04,{27,'[8m'}	
+	insertword 		c_ResetBold,		05,{27,'[21m'}
+	insertword 		c_ResetDim,			05,{27,'[22m'}
+	insertword 		c_ResetUnderlined,	05,{27,'[24m'}
+	insertword 		c_ResetBlink,		05,{27,'[25m'}
+	insertword 		c_ResetReverse,		05,{27,'[27m'}
+	insertword 		c_ResetHidden,		05,{27,'[28m'}	
+;V2.13 - lcurses
+	insertword 		c_HideCursor,		06,{27,'[?25l'}		
+	insertword 		c_ShowCursor,		06,{27,'[?25h'}		
+;V2.13 - lcurses
+	insertword 		w_CommandLine,		256,' '
+	insertword 		w_AcceptAt,			128,' '
+	insertword 		w_Function,			001,' '
+
+;-----------------------------------------------------------------------				
+;           UN Initialised - zero filled when loaded
+;-----------------------------------------------------------------------												  
+			section .bss
+
+	StdInHandle				resq 1
+	StdOutHandle			resq 1
+	StdErrHandle			resq 1
+			
+;	struct termios 
+	c_buffer:	
+		c_iflag				resd 1		; input mode flags
+		c_oflag				resd 1		; output mode flags
+		c_cflag				resd 1		; control mode flags
+		c_lflag				resd 1		; local mode flags
+		c_line				resb 1		; line discipline
+		c_cc_NCCS			resb 19		; control characters
+		
+	w_Char					resb 1		; User Input
+	w_Buff					resb 8		; Control Characters
+	w_PreviousChar			resb 1
+
+;=======================================================================				
+;           CONSTANTS
+;=======================================================================	
+
+;=======================================================================
+;			CODE SEGMENT
+;=======================================================================				
+			section .text	
+
+;======================================================================= 
+;			Get STDIO Handles
+;======================================================================= 
+_getSTDIOhandles:
+
+		mov qword[StdInHandle],0
+		mov qword[StdOutHandle],1
+		mov qword[StdErrHandle],2
+
+_getSTDIOhandles_EXIT:
+		ret
+		
+;======================================================================= 
+;			Get CommandLine
+;======================================================================= 
+;			+--------------------------+
+;			|  0X0000000000000		   |
+;			+--------------------------+
+;			|  Address of environment  | Envirionment Variable is NULL terminated
+;			+--------------------------+
+;			|  Address of environment  | Envirionment Variable is NULL terminated
+;			+--------------------------+
+;			|  Address of environment  | Envirionment Variable is NULL terminated
+;			+--------------------------+
+;			|  0X0000000000000000      |
+;			+--------------------------+  
+;			|  Address of Last Arg     |
+;			+--------------------------+  
+;			|  Address of Arg 3        |
+;			+--------------------------+ RBP + 32
+;			|  Address of Arg 2        |
+;			+--------------------------+ RBP + 24
+;			|  Address of Arg 1        |
+;			+--------------------------+ RBP + 16
+;			|  Address of program path |
+;			+--------------------------+ RBP + 8  
+;			|  Arg count               |
+;			+--------------------------+ RBP
+;-----------------------------------------------------------------------
+;		IF NO COMMAND LINE PARAMETERS
+;			+--------------------------+
+;			|  0X0000000000000000      |
+;			+--------------------------+
+;			|  Address of environment  | Envirionment Variable is NULL terminated
+;			+--------------------------+
+;			|  Address of environment  | Envirionment Variable is NULL terminated
+;			+--------------------------+
+;			|  0X0000000000000000      |
+;			+--------------------------+ RBP + 16
+;			|  Address of program path |
+;			+--------------------------+ RBP + 8  
+;			|  Arg count (1)           |
+;			+--------------------------+ RBP
+;=======================================================================
+_getCommandLine:
+	
+			mov RDI,w_CommandLine											; Set destination address
+			add RBP,8														; jump over program name
+						
+	.strt:	add RBP, 8														; Next Parameter
+			cmp qword[RBP],0x00	
+				je .Exit
+			mov RSI,[RBP]
+			
+			cld	
+	.load:	lodsb															; load each byte
+			cmp  al, 0x00													; if not NULL terminated
+				jne  .store													; 	then continue
+			inc RDI															; add a space to the destination
+			jmp .strt														; get next parameter address
+				
+	.store:
+			stosb															; store the byte
+			jmp .load			
+
+	.Exit:
+_getCommandLine_EXIT:
+		ret
+
+;======================================================================= 
+;      		CURSOR to set terminal cursor position
+;=======================================================================
+_CURSOR:
+	;		$pushAll RSI,RDI
+	;		cld
+
+	;	Convert the binary number to ascii
+		mov r_Function,$copy												; Set function to copy												
+		mov r_SrcAddress,Row9												; r_SrcAddress equals Row9 
+		xor r_SrcPicAddress,r_SrcPicAddress									; No Picture Overrides
+		xor r_SrcPicLength,r_SrcPicLength									; No Picture Overrides
+		mov r_DstAddress,RowX												; r_DstAddress equals RowX
+		mov r_DstStart,[w_One]												; r_DstStart is 1
+		mov r15,c_FALSE														; Dont set length of Destination
+		Call _WORDS
+
+	;	Convert the binary number to ascii
+		mov r_Function,$copy												; Set function to copy												
+		mov r_SrcAddress,Col9												; r_SrcAddress equals Col9 
+		xor r_SrcPicAddress,r_SrcPicAddress									; No Picture Overrides
+		xor r_SrcPicLength,r_SrcPicLength									; No Picture Overrides
+		mov r_DstAddress,ColX												; r_DstAddress equals ColX
+		mov r_DstStart,[w_One]												; r_DstStart is 1
+		mov r15,c_FALSE														; Dont set length of Destination
+		Call _WORDS
+
+
+		;	Move line parameter
+			mov RSI,RowX												; Set the offset of the line value
+			LEA RDI,[c_Cursor+2]
+			movsb														; move character
+			movsb														; move character
+
+		;	Move column parameter
+			mov RSI,ColX												; Set the offset of the column value
+			inc RDI														; push the destination 2 character on
+			movsb														; move character
+			movsb														; move character
+
+	;		$popAll RDI,RSI
+
+		;	------------------------------------
+		;	Remove the need for DISPLAY c_Cursor
+		;	------------------------------------
+			mov r_SrcAddress,c_Cursor
+			mov r_SrcStart,1
+			mov r_SrcLength,8
+			call _DISPLAY
+		  	
+_CURSOR_X:
+			ret
+			
+;======================================================================= 
+;      		ACCEPTLINE to read line from stdout
+;           Messsage address passed in r9
+;=======================================================================
+_ACCEPTLINE:
+
+			mov qword[RETURN_CODE],0									; Init return code
+			
+		  ; 	Get Input
+			xor rax,rax													; sys_read (0) syscall
+			mov RDI,0													; stdin
+			mov RSI,w_Temp		 										; message address
+			
+	;		mov rdx, [r9-8]												; message string length
+	;		If the entered value is greater than the string length then what is left in
+	;		the keyboard buffer is returned on the next syscall
+			mov rdx,999999			
+			syscall														; syscall
+				
+			cmp rax,1													; Nothing entered - Just CR	
+				je .Exit
+				
+	.1If:	cmp byte[w_Temp],027										; ESCAPE/ENTER
+				jne .1EndIf
+				mov qword[RETURN_CODE],27
+				jmp .Exit
+	.1EndIf:
+	
+			dec rax														; Setup field length
+
+			$initialise r_SrcAddress
+	.Num:	cmp @fieldIndicator(r_SrcAddress),'9'						; Numeric or Alpha
+				jne .Alpha
+
+;-----------------------------------------------------------------------
+;           Code for numerics
+;-----------------------------------------------------------------------
+			mov @fieldLength(w_Temp),rax
+			mov r8,$equals												; Convert ascii	to binary number
+		;	r9 will already contain the destination address 
+			mov r_nSrcAddress,w_Temp
+			mov r_nSrcStart,1
+			mov r_nSrcLength,rax
+		mov r15,c_TRUE			; Needs to reset receiving field size	
+			Call _NUMBERS
+			jmp .Exit	
+	
+;-----------------------------------------------------------------------
+;			Code for alphas
+;-----------------------------------------------------------------------
+		  ; Copy buffer
+	.Alpha:	mov RSI,w_Temp												; set source address
+			mov RDI,r_SrcAddress										; set destination address
+			
+			mov rbx,r_SrcAddress										; Use RBX to store end of destination
+			add rbx,@fieldLength(r_SrcAddress)							; 	and add length of string
+			dec rbx														;	less 1
+			xor rcx,rcx													; Use RCX to indicate if padding is happening
+			
+			cld
+	.load:	lodsb 														; load each byte
+			cmp al,0x0A													; if its NOT a line feed
+				je .Exit
+				
+	.store:	stosb
+			cmp RDI,rbx													; have we filled the destination
+			 ja .Exit													; 	then exit if done
+				 
+			jmp .load													; else get the next byte
+
+	.Exit:				
+_ACCEPTLINE_EXIT:
+			ret
+
+;======================================================================= 
+;      		ACCEPT to read chars from stdin
+;           Messsage address passed in r9
+;	This code manages the terminal mode to allow trapping single chars
+;	and calls _ACCEPT.AT_Process to process each character
+;=======================================================================
+_ACCEPT.AT:
+
+			mov qword[RETURN_CODE],0					
+
+;	c_buffer:	
+;		c_iflag				resd 1		; input mode flags
+;		c_oflag				resd 1		; output mode flags
+;		c_cflag				resd 1		; control mode flags
+;		c_lflag				resd 1		; local mode flags
+;		c_line				resb 1		; line discipline
+;		c_cc_NCCS			resb 19		; control characters
+		
+		;	-------------------------------------
+		;	GET TERMIOS
+		;	-------------------------------------
+			mov rax,16													; SYS_IOCTL
+			xor rdi,rdi													; zero rdi
+			mov rsi,0x5401												; ioctl function
+			mov rdx,c_buffer											; memory address
+			syscall
+
+		;	--------------------------------------
+		;	TURN CANONICAL mode off
+		;	--------------------------------------
+			mov rax,[c_lflag]											; grab the flags
+			xor rax,2													; zero the second bit
+		;	xor rax,10 ; ECHO OFF
+			mov [c_lflag],rax											; and save
+
+		;	------------------------------------------
+		;	This allows us to seperate ESC sequences
+		;	and characters and also to capture the ESC
+		;	key by itself
+		;	------------------------------------------
+			mov byte[c_cc_NCCS+6],5										; This VMIN Return up to 5 chars
+			mov byte[c_cc_NCCS+5],1										; or when .1sec has passed
+			
+		;	---------------------------------------
+		;	SET TERMIOS
+		;	---------------------------------------
+			mov rax,16													; SYS_IOCTL      
+			xor rdi,rdi													; zero rdi
+			mov rsi,0x5402												; ioctl function
+			mov rdx,c_buffer											; memory address
+			syscall
+			
+		;	---------------------------------------
+		;	GET CHARS
+		;	---------------------------------------
+			Call _ACCEPT.AT_Process
+							
+		;	--------------------------------------
+		;	TURN CANONICAL mode back on
+		;	--------------------------------------
+			mov rax,[c_lflag]											; grab the flags
+			or  rax,2													; set the second bit on
+		;	or rax,10 ; echo on
+			mov [c_lflag],rax											; and save
+
+		;	---------------------------------------
+		;	SET TERMIOS
+		;	---------------------------------------
+			mov rax,16													; SYS_IOCTL      
+			xor rdi,rdi													; zero rdi
+			mov rsi,0x5402												; ioctl function
+			mov rdx,c_buffer											; memory address
+			syscall
+			
+_ACCEPT.AT_EXIT:
+			ret
+			
+;		--------------------------------------------
+;		A couple of macros
+;		--------------------------------------------
+%macro $display 2
+			mov rax,1
+			mov rdi,1													
+			mov rsi,%1
+			mov rdx,%2															
+			syscall
+%endmacro
+
+%macro $cursorLeft 1
+		;	A bit rough just working on the ASCII so watch the end points
+			sub byte[c_Cursor+6],%1
+			cmp byte[c_Cursor+6],0x2F
+				ja %%Exit
+				mov byte[c_Cursor+6],0x39
+		
+			dec byte[c_Cursor+5]
+			cmp byte[c_Cursor+5],0x2F
+				ja %%Exit
+				mov byte[c_Cursor+5],0x30		
+	%%Exit:
+%endmacro
+
+_ACCEPT.AT_Process:
+;	NOTE:-	you have differed from ACCEPTLINE in that a temp alpha field is always
+;			passed and the macro then uses NUMBERS.EQ or WORDS.COPY to do the coversion
+;			Maybe convert ACCEPTLINE to do the same at a later date
+
+	%define r_Ctr	r14
+	%define r_Valid	r15
+
+			mov qword[RETURN_CODE],0
+			
+		;	--------------------------
+		;	Save Cursor for ESCAPE
+		;	--------------------------
+			mov ax,word[c_Cursor+2]											; save Row
+			mov word[saveCursor+2],ax
+			mov ax,word[c_Cursor+5]											; Save Column
+			mov word[saveCursor+5],ax
+			
+		;	INITIALISE
+			xor r_Ctr,r_Ctr													; Initialise the counter			
+	.loop:	mov dword[w_Buff],0x20202020									; init the buffer with spaces
+			mov dword[w_Buff+3],0x20202020									; init the buffer with spaces
+		
+		;	-----------------------------------
+		;	Get Char
+		;	-----------------------------------
+
+		;	-----------------------------------------------------------------------------------
+		;	This allows us to seperate ESC sequences and characters and also to capture the ESC
+		;	key by itself. We are saying return if you have up to 5 characters or if .1 second
+		;	has past. They are the right values to enable capturing everything we need
+		;	------------------------------------------------------------------------------------
+	.char:	xor rax,rax														; sys_read (0) syscall
+			mov RDI,0														; stdin
+			mov RSI,w_Buff		 											; message address
+			mov rdx,5														; get 1 char			
+			syscall															; syscall
+
+		;	================
+		;	NON Function Key
+		;	================
+	.CharacterKey:
+			cmp rax,1
+				ja .FunctionKeys
+
+			;	-----
+			;	ENTER
+			;	-----
+		.enter:	cmp byte[w_Buff],0x0A										; If NOT Enter
+					jne .escape												; then jump				
+					mov qword[RETURN_CODE],RETURN							; ENTER to Return Code
+					jmp .Exit												; and exit
+
+			;	------
+			;	ESCAPE
+			;	------					
+		.escape:cmp byte[w_Buff],0x1B										; If NOT Escape	
+					jne .backspace											; then jump	
+					mov qword[RETURN_CODE],ESCAPE							; ESCAPE to Return Code
+					jmp .Exit												; and exit
+										
+			;	-------------
+			;	BACKSPACE/DEL
+			;	-------------					
+		.backspace:	
+				cmp byte[w_Buff],0x07F										; If NOT Backspace
+					jne .character    										; then its a character
+					mov qword[RETURN_CODE],BACKSPACE						; It's a backspace
+					jmp .Exit												; and exit
+						
+		;	============
+		;	Function Key
+		;	============				
+	.FunctionKeys:
+	.Alt:
+			cmp rax,2														; If 2 characters are retuned we
+				ja .Arrows													; have ALT-key combination
+			cmp byte[w_Buff],27												; as long as the 1st char is escape
+				jne .character
+
+			;	---------
+			;	ALT - Key
+			;	---------
+				mov bl,byte[w_Buff+1]										; Grab the Character
+				mov byte[r_SrcAddress+r_Ctr],bl								; into the input field
+				mov qword[RETURN_CODE],ALT									; and set the ALT key
+				jmp .Exit
+			
+	.Arrows:			
+			cmp rax,3														; If 3 characters are retuned we
+				ja .Insert													; have Arrows
+			cmp byte[w_Buff],27												; as long as the 1st char is escape										
+				jne .character												;
+			cmp byte[w_Buff+1],"["											; and the 2nd is "["
+				jne .character
+				
+			;	----------
+			;	Arrow Keys
+			;	----------
+		.A1:cmp byte[w_Buff+2],"A"											; ARROWUP	
+				jne .A2
+				mov qword[RETURN_CODE],ARROWUP
+				jmp .Exit
+		.A2:cmp byte[w_Buff+2],"B"											; ARROWDOWN
+				jne .A3
+				mov qword[RETURN_CODE],ARROWDOWN
+				jmp .Exit
+		.A3:cmp byte[w_Buff+2],"C"											; ARROWRIGHT
+				jne .A4
+				mov qword[RETURN_CODE],ARROWRIGHT
+				jmp .Exit
+		.A4:cmp byte[w_Buff+2],"D"											; ARROWLEFT
+				jne .A5
+				mov qword[RETURN_CODE],ARROWLEFT
+				jmp .Exit
+		.A5:cmp byte[w_Buff+2],"F"											; END
+				jne .A6
+				mov qword[RETURN_CODE],END
+				jmp .Exit
+		.A6:cmp byte[w_Buff+2],"H"											; HOME
+				jne .A7
+				mov qword[RETURN_CODE],HOME
+				jmp .Exit
+		.A7:
+
+	.Insert:
+			cmp rax,4														; If 4 characters are retuned we
+				ja .FKeys													; have an Insert key (?)
+			cmp byte[w_Buff],27												; as long as the 1st char is escape										
+				jne .character												;
+			cmp byte[w_Buff+1],"["											; and the 2nd is "["
+				jne .character
+
+			;	----------
+			;	Insert Key
+			;	---------- 
+		    cmp byte[w_Buff+2],"2"
+		        jne .FKeys
+		        mov qword[RETURN_CODE],INSERT								; INSERT KEY
+		        jmp .Exit
+
+    .FKeys:
+			cmp rax,5														; If 5 characters are retuned we
+				jne .character												; have Function Keys
+			cmp byte[w_Buff],27												; as long as the 1st char is escape										
+				jne .character												;
+			cmp byte[w_Buff+1],"["											; and the 2nd is "["
+				jne .character
+				
+			;	-------------
+			;	Function Keys
+			;	------------- 
+		.F01:    cmp word[w_Buff+2],"11"
+		                jne .F02
+		             mov qword[RETURN_CODE],FUNCTIONKEY1					; FUNCTION KEY
+		             jmp .Exit
+		.F02:    cmp word[w_Buff+2],"12"
+		                jne .F03
+		             mov qword[RETURN_CODE],FUNCTIONKEY2					; FUNCTION KEY
+		             jmp .Exit
+		.F03:    cmp word[w_Buff+2],"13"
+		                jne .F04
+		             mov qword[RETURN_CODE],FUNCTIONKEY3					; FUNCTION KEY
+		             jmp .Exit
+		.F04:    cmp word[w_Buff+2],"14"
+		                jne .F05
+		             mov qword[RETURN_CODE],FUNCTIONKEY4					; FUNCTION KEY
+		             jmp .Exit
+		.F05:    cmp word[w_Buff+2],"15"
+		                jne .F06
+		             mov qword[RETURN_CODE],FUNCTIONKEY5					; FUNCTION KEY
+		             jmp .Exit
+		.F06:    cmp word[w_Buff+2],"17"
+		                jne .F07
+		             mov qword[RETURN_CODE],FUNCTIONKEY6					; FUNCTION KEY
+		             jmp .Exit
+		.F07:    cmp word[w_Buff+2],"18"
+		                jne .F08
+		             mov qword[RETURN_CODE],FUNCTIONKEY7					; FUNCTION KEY
+		             jmp .Exit
+		.F08:    cmp word[w_Buff+2],"19"
+		                jne .F09
+		             mov qword[RETURN_CODE],FUNCTIONKEY8					; FUNCTION KEY
+		             jmp .Exit
+		.F09:    cmp word[w_Buff+2],"20"
+		                jne .F10
+		             mov qword[RETURN_CODE],FUNCTIONKEY9					; FUNCTION KEY
+		             jmp .Exit
+		.F10:    cmp word[w_Buff+2],"21"
+		                jne .F11
+		             mov qword[RETURN_CODE],FUNCTIONKEY10					; FUNCTION KEY
+		             jmp .Exit
+		.F11:    cmp word[w_Buff+2],"23"
+		                jne .F12
+		             mov qword[RETURN_CODE],FUNCTIONKEY11					; FUNCTION KEY
+		             jmp .Exit
+		.F12:    cmp word[w_Buff+2],"24"
+		                jne .F13
+		             mov qword[RETURN_CODE],FUNCTIONKEY12					; FUNCTION KEY
+		             jmp .Exit
+		.F13:   ; ????             
+		                  
+		;	---------
+		;	CHARACTER
+		;	---------
+		;	Because we are accepting up to 5 chars we have to consider that
+		;	more than one key has been pressed (clumsy Fingers)	
+	.character:
+			mov rcx,rax														; Character count
+			xor rax,rax														; Buffer offset
+		.x: mov bl,byte[w_Buff+rax]											; Grab 4 Characters
+			mov byte[r_SrcAddress+r_Ctr],bl									; into the input field
+			inc r_Ctr														; add 1 to field length
+			cmp r_Ctr,@fieldLength(r_SrcAddress)							; Have we gone past the field length
+				jb .Y														; NO - then continue
+				mov qword[RETURN_CODE],ENDOFFIELD							; ELSE Auto Return
+				jmp .Exit
+		.Y:	inc rax															; move along one	
+			loop .x
+
+		;	and then loop back
+			jmp .loop														; and get the next one
+			
+	.Exit:	
+
+_ACCEPT.AT_Process_EXIT:
+			ret
+
+;=======================================================================
+;       	DISPLAY to write line (Without Carraige Return) to stdout
+;=======================================================================
+_DISPLAY:
+
+			cmp @fieldIndicator(r_SrcAddress), '9'							; If it is not numeric then
+				jne .DoIt													; 	jump to alpha code
+
+;-----------------------------------------------------------------------
+;           Code for numerics
+;-----------------------------------------------------------------------								
+			mov r8,$pad														; Convert the binary number to ascii
+		;	r9/10/11 will have been setup by $SetupField 
+			mov r12,w_Temp
+			mov r13,[w_One]
+			mov r15,c_TRUE													; Set length of Destination
+			Call _WORDS
+
+			mov r_SrcAddress,w_Temp											; reset r9 to w_Temp
+			mov r_SrcStart,[w_One]											; reset to start
+			mov r_SrcLength,[w_Temp-8]										; reset to end (length)
+
+;-----------------------------------------------------------------------
+;			Code for alphanumerics
+;-----------------------------------------------------------------------
+ 		  ; Write Line System Call
+	.DoIt:	mov rax,1													; sys_write (1) syscall
+			mov RDI,1													; stdout
+			LEA RSI,[r_SrcAddress+r_SrcStart-1]
+			mov rdx,r_SrcLength											; set length of move				
+			syscall														; syscall		
+  	
+_DISPLAY_EXIT:
+			ret
+			

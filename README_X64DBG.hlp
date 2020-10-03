@@ -1,0 +1,18 @@
+YOU HAVE A MACRO IN w_FILES.LIB for printing from a .LIB
+
+x64dbg instructions.
+
+1] Symbols you want to use must be set to global in your code 
+	Globals have been added when Windows Debugging was added
+	
+2] You must then /export sysmbols for them to be usable
+	Exports have been added when Windows Debugging was added
+	"exports" is created when languageONE.ASM is run with -dw
+	w.PellesClink uses @exports
+
+You can then:-
+	Find them in the Symbols tab (your program symbols) and double click to jump to the code
+	DUMP them by name ie:DUMP variableName 
+	rigght click to add QWORD to watch list
+
+2] Enter the COMMAND LINE options each time and remember there are TWO spaces befor the 1st parameter

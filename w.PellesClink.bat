@@ -1,0 +1,1 @@
+_PELLESC\bin\polink /subsystem:console /entry:_start /largeaddressaware:no %1.obj lib\languageONE.lib @w.pellesC.libraries @exports

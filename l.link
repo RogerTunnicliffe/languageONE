@@ -1,0 +1,2 @@
+ld -o $1 $1.o lib/languageONE.l
+
