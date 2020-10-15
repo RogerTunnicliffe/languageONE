@@ -551,7 +551,7 @@ BEGIN.SUB ProcedureD01
 ;	Test EOF
 	f.open(A01_FILE,$read)
 	J = 0
-	repeat _01
+	repeat.while 1 = 1
 		files $read,A01_FILE,	w_F_Alphabet,	\
 								w_F_Space,		\
 								w_F_Literal,	\
@@ -565,10 +565,10 @@ BEGIN.SUB ProcedureD01
 								I		
 		If (A01_FILE_STATUS = EOF)
 			display 'end of File has been reached : Records read = ',J,LF
-			exit.repeat _01
+			exit.repeat
 		end.If
 		J = J + 1
-	end.repeat _01
+	end.repeat
 	f.close (A01_FILE)
 	
 ;	Test Record Not Found - using C02_FILE (random access)

@@ -357,7 +357,7 @@ BEGIN.SUB B_1_Process
 
 	display.line ('[000001]Starting File Server')
 	
-	repeat _01
+	repeat.while 1 = 1
 
 		www.RecvMsg "127.0.0.1","1024",w_Msg	
 		w_ReturnIPaddress	= {w_Msg,1,15}
@@ -366,7 +366,7 @@ BEGIN.SUB B_1_Process
 		
 		$.uppercase w_Msg,w_Exit
 		if {w_Msg,1,4} = "EXIT"
-			exit.repeat _01
+			exit.repeat
 		end.if
 
 		begin.test {w_Msg,21,1}
@@ -380,7 +380,7 @@ BEGIN.SUB B_1_Process
 
 		www.sendmsg w_ReturnIPaddress,w_ReturnPortNo,w_Msg
 
-	end.repeat _01		
+	end.repeat		
 
 END.SUB B_1_Process
 

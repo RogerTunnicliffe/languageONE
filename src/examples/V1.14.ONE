@@ -58,9 +58,6 @@
 	insertnumber n_PageNo,			0,'######'
 	
 	insertnumber b_keyPressed,		c_FALSE
-		 %define ENTER	0
-		 %define ESCAPE	27
-		 %define NULL	99
 		 
 	insertnumber b_AddRecord,		c_FALSE
 	insertnumber b_DeleteRecord,	c_FALSE
@@ -201,23 +198,23 @@ BEGIN.SUB A_1_2_Graphics
 	display.at (02,69,w_date)	
 	display LF	
 
-	display c_LeftMiddle
+	display c_MiddleLeft
 	repeat.for I,2,79 | display c_Line | end.repeat
-	display c_RightMiddle
+	display c_MiddleRight
 	display LF
 	
 	repeat.for I,4,21 | display c_Bar,spaces(78),c_Bar,LF | end.repeat
 
-	display c_LeftMiddle
+	display c_MiddleLeft
 	repeat.for I,2,79 | display c_Line | end.repeat
-	display c_RightMiddle
+	display c_MiddleRight
 	display LF
 
 	display c_Bar,spaces(78),c_Bar,LF	
 	
-	display c_LeftMiddle
+	display c_MiddleLeft
 	repeat.for I,2,79 | display c_Line | end.repeat
-	display c_RightMiddle
+	display c_MiddleRight
 	display LF
 
 	display c_Bar,spaces(78),c_Bar,LF	
@@ -251,10 +248,16 @@ BEGIN.SUB B_1_Function
 ;	---------------------------------
 ;	GET FUNCTION
 ;	---------------------------------
-	display c_LightYellowFG | accept.at (23,03,w_Command)
+	display c_LightYellowFG
+	repeat.while 1 = 1 
+		accept.at (23,03,w_Command)
+		if RETURN_CODE _IN {RETURN,ESCAPE}
+			exit.repeat
+		end.if
+	end.repeat
 	b_keyPressed = RETURN_CODE
 	
-	if b_keyPressed = ENTER
+	if b_keyPressed = RETURN
 		$.uppercase (w_Command)
 
 		begin.test w_Command
@@ -302,8 +305,13 @@ BEGIN.SUB C_1_Find
 		display c_LightYellowFG
 		display.at (23,21,'ESC')
 
-	w_StartKey = spaces(1)	
-	accept.at (23,03,w_StartKey)
+	w_StartKey = spaces(1)
+	repeat.while 1 = 1 
+		accept.at (23,03,w_StartKey)
+		if RETURN_CODE _IN {RETURN,ESCAPE}
+			exit.repeat
+		end.if
+	end.repeat
 	b_keyPressed = RETURN_CODE
 	
 	if b_keyPressed = ESCAPE
@@ -388,10 +396,16 @@ BEGIN.SUB C_1_Find
 	;	GET RESPONSE
 	;	------------
 		display c_LightYellowFG
-		accept.at (23,03,w_Command)
+
+		repeat.while 1 = 1 
+			accept.at (23,03,w_Command)
+			if RETURN_CODE _IN {RETURN,ESCAPE}
+				exit.repeat
+			end.if
+		end.repeat
 		b_keyPressed = RETURN_CODE
 	
-		if b_keyPressed = ENTER
+		if b_keyPressed = RETURN
 			$.uppercase (w_Command)
 			
 			begin.test w_Command
@@ -437,7 +451,15 @@ BEGIN.SUB C_1_1_Select
 	repeat.while f1_validFieldNo
  
 		display c_LightYellowFG
-		accept.at (n_FieldNo,04,w_Selection)
+
+		repeat.while 1 = 1 
+			accept.at (n_FieldNo,04,w_Selection)
+			if RETURN_CODE _IN {RETURN,ESCAPE}
+				exit.repeat
+			end.if
+		end.repeat
+		b_keyPressed = RETURN_CODE
+
 		display c_WhiteFG
 
 		b_keyPressed = RETURN_CODE
@@ -446,7 +468,7 @@ BEGIN.SUB C_1_1_Select
 			n_FieldNo = n_FieldNo - 1
 		else
 			if w_Selection != spaces(1)
-				exitRepeat = c_TRUE
+				exit.Repeat
 			else
 				if n_FieldNo < n_LastRow
 					n_FieldNo = n_FieldNo + 1
@@ -497,7 +519,7 @@ END.FUNCTION f1_validFieldNo
 ;-------------------------------------------------------------------------------
 BEGIN.SUB D_1_Maintain
 
-;	This sub routine can be entered in 3 ways.
+;	This sub routine can be RETURNed in 3 ways.
 ;	1] a BLANK at the Function screeen - add/modify mode
 ;	2] 'DEL' at the Function screen - delete mode
 ;	3] from the 'FIND' routine
@@ -512,7 +534,7 @@ BEGIN.SUB D_1_Maintain
 	end.if
 			 
 ;	---------------
-;	ENTER KEY VALUE
+;	RETURN KEY VALUE
 ;	---------------
 	display.at (23,02,spaces(78))
 	b_keyPressed = NULL
@@ -521,16 +543,16 @@ BEGIN.SUB D_1_Maintain
 	end.repeat
 
 ;	---------------
-;	ENTER DATA
+;	RETURN DATA
 ;	---------------
-	if b_keyPressed = ENTER
+	if b_keyPressed = RETURN
 	
 		b_keyPressed = NULL
 		repeat.if f_NoValid_KeyPressed
 			$Call D_1_2_GetData
 		end.repeat
 		
-		if b_keyPressed = ENTER
+		if b_keyPressed = RETURN
 			$Call D_1_3_Process			
 
 		;	If we have arrived here from the 'DEL' function 
@@ -563,7 +585,7 @@ END.SUB D_1_Maintain
 ;==================================
 BEGIN.FUNCTION f_NoValid_KeyPressed
 ;----------------------------------
-   .if b_keyPressed != ENTER
+   .if b_keyPressed != RETURN
   .and b_keyPressed != ESCAPE
   .end
   		RETURN_CODE = c_TRUE
@@ -576,7 +598,7 @@ END.FUNCTION f_NoValid_KeyPressed
 ;-------------------------------------------------------------------------------
 BEGIN.SUB D_1_1_GetKey
 
-;	This sub routine can be entered in 3 ways.
+;	This sub routine can be RETURNed in 3 ways.
 ;	1] a BLANK at the Function screeen - add/modify mode
 ;	2] 'DEL' at the Function screen - delete mode
 ;	3] from the 'FIND' routine
@@ -589,7 +611,7 @@ BEGIN.SUB D_1_1_GetKey
 	display.at (05,05,'Key Value.....:')
 		
 ;	---------------------------------
-;	ENTER KEY VALUE
+;	RETURN KEY VALUE
 ;	---------------------------------
 	display (c_LightYellowFG)
 	if w_Selection = spaces(1)							; Normal entry (Not from search)			
@@ -597,10 +619,15 @@ BEGIN.SUB D_1_1_GetKey
 	end.if
 	display.at (05,21,A00_KeyValue)
 
-	if w_Selection != spaces(1)						; Arrived here from search					
-		b_keyPressed = ENTER							; so continue as we already have the key
+	if w_Selection != spaces(1)							; Arrived here from search					
+		b_keyPressed = RETURN							; so continue as we already have the key
 	else
-		accept.at (05,21,A00_KeyValue)					; Arrived here normally				
+		repeat.while 1 = 1 								; Arrived here normally
+			accept.at (05,21,A00_KeyValue)	
+			if RETURN_CODE _IN {RETURN,ESCAPE}
+				exit.repeat
+			end.if
+		end.repeat
 		b_keyPressed = RETURN_CODE						; Grab the key
 		if b_keyPressed = ESCAPE						; and exit if escape
 			exit.sub D_1_1_GetKey
@@ -608,13 +635,13 @@ BEGIN.SUB D_1_1_GetKey
 	end.if
 	
 ;	---------------------------------
-;	VALIW_DATE
+;	VALID_DATE
 ;	---------------------------------
 	if A00_KeyValue = spaces(3)
 		cursor (25,02) | display (c_LightRedFG,c_Reverse)
-		display ('Please Enter Key Value',c_ResetReverse)
+		display ('Please enter Key Value',c_ResetReverse)
 		w_AllOK = spaces(1) | accept.at  (25,78,w_AllOK)
-		display.at (25,02,spaces(22))
+		display.at (25,02,spaces(70))
 		b_keyPressed = NULL
 		exit.sub D_1_1_GetKey
 	end.if
@@ -622,7 +649,7 @@ BEGIN.SUB D_1_1_GetKey
 ;	------------------------------------
 ;	PROCESS
 ;	------------------------------------
-	if w_Selection != spaces(1)									; If coming from find
+	if w_Selection != spaces(1)										; If coming from find
 		xT.rget (A00_Table,A00_Record_NO)							; just grab the record
 	else															; ELSE 'DEL' or 'ADD/MODIFY'
 		xT.search (A00_Table,1,3,A00_KeyValue,A00_Record_NO)		; then search for the record
@@ -662,7 +689,7 @@ END.SUB D_1_1_GetKey
 ;-------------------------------------------------------------------------------
 BEGIN.SUB D_1_2_GetData
 
-;	This sub routine can be entered in 3 ways.
+;	This sub routine can be RETURNed in 3 ways.
 ;	1] a BLANK at the Function screeen - add/modify mode
 ;	2] 'DEL' at the Function screen - delete mode
 ;	3] from the 'FIND' routine
@@ -692,7 +719,7 @@ BEGIN.SUB D_1_2_GetData
 ;	-------------------------------------
 ;	GET FIELDS
 ;	-------------------------------------
-	if b_DeleteRecord = c_TRUE						; If entered in 'DEL' mode 	
+	if b_DeleteRecord = c_TRUE						; If RETURNed in 'DEL' mode 	
 		{w_Message,1} = 'Delete [Y/N]  '			; then setup the prompt only
 	else											; ELSE for 'ADD/MODIFY'
 		$Call D_1_2_1_GetFields						; go and grab the fields
@@ -706,11 +733,18 @@ BEGIN.SUB D_1_2_GetData
 ;	ALL OKAY
 ;	-----------------------------------	
 	display c_CyanFG 		| display.at (25,02,w_Message)
-	display c_LightYellowFG | w_AllOK = spaces(1)	| accept.at  (25,17,w_AllOK)
+	display c_LightYellowFG | w_AllOK = spaces(1)
+
+	repeat.while 1 = 1 
+		accept.at (25,17,w_AllOK)
+		if RETURN_CODE _IN {RETURN,ESCAPE}
+			exit.repeat
+		end.if
+	end.repeat
+	b_keyPressed = RETURN_CODE	
+
 	$.uppercase w_AllOK	
-	
 	display.at (25,02,spaces(32))
-	b_keyPressed = RETURN_CODE
 	
    .if w_AllOK != 'Y'	
    .or b_keyPressed = ESCAPE
@@ -733,14 +767,22 @@ BEGIN.SUB D_1_2_1_GetFields
 	
 	repeat.while f2_validFieldNo 
 
-		begin.test n_FieldNo
-			when = 1 | accept.at  (07,21,A00_LastName)		| wend
-			when = 2 | accept.at  (08,21,A00_FirstName)		| wend		
-			when = 3 | accept.at  (09,21,A00_AddressLine1)	| wend
-			when = 4 | accept.at  (10,21,A00_AddressLine2)	| wend
-			when = 5 | accept.at  (11,21,A00_PostCode)		| wend	
-			when = 6 | accept.at  (12,21,A00_HourlyRate)	| wend		
-		end.test
+		repeat.while 1 = 1
+
+			begin.test n_FieldNo
+				when = 1 | accept.at  (07,21,A00_LastName)		| wend
+				when = 2 | accept.at  (08,21,A00_FirstName)		| wend		
+				when = 3 | accept.at  (09,21,A00_AddressLine1)	| wend
+				when = 4 | accept.at  (10,21,A00_AddressLine2)	| wend
+				when = 5 | accept.at  (11,21,A00_PostCode)		| wend	
+				when = 6 | accept.at  (12,21,A00_HourlyRate)	| wend		
+			end.test
+
+			if RETURN_CODE _IN {RETURN,ESCAPE}
+				exit.repeat
+			end.if
+
+		end.repeat
 
 		b_keyPressed = RETURN_CODE
 		if b_keyPressed = ESCAPE
@@ -779,37 +821,37 @@ BEGIN.SUB D_1_2_1_1_Valid_date
 
 		when = 1
 			if A00_LastName = spaces(30)
-				w_Message = 'Please Enter Last Name'
+				w_Message = 'Please RETURN Last Name'
 			end.if
 		wend
 
 		when = 2
 			if A00_FirstName = spaces(20)
-				w_Message = 'Please Enter First Name' 
+				w_Message = 'Please RETURN First Name' 
 			end.if
 		wend
 
 		when = 3
 			if A00_AddressLine1 = spaces(30)
-				w_Message = 'Please Enter Address Line 1'
+				w_Message = 'Please RETURN Address Line 1'
 			end.if
 		wend
 
 		when = 4
 			if A00_AddressLine2 = spaces(30)
-				w_Message = 'Please Enter Address Line 2'
+				w_Message = 'Please RETURN Address Line 2'
 			end.if
 		wend
 
 		when = 5
 			if A00_PostCode = 0
-				w_Message = 'Please Enter Post Code'
+				w_Message = 'Please RETURN Post Code'
 			end.if
 		wend
 		
 		when = 6
 			if A00_HourlyRate = 0
-				w_Message = 'Please Enter Hourly Rate'
+				w_Message = 'Please RETURN Hourly Rate'
 			end.if		
 		wend
 
@@ -869,7 +911,7 @@ BEGIN.SUB E_1_List
 ;	-------------------------------------
 	display c_CyanFG
 	display.at (23,02,spaces(78)
-	display.at (23,02,'Enter Starting Key;      & Ending Key;      (ESC)Exit'
+	display.at (23,02,'RETURN Starting Key;      & Ending Key;      (ESC)Exit'
 	display c_LightYellowFG
 	w_StartKey = 'AAA'	
 	display.at (23,22,w_StartKey)
@@ -881,11 +923,16 @@ BEGIN.SUB E_1_List
 ;	----------------------
 	n_FieldNo = 1	
 	repeat.while f3_validFieldNo 
-	
-		begin.test n_FieldNo
-			when = 1 | accept.at (23,22,w_StartKey)	| wend
-			when = 2 | accept.at (23,41,w_EndKey)	| wend		
-		end.test
+
+		repeat.while 1 = 1
+			begin.test n_FieldNo
+				when = 1 | accept.at (23,22,w_StartKey)	| wend
+				when = 2 | accept.at (23,41,w_EndKey)	| wend		
+			end.test
+			if RETURN_CODE _IN {RETURN,ESCAPE}
+				exit.repeat
+			end.if
+		end.repeat	
 
 		b_keyPressed = RETURN_CODE
 		if b_keyPressed = ESCAPE
@@ -944,7 +991,7 @@ BEGIN.SUB E_1_List
 		A00_Record_NO = A00_Record_NO + 1
 		xT.rget (A00_Table,A00_Record_NO)
 		if A00_KeyValue > w_EndKey
-			exitRepeat = c_TRUE
+			exit.Repeat
 		end.if
 		
 	end.repeat
@@ -1029,7 +1076,7 @@ BEGIN.SUB Y_1_Create
 	display.line 'languageONE  will handle  full screen  terminal programs'
 	display.line 'Although it does not try to be NCURSERS it may meet your'
 	display.line 'if they are simple. Operational keys are:-'
-	display.line '	ENTER, ESCAPE and BACKSPACE'
+	display.line '	RETURN, ESCAPE and BACKSPACE'
 	display.line '	all other keys are mapped to ESCAPE'
 
 ;	-------------------------------
@@ -1088,8 +1135,16 @@ BEGIN.SUB Z_1_Finalise
 ;	COMMIT CHANGES
 ;	-----------------------------------	
 	display c_CyanFG 		| display.at (25,02,'Commit Changes [Y/N]')
-	display c_LightYellowFG | w_AllOK = spaces(1)	| accept.at  (25,23,w_AllOK)
-	
+	display c_LightYellowFG | w_AllOK = spaces(1) 
+
+	repeat.while 1 = 1 
+		accept.at  (25,23,w_AllOK)
+		if RETURN_CODE _IN {RETURN,ESCAPE}
+			exit.repeat
+		end.if
+	end.repeat
+	b_keyPressed = RETURN_CODE
+
 	$.uppercase w_AllOK		
 	if w_AllOK = 'Y'	
    		xT.unload (A00_Table,A00_File,c_FALSE)

@@ -1028,7 +1028,8 @@ BEGIN.SUB Routine5A
 ;	are repeated a number of times.
 ;
 ;	There are 3 types of loop designated with the following keywords:- 
-;		repeat <name>	(Named Loop) 		exit.repeat /END.repeat
+;*******repeat <name>	(Named Loop) 		exit.repeat /END.repeat
+;			is replaced with REPEAT.WHILE 1 = 1 / exit.repeat / end.repeat
 ;		repeat.IF		(Conditional Loop) 				/END.repeat
 ;		repeat.FOR		(Loop Counter)					/END.repeat
 ;
@@ -1047,6 +1048,7 @@ BEGIN.SUB Routine5A
 ;		setting the flag as any statements following will still be processed.
 ;		It is simplest to code an IF/ELSE statement immediatelly following the 
 ;		repeat kwyword. 
+;		The EXIT.REPEAT keyword automatically sets the exitRepeat flag
 ;
 ;	The  condition  that  must  be  met  for  the  loop to continue in a 
 ;	Conditional Loop is coded in the same way as an If would be coded.
@@ -1059,14 +1061,14 @@ BEGIN.SUB Routine5A
 ;	LOOP 1 - Named Loop
 	display 'LOOP 1 - Named Loop',LF
 	I = 0
-	repeat _01
+	repeat.while 1 = 1
 		I = I + 1
 		If (I > 5)
-			exit.repeat _01
+			exit.repeat
 		else
 			display (spaces(5),c_GreenFG,'Loop1 - display 5 times',LF)
 		end.if
-	end.repeat _01
+	end.repeat
 	$Call GetUserInput
 
 ;	LOOP 2 - Conditional Loop
@@ -1106,21 +1108,21 @@ BEGIN.SUB Routine5A
 	I = 0
 	repeat.If (I,LT,10)
 		If (I,GT,1)
-			exitRepeat = c_TRUE
+			exit.repeat
 		else		   
 			display (spaces(5),c_RedFG,outerWord,LF)
 			I = I + 1		
 			J = 0
 			repeat.If (J,LT,20)
 				If (J,GT,1)
-				   exitRepeat = c_TRUE
+				   exit.repeat
 				else
 					display (spaces(10),c_GreenFG,middleWord,LF)
 					J = J + 1			
 					K = 0
 					repeat.If (K,LT,30)
 						If (K,GT,2)
-							exitRepeat = c_TRUE
+							exit.repeat
 						else				
 							display (spaces(15),c_CyanFG,innerWord,LF)
 							K = K + 1
@@ -1162,7 +1164,7 @@ BEGIN.SUB Routine5A
 	
 	repeat.for (I,1,10)
 		If (I,GT,3)
-			exitRepeat = c_TRUE
+			exit.repeat
 		else
 			display (spaces(5),c_BlueFG,I,' For I,1,10 (with exit)',LF)
 		end.if
@@ -1192,7 +1194,7 @@ BEGIN.SUB Routine6A
 							cursor (I,02)
 							display ('First ',{I,'99'},' times',LF)
 						else										
-							exitRepeat = c_TRUE
+							exit.repeat
 						end.if																	
 					end.if											
 				end.if												
@@ -1232,7 +1234,7 @@ BEGIN.SUB Routine6A
 					cursor (I,02)
 					display ('First ',{I,'99'},' times',LF)
 				else										
-					exitRepeat = c_TRUE
+					exit.repeat
 				end.if																	
 			end.if											
 			I = I + 1
@@ -1280,7 +1282,7 @@ BEGIN.SUB Routine10A
 ;	Find last character
 	repeat.for (I,80,1)
 		If ({inputLine,I,1},N_EQ,spaces(1))
-			exitRepeat = c_TRUE
+			exit.repeat
 		end.if
 	end.repeat
 	

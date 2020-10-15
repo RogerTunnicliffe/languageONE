@@ -1,0 +1,191 @@
+;-----------------------------------------------------------------------
+;	Handles Menus
+;-----------------------------------------------------------------------
+	[section .data]
+		insertnumber   _M,					00,'99'
+		insertnumber   _N,					00,'99'
+		insertnumber	getResponse,		00,'99'
+		insertnumber	displayLen,			00,'99'
+		insertnumber	lastMenuRow,		00,'99'
+		insertnumber	menuCol,			00,'99'
+		insertnumber 	selectedTableRow,	00,'99'
+		insertnumber	selectedMenuRow,	00,'99'
+		insertnumber	direction,			00,'9'
+        insertword      response,           01,''		
+	[section .text]
+
+	%imacro lmenus.MenuItems 5
+		%ifnum %4
+			mov qword[M_Target],%4
+		%else
+			mov rax,%4
+			mov qword[M_Target],rax
+		%endif
+		words.pad %3,M_Type
+		words.pad %5,M_Entry
+		tables.rput M_Table,%1,%2
+	%endmacro	
+	
+	%imacro lmenus.Menu 2
+		integers.eq AM_Idx,%1
+		integers.eq getResponse,%2
+		$Call Menu
+	%endmacro
+	
+	%imacro lmenus.Call 1
+		Call qword[%1]
+	%endmacro
+	
+BEGIN.SUB Menu
+
+	tables.rget AM_Table,AM_Idx												; grab the entry from AllMenus table
+
+;	------------
+;	Draw the Box
+;	------------
+	display c_ResetAll,c_LightGreyBG,c_BlackFG								; set the video attributes	
+	lcurses.Box AM_StartRow,AM_StartCol,AM_EndRow,AM_EndCol,c_TRUE			; and draw a box
+	
+;	--------------------------------------------------
+;	Get the Menu Row and Column and the display length
+;	--------------------------------------------------
+	integers.eq 	lastMenuRow,AM_StartRow									; set the menu row to the 1st line of the menu
+	integers.calc	menuCol,=,AM_StartCol,+,1								; set the menu col to menu col + 1
+	integers.calc 	displayLen,=,AM_EndCol,-,AM_StartCol,-,1				; calc the length of the entry
+
+;	----------------------------
+;	Loop thru for each menu item
+;	----------------------------
+	repeat.for M_Idx,1,c_M_NoOfRecords										; loop thru the Menu Table			
+		tables.rget M_Table,AM_Idx,M_Idx									; and get the record for this menu
+
+	;	-------------
+	;	If its a line
+	;	-------------
+		if M_Type,=,"-"														; IF its a seperator
+		
+			display c_ResetAll,c_LightGreyBG,c_BlackFG						; reset the attributes
+
+			integers.add lastMenuRow,1										; goto to the next screen row										
+			display.at lastMenuRow,AM_StartCol,c_MiddleLeft					; display the left token
+			display.at lastMenuRow,AM_EndCol,c_MiddleRight					; display the right token
+			integers.calc _M,=,AM_EndCol,-,1								; get the end position
+			lcurses.HLine lastMenuRow,menuCol,_M							; and draw the line	
+			
+		else																; ELSE
+		;	---------
+		;	Menu Item
+		;	---------
+			if M_Type,!=,spaces(1)											; IF its not blank	
+			
+				display c_ResetAll,c_LightGreyBG,c_BlackFG					; reset the attributes
+
+				integers.add lastMenuRow,1									; goto to the next screen row			
+				if M_Idx,=,1												; IF the 1st occurence
+					integers.eq selectedTableRow,M_Idx						; store the current selection 
+					integers.eq selectedMenuRow,lastMenuRow					; and its row on screen
+					display c_Reverse										; display in reverse video
+				else														; ELSE				
+					display c_ResetReverse									; reset to normal
+				end.if														; END
+				display.at lastMenuRow,menuCol,{M_Entry,1,displayLen}		; display the menu entry
+			end.if
+		end.if
+			
+	end.repeat
+	
+;	----------------------------
+;	Setup for 1st entry
+;	----------------------------
+	integers.calc selectedMenuRow,=,AM_StartRow,+,1							; Setup the current selection
+	integers.eq M_Idx,1														; setup the 1st entry
+	tables.rget M_Table,AM_Idx,1											; get the tables data
+			
+;	--------------
+;	Get a response
+;	--------------	
+	repeat.while getResponse,=,c_TRUE										; REPEAT
+
+		display c_HideCursor												; Hide the cursor
+	    accept.at 01,01,response		            						; and get a keystroke
+		display c_ShowCursor												; Show the cursor
+
+	;	----------------------
+	;	RETURN WITH THESE KEYS
+	;	----------------------
+		if RETURN_CODE,_IN,{ESCAPE,RETURN,ARROWLEFT,ARROWRIGHT}				; If a return key is pressed
+			exit.Repeat														; exit
+		end.if																; END
+		
+	;	---------
+	;	ARROWDOWN
+	;	---------
+		.if  RETURN_CODE,=,ARROWDOWN										; IF we have an arrow down
+		.and selectedMenuRow,<,lastMenuRow									; and we are NOT on the last row	
+		.end
+			integers.eq direction,+1										; set direction to ADD
+			$Call Select													; and change the selected item
+		end.if																; END
+
+	;	-------
+	;	ARROWUP
+	;	-------
+		.if RETURN_CODE,=,ARROWUP											; IF we have an arrow up
+		.and selectedTableRow,>,1											; and we are NOT on the 1st row
+		.end
+			integers.eq direction,-1										; set direction to SUBTRACT
+			$Call Select													; and change the selected item
+		end.if																; END
+				
+	end.repeat
+	
+END.SUB Menu
+
+BEGIN.SUB Select
+
+;	-------------------------------------------
+;	This will move the selection up or down
+;	depending on the value of 'direction'
+;	If direction is +1 we are moving down the list
+;	If direction is -1 we are moving up the list
+;	-------------------------------------------
+
+	tables.rget M_Table,AM_Idx,selectedTableRow								; get the current selection
+
+;	------------------------
+;	Unselect the current one
+;	------------------------
+	display c_ResetAll,c_LightGreyBG,c_BlackFG								; and reset the video			
+	cursor selectedMenuRow,menuCol											; go to it
+	display.at selectedMenuRow,menuCol,{M_Entry,1,displayLen}				; display the menu entry
+				
+;	-------------------------------
+;	get the next/previous selection
+;	-------------------------------
+	if direction,>,0														; IF we have an arrow down													
+		integers.calc _M,=,selectedTableRow,+,1								; select the next table row
+		integers.eq	  _N,c_M_NoOfRecords										; and set the end point
+	else																	; ELSE arrow up
+		integers.calc _M,=,selectedTableRow,-,1								; select the previous row
+		integers.eq	  _N,1													; and set the start point
+	end.if
+
+	repeat.for selectedTableRow,_M,_N										; find the next/previous selection in the table
+		integers.add selectedMenuRow,direction								; and on screen
+		tables.rget M_Table,AM_Idx,selectedTableRow							; get the tables data					
+		if M_Type,_NIN,{" ","-"}											; if its a genuine menu item
+			exit.Repeat														; we exit
+		end.if																; END
+	end.repeat																; END
+
+;	--------------
+;	and display it
+;	--------------
+	cursor selectedMenuRow,menuCol											; go to it
+	display c_ResetAll,c_LightGreyBG,c_BlackFG								; reset the attributes
+	display c_Reverse,														; and reverse the video	
+	display.at selectedMenuRow,menuCol,{M_Entry,1,displayLen}				; display the menu entry
+
+	integers.eq M_Idx,selectedTableRow										; and set the table Idx
+
+END.SUB Select

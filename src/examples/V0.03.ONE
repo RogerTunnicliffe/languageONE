@@ -23,7 +23,7 @@
 
 %include 'include/BEGIN.MATRIX'
 
-	insertnumber I,				0, '999999999'
+	insertnumber X,				0, '999999999'
 	insertnumber ErrorCode,		0, '999'
 	
 %include 'include/END.MATRIX'
@@ -237,18 +237,18 @@ BEGIN.SUB X_1_CreateFile
 	
 		f.open (A01_File,write+beginning)
 		
-		I = 0
+		X = 0
 		repeat.for (A01_PartNo,1,199)
 	
 			A01_PartName 		= 'Part'
 			{A01_PartName,6}	= {A01_PartNo,'999'}
 			{A01_PartName,10}	= 'Description' 
 		
-			I = I + 1
-			if  I > 26
-				I = 1	
+			X = X + 1
+			if  X > 26
+				X = 1	
 			end.If
-			A01_Category		= {alphabet,I,1}
+			A01_Category		= {alphabet,X,1}
 			A01_Location		= 'Location '
 			{A01_Location,10}	= {A01_PartNo,'999'} 
 			

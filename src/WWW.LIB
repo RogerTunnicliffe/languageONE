@@ -188,7 +188,8 @@ _OPEN:
 			pop rax
 			Call _SYSERROR									; Call System Error (will terminate)
 		
-	.Exit:	  	
+	.Exit:	 
+	
 _OPEN_EXIT:
 			ret
 			
@@ -214,7 +215,7 @@ _PROCESS:
 ;			descriptor referring to that socket.  The newly created socket is not
 ;			in the listening state.  The original socket sockfd is unaffected by
 ;			this call.
-;-------------------------------------------------------------------------------
+;------------------------------------------------------------------------------- 
 	.pollingStart:
 			mov rax,43										; SYS_ACCEPT
 			mov rdi,[listen_socket]							; listem socket handle
@@ -241,7 +242,6 @@ _PROCESS:
 ; 			GET / HTTP/1.1
 ;			GET /screen1.html HTTP/1.1
 ;			POST /screen1.html HTTP/1.1
-			
 			mov rcx,rax										; Grab buffer length
 			mov rdi,inBuffer								; Grab the buffer offset
 			add rdi,5										; go to 6th byte
@@ -287,7 +287,7 @@ _PROCESS:
 				call _CLOSE									; then Call Close
 				jmp _PROCESS_EXIT							; and exit
 	.EndIf3:
-
+ 
 		;	--------------------------------------
 		;	Callback program is providing response
 		;	--------------------------------------
@@ -311,7 +311,7 @@ _PROCESS:
 	;		mov dword[rdi],0x0d0a0d0a						; terminate it
 			jmp .write
 	.EndIf4:
-		
+ 		
 ;-------------------------------------------------------------------------------
 ;			[NORMAL URL]-So Figure it out
 ;-------------------------------------------------------------------------------

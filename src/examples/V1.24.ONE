@@ -199,7 +199,11 @@ BEGIN.SUB A_1_Initial
 	n_RubixY = 1															; Represents the Y Axis
 	n_RubixX = 0															; Represents the X Axis
 
-	repeat _01
+	repeat.for I,1,6
+		C_Count[I] = 0
+	end.repeat
+
+	repeat.while 1 = 1
 
 		NUMBERS.RANDOM (1,n_No)
 		INTEGERS.AND (n_No,0x07)
@@ -220,7 +224,7 @@ BEGIN.SUB A_1_Initial
 							integers.eq n_RubixY,1							;		reset Y to 1 
 							integers.add n_RubixFace,1						;		and move to the next face
 							if n_RubixFace > 6								;		if we have exceede the cube
-								EXIT.REPEAT	_01								;			then we are out
+								EXIT.REPEAT									;			then we are out
 							end.if
 						end.if
 					end.if
@@ -230,12 +234,12 @@ BEGIN.SUB A_1_Initial
 
 				end.if 
 			else
-				EXIT.REPEAT _01
+				EXIT.REPEAT
 			end.if						
 	
 		end.if
 
-	end.repeat _01
+	end.repeat
 
 ;	--------------
 ;	And display it
@@ -255,7 +259,7 @@ BEGIN.FUNCTION A_1_f_NotComplete
 	repeat.for I,1,6
 		if C_Count[I] < 9
 			RETURN_CODE = c_TRUE
-			exitRepeat = c_TRUE
+			exit.Repeat
 		end.if
 	end.repeat
 
@@ -656,17 +660,17 @@ BEGIN.SUB B_1_9_MISC
 				      N_No[I,J,K] = N_No[n_RubixFace,n_RubixY,n_RubixX]		;	swap in from the original number
 					  N_No[n_RubixFace,n_RubixY,n_RubixX] = n_RubixFace		;	store the current face no
 					  b_Exit = c_TRUE										;	and exit the loop
-					  exitRepeat = c_TRUE
+					  exit.Repeat
 				   end.if
 
 				 end.repeat
 				 if b_Exit = c_TRUE											; exit if need be
-					exitRepeat = c_TRUE
+					exit.Repeat
 				 end.if
 
 			   end.repeat
 			   if b_Exit = c_TRUE											; exit if need be
-				  exitRepeat = c_TRUE
+				  exit.Repeat
 			   end.if
 
 			 end.repeat

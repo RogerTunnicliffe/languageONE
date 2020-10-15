@@ -1,7 +1,8 @@
+	%assign debug 0
 	%include '../include/LMACROS.CPY'
 	%include '../include/IMACROS.CPY'
 	%include '../include/CONSTANTS.INC'
-	%line 4 w_COMMON.LIB
+	%line 5 w_COMMON.LIB
 
 ;	=================================================
 ;	GLOBAL ROUTINES/VARIABLES defined in this library
@@ -11,7 +12,11 @@
 	global _ENVIRONMENT
 	global _SYSERROR
 	global _DATE
-	global _RUN
+;V2.13
+;	global _RUN
+	global _RUN_INTERACTIVE
+	global _RUN_BATCH
+;V2.13
 	global _WAIT
 	global _RANDOM
 	global _VALIDATE_SRC
@@ -965,9 +970,15 @@ _ALPHATODATE_EXIT:
 ;		RUN and WAIT
 ;=======================================================================
 ;-----------------------------------------------------------------------
-;		RUN
+;		RUN_BATCH
 ;-----------------------------------------------------------------------
-_RUN:
+_RUN_INTERACTIVE:
+_RUN_INTERACTIVE_EXIT:
+		ret
+;-----------------------------------------------------------------------
+;		RUN_BATCH
+;-----------------------------------------------------------------------
+_RUN_BATCH:
 			mov r14,r9														; Save Path
 			mov r15,r10														; Save File Address
 			mov qword[ERROR_CODE],0											; Clear Error Code
@@ -1093,7 +1104,7 @@ _RUN:
 			Call _SYSERROR
 
 	.Exit:
-_RUN_EXIT:
+_RUN__BATCH_EXIT:
 			ret
 
 ;-----------------------------------------------------------------------

@@ -91,10 +91,10 @@
 			I = 2
 			begin.test I
 				when = 1
-					repeat _01
+					repeat.while 1 = 1
 						display.line "NAMED Repeat"
-						exit.repeat _01
-					end.repeat _01
+						exit.repeat
+					end.repeat
 				wend
 				when = 2
 					display.line "Performing NESTED WHEN"

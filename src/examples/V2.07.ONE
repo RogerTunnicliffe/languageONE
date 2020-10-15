@@ -220,21 +220,21 @@ END.SUB C_1_POST
 ;-------------------------------------------------------------------------------
 BEGIN.SUB D_1_RollDice
 
-	repeat _01
+	repeat.while 1 = 1
 		#.random(1,n_Dice1)
 		@.and(n_Dice1,0x07)
 		.if  n_Dice1 > 0 | .and n_Dice1 < 7 | .end
-			exitRepeat = c_TRUE
+			exit.Repeat
 		end.if
-	end.repeat _01
+	end.repeat
 	
-	repeat _02
+	repeat.while 1 = 1
 		#.random(1,n_Dice2)
 		@.and(n_Dice2,0x07)
 		.if  n_Dice2 > 0 | .and n_Dice2 < 7 | .end
-			exitRepeat = c_TRUE
+			exit.Repeat
 		end.if
-	end.repeat _02
+	end.repeat
 
 ;	z = z + 1
 ;	if Dice1[z] > 0
@@ -281,17 +281,17 @@ BEGIN.SUB E_1_1_Initial
 ;	Grab the board
 ;	--------------
 	J = 0 | I = I + 10
-	repeat _03
+	repeat.while 1 = 1
 		J = J + 1
 		if J > 26 
-			exitRepeat = c_TRUE
+			exit.Repeat
 		else
 			TblNoOff[J]		= {w_Response,I,2}
 			I = I + 3
 			TblColour[J]	= {w_Response,I,2}
 			I = I + 3			
 		end.if
-	end.repeat _03 		
+	end.repeat 		
 
 ;	--------------------------
 ;	Initialise the moves table
@@ -579,10 +579,10 @@ BEGIN.FUNCTION f_BearingOff
 			if TblNoOff[L] > 0												;	if we find a piece 
 				if L = mveFrom												;	if we have just moved from here
 					if TblNoOff[L] > 1										;	then we must have 2 
-						exitRepeat = c_TRUE									;		exit the loop
+						exit.Repeat											;		exit the loop
 					end.if													; 	end
 				else														;	else
-					exitRepeat = c_TRUE										;		exit the loop
+					exit.Repeat												;		exit the loop
 				end.if														;	end
 			end.if															; 	end
 		end.repeat															;	END REPEAT
@@ -1310,10 +1310,10 @@ BEGIN.SUB E_1_9_Finalise
 ;	Load the board
 ;	--------------
 	J = 0 | I = 1
-	repeat _04
+	repeat.while 1 = 1
 		J = J + 1
 		if J > 26
-			exitRepeat = c_TRUE
+			exit.Repeat
 		else
 			{w_Response,I,2} = TblNoOff[J]
 			I = I + 2
@@ -1324,7 +1324,7 @@ BEGIN.SUB E_1_9_Finalise
 			{w_Response,I,1} = ","
 			I = I + 1
 		end.if
-	end.repeat _04 		
+	end.repeat 		
 
 	RETURN_CODE = 156
 

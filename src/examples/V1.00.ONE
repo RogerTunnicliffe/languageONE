@@ -511,7 +511,7 @@ BEGIN.SUB B_5_Calculator
 	display.at (20,16,"Your result will be rounded to the no of decimal places")
 	display.at (21,03,"contained in the Operand with the most decimal places")
 
-	Repeat _01
+	Repeat.while 1 = 1
 		$Call ClearPictures
 	
 	;	Operand 1
@@ -570,7 +570,7 @@ BEGIN.SUB B_5_Calculator
 
    		display.at (09,13,n_Result)
 
-	end.repeat _01
+	end.repeat
 	
 END.SUB B_5_Calculator
 

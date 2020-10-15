@@ -1,7 +1,8 @@
+	%assign debug 0
 	%include '../include/LMACROS.CPY'
 	%include '../include/IMACROS.CPY'
 	%include '../include/CONSTANTS.INC'	
-	%line 4 w_STDIO.LIB
+	%line 5 w_STDIO.LIB
 
 ;	=================================================
 ;	GLOBAL ROUTINES/VARIABLES defined in this library
@@ -23,6 +24,7 @@
 	global StdErrHandle
 	global w_CommandLine
 	global w_AcceptAt
+	global w_Function
 	
 	global Col9
 	global Row9
@@ -36,10 +38,10 @@
 	global c_BottomLeft
 	global c_Cross
 	global c_Line
-	global c_LeftMiddle
-	global c_RightMiddle
-	global c_BottomMiddle
-	global c_TopMiddle
+	global c_MiddleLeft
+	global c_MiddleRight
+	global c_MiddleBottom
+	global c_MiddleTop
 	global c_Bar
 	
 	global c_DefaultFG
@@ -92,7 +94,11 @@
 	global c_ResetBlink
 	global c_ResetReverse
 	global c_ResetHidden
-		
+;V2.13 - lcurses
+	global c_HideCursor
+	global c_ShowCursor
+;V2.13 - lcurses
+
 ;	===============================================
 ;	EXTERNAL ROUTINES/VARIABLES used by the library
 ;	===============================================
@@ -109,6 +115,7 @@
 	extern SetConsoleTextAttribute
 	extern GetConsoleScreenBufferInfo
 	extern FillConsoleOutputCharacterA
+	extern SetConsoleMode
 
 ;	-----------------
 ;	languageONE
@@ -148,13 +155,14 @@
 	insertword 		c_BottomLeft,		01,192		
 	insertword 		c_Cross,			01,197
 	insertword 		c_Line,				01,196
-	insertword 		c_LeftMiddle,		01,195
-	insertword 		c_RightMiddle,		01,180
-	insertword 		c_BottomMiddle,		01,193
-	insertword 		c_TopMiddle,		01,194
+	insertword 		c_MiddleLeft,		01,195
+	insertword 		c_MiddleRight,		01,180
+	insertword 		c_MiddleBottom,		01,193
+	insertword 		c_MiddleTop,		01,194
 	insertword		c_Bar,				01,179
 
 	insertword 		c_DefaultFG,		05,{27,'[39m'}
+	
 	insertword 		c_BlackFG,			05,{27,'[30m'}	
 	insertword 		c_RedFG,			05,{27,'[31m'}	
 	insertword		c_GreenFG,			05,{27,'[32m'}	
@@ -162,7 +170,8 @@
 	insertword 		c_BlueFG,			05,{27,'[34m'}	
 	insertword 		c_MagentaFG,		05,{27,'[35m'}	
 	insertword 		c_CyanFG,			05,{27,'[36m'}	
-	insertword 		c_LightGreyFG,		05,{27,'[37m'}	
+	insertword 		c_LightGreyFG,		05,{27,'[37m'}
+	
 	insertword 		c_DarkGreyFG,		05,{27,'[90m'}	
 	insertword 		c_LightRedFG,		05,{27,'[91m'}
 	insertword 		c_LightGreenFG,		05,{27,'[92m'}
@@ -203,10 +212,14 @@
 	insertword 		c_ResetBlink,		05,{27,'[25m'}
 	insertword 		c_ResetReverse,		05,{27,'[27m'}
 	insertword 		c_ResetHidden,		05,{27,'[28m'}	
-
-	INSERTWORD w_CommandLine,		256,' '
-	insertword w_AcceptAt,			128,' '
-
+;V2.13 - lcurses
+	insertword 		c_HideCursor,		06,{27,'[?25l'}		
+	insertword 		c_ShowCursor,		06,{27,'[?25h'}		
+;V2.13 - lcurses
+	
+	INSERTWORD w_CommandLine,			256,' '
+	insertword w_AcceptAt,				128,' '
+	insertword 		w_Function,			001,' '
 
 ;-----------------------------------------------------------------------				
 ;           UN Initialised - zero filled when loaded
@@ -224,15 +237,45 @@
 ;	---------------------------------
 ;	INPUT_RECORD returned by kernel32
 ;	---------------------------------
+global InputRecord
 	InputRecord:
-		EventType			resb 1
-							resb 1
+		EventType			resw 1
+		; 0x10 FOCUS_EVENT
+		; 0x01 KEY_EVENT	
+		; 0x08 MENU_EVENT	
+		; 0x02 MOUSE_EVENT	
+		; 0x04 WINDOW_BUFFER_SIZE_EVENT	
+		filler1				resw 1
 	KeyEventRecord:	
-							resw 1
-		keyDown				resb 1				
-							resw 4
-							resb 1
-		asciiChar			resb 1		 	
+		keyDown				resd 1			
+		repeatCount			resw 1
+		virtualKeyCode		resw 1
+		;	0x08 BACKSPACE
+		;	0x0D ENTER
+		;	0x10 SHIFT
+		;	0x12 ALT
+		;	0x1B ESCAPE
+		;	0x21 PAGE UP
+		;	0x22 PAGE DOWN
+		;	0x23 END
+		;	0x24 HOME
+		;	0x25 ARROW LEFT
+		;	0x26 ARROW UP
+		;	0x27 ARROW RIGHT
+		;	0x28 ARROW DOWN
+		;	0x2D INSERT
+		;	0x70-> 0x7B  FUNCTION 1->12
+		virtualScanCode		resw 1
+		asciiChar			resb 1
+		filler3				resb 1
+	 	controlKeyState		resd 1
+	 	;	0x02 LEFT_ALT_PRESSED	
+	 	;	0x08 LEFT_CTRL_PRESSED
+	 	;	0x01 RIGHT_ALT_PRESSED
+	 	;	0x04 RIGHT_CTRL_PRESSED
+	 	;	0x10 SHIFT_PRESSED
+ 	
+global NoOfReads		
 	NoOfReads				resd 1
 	
 ;	---------------------------------------
@@ -520,34 +563,16 @@ _ACCEPT.AT_Process:
 		pop  qword[saveCol9]
 		
 		xor r_Ctr,r_Ctr														; Initialise the counter			
-	.loop:	
-		mov byte[asciiChar],' '												; Initialise the input character
-
-	;	----------------------------------
-	;	Next Char ???
-	;	----------------------------------
-		inc r_Ctr															; Next character
-		cmp r_Ctr,@fieldLength(r_SrcAddress)								; Have we gone past the field length
-			jna .char														; NO - then continue
-				
-	.move:	
-		dec r_Ctr															; Set the counter back one
-		dec qword[Col9]														; move the cursor back one	
-		
-	;	*** SPECIAL cuz _CURSOR always descrements Col/Row
-		inc qword[Col9]
-		inc qword[Row9]
-		Call _CURSOR
-			
+		mov qword[RETURN_CODE],0											; and return code				
 	;	-----------------------------------
 	;	GET CHAR
 	;	-----------------------------------
 	.char:	
-	$pushAll r8,r9,r10,r11,rcx,rdx
-	mov rbx,rsp															; Grab the stack pointer
- 	and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes
-	sub RSP,32															; Create Shadow Stack
-	cld																	; Clear Direction Flag
+		$pushAll r8,r9,r10,r11,rcx,rdx
+		mov rbx,rsp															; Grab the stack pointer
+		and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes
+		sub RSP,32															; Create Shadow Stack
+		cld																	; Clear Direction Flag
 	
 	.charloop:
 		mov	rcx,qword[StdInHandle]											; rcx = terminla window handle
@@ -556,150 +581,181 @@ _ACCEPT.AT_Process:
 		mov	r9,NoOfReads													; We dont care	
 		cld
 		call ReadConsoleInputW
-		cmp byte[EventType],1												; If NOT a keyboard Event
-			jne .charloop													;	then loop
-		cmp byte[keyDown],1													; If NOT keypressed 
-			jne .charloop													;	then loop
-			
-	mov rsp,rbx
-	$popAll rdx,rcx,r11,r10,r9,r8		
+		cmp word[EventType],1												; If NOT a keyboard Event
+			jne .charloop													; then loop
+		cmp byte[keyDown],1													; If NOT keydown
+			jne .charloop													; then loop
+		cmp byte[virtualKeyCode],0x10										; If SHIFT
+			je .charloop													; then loop
 				
-	;	------------------------------------
-	;	ESCAPE
-	;	------------------------------------
-	.escape:
-		cmp byte[asciiChar],0x1B											; If NOT Escape								
-			jne .enter														;	then jump
-			Call _ACCEPT.AT_Redisplay										;	redisplay the field
-			mov qword[RETURN_CODE],27										;	ESCAPE to Return Code
-			jmp .Exit														;	and exit
-				
-	;	-------------------------------------
-	;	ENTER
-	;	-------------------------------------
-	.enter:	
-		cmp byte[asciiChar],0x0D											; If NOT Enter
-			jne .backspace													;	then jump				
-			mov qword[RETURN_CODE],0										;	ENTER to Return Code
-			jmp .Exit														;	and exit
-				
-	;	--------------------------------------
-	;	BACKSPACE
-	;	--------------------------------------
-	.backspace:	
-		cmp byte[asciiChar],0x08											; If NOT Backspace
-			jne .valid														;	then jump
-		cmp r_Ctr,1															;If NOT at the beginning
-			ja .back														;of the field then continue
-			mov qword[RETURN_CODE],27										;	ESCAPE to Return Code
-			jmp .Exit														;	and exit
+		mov rsp,rbx
+		$popAll rdx,rcx,r11,r10,r9,r8		
 
-	.back: 	
-		Call _ACCEPT.AT_Slide												; Slide to the left
-		Call _ACCEPT.AT_Redisplay											; redisplay it
-		jmp .move															; and jump to move
+	;	---------
+	;	Character - ENTER is ALSO passed back in asciiChar
+	;	---------
+	.01:cmp byte[asciiChar],0x0D											; If NOT Enter
+			jne .escape															; then jump				
+			mov qword[RETURN_CODE],RETURN									; ENTER to Return Code
+			jmp .Exit														; and exit
+
+	;	---------
+	;	Character - ESC is ALSO passed back in asciiChar
+	;	---------
+	.escape:
+		cmp byte[virtualKeyCode],0x1B										; If NOT Escape								
+			jne .backspace													; then jump
+			mov qword[RETURN_CODE],ESCAPE									; ESCAPE to Return Code
+			jmp .Exit														; and exit
+									 								
+	;	---------
+	;	Character - BACKSPACE is ALSO passed back in asciiChar
+	;	---------
+	.backspace:	
+		cmp byte[virtualKeyCode],0x08										; If NOT Backspace
+			jne .02															; then jump
+			mov qword[RETURN_CODE],BACKSPACE								; BACKSPACE to Return Code
+			jmp .Exit														; and exit
+
+	.02:cmp byte[asciiChar],0x00											; check for character
+			ja .character													; if not jump
+			
+		;	============
+		;	Function Key
+		;	============				
+	.FunctionKeys:
+
+	.Arrows:
+	;	--------------------------------------
+	;	ARROW KEY
+	;	--------------------------------------
+	.A1:cmp byte[virtualKeyCode],0x25										; If NOT ARROW LEFT
+			jne .A2															; then jump
+			mov qword[RETURN_CODE],ARROWLEFT								; ARRPWLEFT to Return Code
+			jmp .Exit														; and exit
+	.A2:cmp byte[virtualKeyCode],0x26										; If NOT ARROW UP
+			jne .A3															; then jump
+			mov qword[RETURN_CODE],ARROWUP									; ARRPWUP to Return Code
+			jmp .Exit														; and exit
+	.A3:cmp byte[virtualKeyCode],0x27										; If NOT ARROW RIGHT
+			jne .A4															; then jump
+			mov qword[RETURN_CODE],ARROWRIGHT								; ARRPWRIGHT to Return Code
+			jmp .Exit														; and exit
+	.A4:cmp byte[virtualKeyCode],0x28										; If NOT ARROW DOWN
+			jne .A5															; then jump
+			mov qword[RETURN_CODE],ARROWDOWN								; ARRPWDOWN to Return Code
+			jmp .Exit														; and exit
+			
+	.A5:cmp byte[virtualKeyCode],0x23										; If NOT END
+			jne .A6															; then jump
+			mov qword[RETURN_CODE],END										; END to Return Code
+			jmp .Exit														; and exit
+	.A6:cmp byte[virtualKeyCode],0x24										; If NOT HOME
+			jne .A7															; then jump
+			mov qword[RETURN_CODE],HOME										; HOME to Return Code
+			jmp .Exit														; and exit
+	.A7:		
+	;	--------------------------------------
+	;	INSERT KEY
+	;	--------------------------------------
+		cmp byte[virtualKeyCode],0x2D										; If NOT INSERT
+			jne .FKeys														; then jump
+			mov qword[RETURN_CODE],INSERT									; INSERT to Return Code
+			jmp .Exit														; and exit
 	
+	.FKeys:
+	;	------------------------------------------
+	;	FUNCTION KEYS: 0x70-> 0x7B  FUNCTION 1->12
+	;	------------------------------------------
+	.F01:cmp byte[virtualKeyCode],0x70										; If NOT FUNCTION1
+			jne .F02														; then jump
+			mov qword[RETURN_CODE],FUNCTIONKEY1								; FUNCTIONKEY1 to Return Code
+			jmp .Exit														; and exit
+	.F02:cmp byte[virtualKeyCode],0x71										; If NOT FUNCTION2
+			jne .F03														; then jump
+			mov qword[RETURN_CODE],FUNCTIONKEY2								; FUNCTIONKEY2 to Return Code
+			jmp .Exit														; and exit
+	.F03:cmp byte[virtualKeyCode],0x72										; If NOT FUNCTION3
+			jne .F04														; then jump
+			mov qword[RETURN_CODE],FUNCTIONKEY3								; FUNCTIONKEY3 to Return Code
+			jmp .Exit														; and exit
+	.F04:cmp byte[virtualKeyCode],0x73										; If NOT FUNCTION4
+			jne .F05														; then jump
+			mov qword[RETURN_CODE],FUNCTIONKEY4								; FUNCTIONKEY4 to Return Code
+			jmp .Exit														; and exit
+	.F05:cmp byte[virtualKeyCode],0x74										; If NOT FUNCTION5
+			jne .F06														; then jump
+			mov qword[RETURN_CODE],FUNCTIONKEY5								; FUNCTIONKEY5 to Return Code
+			jmp .Exit														; and exit
+	.F06:cmp byte[virtualKeyCode],0x75										; If NOT FUNCTION6
+			jne .F07														; then jump
+			mov qword[RETURN_CODE],FUNCTIONKEY6								; FUNCTIONKEY6 to Return Code
+			jmp .Exit														; and exit
+	.F07:cmp byte[virtualKeyCode],0x76										; If NOT FUNCTION7
+			jne .F08														; then jump
+			mov qword[RETURN_CODE],FUNCTIONKEY7								; FUNCTIONKEY7 to Return Code
+			jmp .Exit														; and exit
+	.F08:cmp byte[virtualKeyCode],0x77										; If NOT FUNCTION8
+			jne .F09														; then jump
+			mov qword[RETURN_CODE],FUNCTIONKEY8								; FUNCTIONKEY8 to Return Code
+			jmp .Exit														; and exit
+	.F09:cmp byte[virtualKeyCode],0x78										; If NOT FUNCTION9
+			jne .F10														; then jump
+			mov qword[RETURN_CODE],FUNCTIONKEY9								; FUNCTIONKEY9 to Return Code
+			jmp .Exit														; and exit
+	.F10:cmp byte[virtualKeyCode],0x79										; If NOT FUNCTION10
+			jne .F11														; then jump
+			mov qword[RETURN_CODE],FUNCTIONKEY10							; FUNCTIONKEY10 to Return Code
+			jmp .Exit														; and exit
+	.F11:cmp byte[virtualKeyCode],0x7A										; If NOT FUNCTION11
+			jne .F12														; then jump
+			mov qword[RETURN_CODE],FUNCTIONKEY11							; FUNCTIONKEY11 to Return Code
+			jmp .Exit														; and exit
+	.F12:cmp byte[virtualKeyCode],0x7B										; If NOT FUNCTION12
+			jne .alt														; then jump
+			mov qword[RETURN_CODE],FUNCTIONKEY12							; FUNCTIONKEY12 to Return Code
+			jmp .Exit														; and exit
+	
+	;	--------------------------------------
+	;	ALT KEY
+	;	--------------------------------------
+	.alt:cmp byte[virtualKeyCode],0x12										; If NOT ALT
+			jne .char														; then some undefined key
+			mov qword[RETURN_CODE],ALT										; ALT to Return Code
+			jmp .char														; back to look for next keystroke
+
 	;	----------------------------------------
 	;	CHARACTER				
 	;	----------------------------------------
-	.valid:	
-		Call _ACCEPT.AT_ValidChar											; Is it NOT a valid character	
-		cmp r_Valid,-1														;	then ignore it 
-			je .char
-			
+	.character:
 		mov bl,byte[asciiChar]												; Store the character
-		mov byte[r_SrcAddress+r_Ctr-1],bl									; in the input field
-											
+		mov byte[r_SrcAddress+r_Ctr],bl										; in the input field
+
+	;	----------------------
+	;	ALT previously pressed
+	;	----------------------
+		cmp qword[RETURN_CODE],ALT											; If we have held ALT and a character 
+			je .Exit														; then exit
+		
 		mov rdx,asciiChar													; and echo it back
 		mov r8,1
 		Call $display
 
-		inc qword[Col9]														; move cursor right
-		
+;		inc qword[Col9]														; move cursor right		
 	;	*** SPECIAL cuz _CURSOR always descrements Col/Row
-		inc qword[Col9]
-		inc qword[Row9]		
-		Call _CURSOR														; cursor has moved
-		jmp .loop															; and get the next one
-				
+;		inc qword[Col9]
+;		inc qword[Row9]		
+;		Call _CURSOR														; cursor has moved
+
+		inc r_Ctr															; Next character
+		cmp r_Ctr,@fieldLength(r_SrcAddress)								; Have we gone past the field length
+			jb .char														; NO - then get next char
+		mov qword[RETURN_CODE],ENDOFFIELD									; else set EndOfField
+			
 	.Exit:	
 _ACCEPT.AT_Process_EXIT:
 		ret
 		
-;---------------------------------------------------
-;		Process Backspace
-;---------------------------------------------------
-_ACCEPT.AT_Slide:
-
-		lea rsi,[r_SrcAddress+r_Ctr-1]										; Current cursor position
-		lea rdi,[r_SrcAddress+r_Ctr-2]										; Previous characetr
-		mov rcx,@fieldLength(r_SrcAddress)									; string length
-		sub rcx,r_Ctr														; less the position in the string
-		inc rcx																;	plus 1
-		cld																	; moving forward
-	.l: movsb																; do it
-		loop .l
-		mov rax,' '															; space to last character 
-		stosb
-
-_ACCEPT.AT_Slide_EXIT:
-		ret
-		
-;---------------------------------------------------
-;		Redisplay 
-;---------------------------------------------------
-_ACCEPT.AT_Redisplay:
-
-	;	------------------------------------
-	;	Set cursor back to beginning of word
-	;	------------------------------------
-	$pushAll r8,r9,r10,r11,rcx,rdx
-  		mov rbx,rsp															; Grab the stack pointer
-  		and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes
-		sub RSP,32															; Create Shadow Stack
-		cld																	; Clear Direction Flag
-			mov	rcx,qword[StdOutHandle]
-			mov rdx,qword[saveRow9]
-			shl edx,16
-			mov  dx,word[saveCol9]
-			call SetConsoleCursorPosition 	
-		mov rsp,rbx
-	$popAll rdx,rcx,r11,r10,r9,r8
-	
-	;	----------------------
-	;	And redisplay the word
-	;	----------------------
-		mov r13,@fieldLength(r_SrcAddress)									; grab string length
-		mov rdx,r_SrcAddress
-		mov r8,r13
-		Call $display
-
-		mov rdx,w_Spaces
-		mov r8,1
-		Call $display
-
-_ACCEPT.AT_Redisplay_EXIT:
-		ret
-		
-;---------------------------------------------------
-;		Validate input Char 
-;---------------------------------------------------			
-_ACCEPT.AT_ValidChar:
-
-		mov r_Valid,-1
-			
-		cmp byte[asciiChar],0x20		; space				
-			jb _ACCEPT.AT_ValidChar_EXIT
-		cmp byte[asciiChar],0x7D		; up to ~ 
-			ja _ACCEPT.AT_ValidChar_EXIT
-				
-	;	-----------------------
-	;	So we are good
-	;	-----------------------
-		xor r_Valid,r_Valid
-
-_ACCEPT.AT_ValidChar_EXIT:
-		ret
 
 ;=======================================================================
 ;       	DISPLAY to write line (Without Carraige Return) to stdout
@@ -746,90 +802,118 @@ _DISPLAY_EXIT:
 ;-----------------------------------------------------------------------
 ;           Display the Attributes
 ;-----------------------------------------------------------------------
+global _DISPLAY_ATTRIBUTE
 _DISPLAY_ATTRIBUTE:
 
 	;	------------
 	;	CLEAR SCREEN
 	;	------------
 		cmp byte[r_SrcAddress+1],'c'										; Check for Clear Screen
-			jne .foreground													; If so	
+			jne .GetAttributes												; If so	
 			Call _CLEAR_SCREEN												; 	then Call it
 			jmp _DISPLAY_ATTRIBUTE_EXIT										;	and exit
 
+	;	-------------------------
+	;	Get the Screen attributes
+	;	-------------------------
+	.GetAttributes:
+		$pushAll r8,r9,r10,r11,rcx,rdx
+  		mov rbx,rsp															; Grab the stack pointer
+  		and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes
+		sub RSP,32															; Create Shadow Stack
+		cld																	; Clear Direction Flag
+			mov rcx,qword[StdOutHandle]
+			mov rdx,Console_Screen_Buffer_Info
+			Call GetConsoleScreenBufferInfo
+		mov rsp,rbx
+		$popAll rdx,rcx,r11,r10,r9,r8
+		
+		xor rax,rax
+		xor rcx,rcx
+		xor rdx,rdx
+		mov dx,word[Attributes]												; Get the existing colors
+		
+	;	-------------
+	;	REVERSE VIDEO
+	;	-------------
+		cmp byte[r_SrcAddress+2],0x37			; c_Reverse			db 27, '[7m'
+			jne .foreground
+		ror dl,4
+		jmp .setIt
+		
 	;	================
 	;	Terminal Colours
 	;	================
 .foreground:
-		xor rax,rax
-		xor rdx,rdx
-
 		cmp word[r_SrcAddress+2],0x3033			; c_BlackFG			db 27, '[30m'
 			jne .01
-			mov rdx,0
+			mov rax,0
 			jmp .DoIt
 .01:	cmp word[r_SrcAddress+2],0x3433			; c_BlueFG			db 27, '[34m' 					    	
 			jne .02
-			mov rdx,1
+			mov rax,1
 			jmp .DoIt
 .02:	cmp word[r_SrcAddress+2],0x3233			; c_GreenFG			db 27, '[32m'					    	
 			jne .03
-			mov rdx,2
+			mov rax,2
 			jmp .DoIt
 .03:	cmp word[r_SrcAddress+2],0x3633			; c_CyanFG			db 27, '[36m'   					    	
 			jne .04
-			mov rdx,3
+			mov rax,3
 			jmp .DoIt
 .04:	cmp word[r_SrcAddress+2],0x3133			; c_RedFG			db 27, '[31m'
 			jne .05
-			mov rdx,4
+			mov rax,4
 			jmp .DoIt
 .05:	cmp word[r_SrcAddress+2],0x3533			; c_MagentaFG		db 27, '[35m'   					    	
 			jne .06
-			mov rdx,5
+			mov rax,5
 			jmp .DoIt
 .06:	cmp word[r_SrcAddress+2],0x3333			; c_YellowFG		db 27, '[33m' 					    	
 			jne .07a
-			mov rdx,6
+			mov rax,6
 			jmp .DoIt
+			
 .07a:	cmp word[r_SrcAddress+2],0x3933			; c_DefaultFG		db 27, '[39m'
 			jne .07b
-			mov rdx,7
+			mov rax,7
 			jmp .DoIt
 .07b:	cmp word[r_SrcAddress+2],0x3733			; c_LightGreyFG		db 27, '[37m'					    	
 			jne .08
-			mov rdx,7
+			mov rax,7
 			jmp .DoIt			
 .08:	cmp word[r_SrcAddress+2],0x3039			; c_DarkGreyFG		db 27, '[90m'   					    	
 			jne .09
-			mov rdx,8
-			jmp .DoIt			  
+			mov rax,8
+			jmp .DoIt	
+			
 .09:	cmp word[r_SrcAddress+2],0x3439			; c_LightBlueFG		db 27, '[94m'  					    	
 			jne .10
-			mov rdx,9
+			mov rax,9
 			jmp .DoIt	
 .10:	cmp word[r_SrcAddress+2],0x3239			; c_LightGreenFG	db 27, '[92m'   					    	
 			jne .11
-			mov rdx,10
+			mov rax,10
 			jmp .DoIt	
 .11:	cmp word[r_SrcAddress+2],0x3639			; c_LightCyanFG		db 27, '[96m'   					    	
 			jne .12
-			mov rdx,11
+			mov rax,11
 			jmp .DoIt			
 .12:	cmp word[r_SrcAddress+2],0x3139			; c_LightRedFG		db 27, '[91m'   					    	
 			jne .13
-			mov rdx,12
+			mov rax,12
 			jmp .DoIt			
 .13:	cmp word[r_SrcAddress+2],0x3539			; c_LightMagentaFG	db 27, '[95m'   					    	
 			jne .14
-			mov rdx,13
+			mov rax,13
 			jmp .DoIt			
 .14:	cmp word[r_SrcAddress+2],0x3339			; c_LightYellowFG	db 27, '[93m'   					    	
 			jne .15
-			mov rdx,14
+			mov rax,14
 			jmp .DoIt			
 .15:	cmp word[r_SrcAddress+2],0x3739			; c_WhiteFG			db 27, '[97m'  					    	
 			jne .background
-			mov rdx,15
+			mov rax,15
 			jmp .DoIt			
 			 
 	;	================
@@ -839,92 +923,112 @@ _DISPLAY_ATTRIBUTE:
 		cmp word[r_SrcAddress+2],0x3934			; c_DefaultBG		db 27, '[49m'
 			jne .16
 			mov rax,0
+			mov rcx,1
 			jmp .DoIt
+			
 .16:	cmp word[r_SrcAddress+2],0x3034			; c_BlackBG			db 27, '[40m'   					    	
 			jne .17
 			mov rax,0
+			mov rcx,1
 			jmp .DoIt
 .17:	cmp word[r_SrcAddress+2],0x3434			; c_BlueBG			db 27, '[44m'    					    	
 			jne .18
 			mov rax,1
+			mov rcx,1
 			jmp .DoIt
 .18:	cmp word[r_SrcAddress+2],0x3234			; c_GreenBG			db 27, '[42m'    					    	
 			jne .19
 			mov rax,2
+			mov rcx,1
 			jmp .DoIt
 .19:	cmp word[r_SrcAddress+2],0x3634			; c_CyanBG			db 27, '[46m'    					    	
 			jne .20
 			mov rax,3
+			mov rcx,1
 			jmp .DoIt
 .20:	cmp word[r_SrcAddress+2],0x3134			; c_RedBG			db 27, '[41m'   					    	
 			jne .21
 			mov rax,4
+			mov rcx,1
 			jmp .DoIt
 .21:	cmp word[r_SrcAddress+2],0x3534			; c_MagentaBG		db 27, '[45m'   					    	
 			jne .22
 			mov rax,5
+			mov rcx,1
 			jmp .DoIt
 .22:	cmp word[r_SrcAddress+2],0x3334			; c_YellowBG		db 27, '[43m'  					    	
 			jne .23
 			mov rax,6
+			mov rcx,1
 			jmp .DoIt
-.23:	cmp word[r_SrcAddress+2],0x3334			; c_YellowBG		db 27, '[43m'  					    	
+		
+.23:	cmp word[r_SrcAddress+2],0x3734			; c_LightGreyBG		db 27, '[47m'					    	
 			jne .24
-			mov rax,6
-			jmp .DoIt
-.24:	cmp word[r_SrcAddress+2],0x3734			; c_LightGreyBG		db 27, '[47m'					    	
-			jne .25
 			mov rax,7
+			mov rcx,1
 			jmp .DoIt			
-.25:	cmp dword[r_SrcAddress+2],0x6d303031	; c_DarkGreyBG		db 27, '[100m' 					    	
-			jne .26
+.24:	cmp dword[r_SrcAddress+2],0x6d303031	; c_DarkGreyBG		db 27, '[100m' 					    	
+			jne .25
 			mov rax,8
+			mov rcx,1
 			jmp .DoIt
-.26:	cmp dword[r_SrcAddress+2],0x6d343031	; c_LightBlueBG		db 27, '[104m' 					    	
-			jne .27
+			
+.25:	cmp dword[r_SrcAddress+2],0x6d343031	; c_LightBlueBG		db 27, '[104m' 					    	
+			jne .26
 			mov rax,9
+			mov rcx,1
 			jmp .DoIt
-.27:	cmp dword[r_SrcAddress+2],0x6d323031	; c_LightGreeenBG	db 27, '[102m' 					    	
-			jne .28
+.26:	cmp dword[r_SrcAddress+2],0x6d323031	; c_LightGreeenBG	db 27, '[102m' 					    	
+			jne .27
 			mov rax,10
+			mov rcx,1
 			jmp .DoIt
-.28:	cmp dword[r_SrcAddress+2],0x6d363031	; c_LightCyanBG		db 27, '[106m' 					    	
-			jne .29
+.27:	cmp dword[r_SrcAddress+2],0x6d363031	; c_LightCyanBG		db 27, '[106m' 					    	
+			jne .28
 			mov rax,11
+			mov rcx,1
 			jmp .DoIt
-.29:	cmp dword[r_SrcAddress+2],0x6d313031	; c_LightRedBG		db 27, '[101m' 					    	
-			jne .30
+.28:	cmp dword[r_SrcAddress+2],0x6d313031	; c_LightRedBG		db 27, '[101m' 					    	
+			jne .29
 			mov rax,12
+			mov rcx,1
 			jmp .DoIt
-.30:	cmp dword[r_SrcAddress+2],0x6d353031	; c_LightMagentaBG	db 27, '[105m' 					    	
-			jne .31
+.29:	cmp dword[r_SrcAddress+2],0x6d353031	; c_LightMagentaBG	db 27, '[105m' 					    	
+			jne .30
 			mov rax,13
+			mov rcx,1
 			jmp .DoIt
-.31:	cmp dword[r_SrcAddress+2],0x6d333031	; c_LightYellowBG	db 27, '[103m' 					    	
+.30:	cmp dword[r_SrcAddress+2],0x6d333031	; c_LightYellowBG	db 27, '[103m' 					    	
+			jne .31
+			mov rax,14
+			mov rcx,1
+			jmp .DoIt
+.31:	cmp dword[r_SrcAddress+2],0x6d373031	; c_WhiteBG			db 27, '[107m'  					    	
 			jne .32
-			mov rax,14
-			jmp .DoIt
-.32:	cmp dword[r_SrcAddress+2],0x6d333031	; c_LightYellowBG	db 27, '[103m' 					    	
-			jne .33
-			mov rax,14
-			jmp .DoIt
-.33:	cmp dword[r_SrcAddress+2],0x6d373031	; c_WhiteBG			db 27, '[107m'  					    	
-			jne .34
-			mov rax,7
+			mov rax,15
+			mov rcx,1
 			jmp .DoIt
 	
 	;	-----------------------------
 	;	Exit all others at this point
 	;	-----------------------------
-.34:	jmp _DISPLAY_ATTRIBUTE_EXIT
+.32:	jmp _DISPLAY_ATTRIBUTE_EXIT
 
 	;	=========
 	;	And Do It
 	;	=========
 	.DoIt:
-		shl rax,4  
+		cmp rcx,0
+			je .notSHL
+		shl rax,4
+		and rdx,0x0F		; only keep DL	
+		jmp .orIt
+	.notSHL:	
+		and rdx,0xF0		; only keep DH
+	.orIt:
 		 or rdx,rax
-	
+
+	.setIt:
 		$pushAll r8,r9,r10,r11,rcx,rdx	
   		mov rbx,rsp															; Grab the stack pointer
   		and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes
@@ -946,16 +1050,17 @@ _CLEAR_SCREEN:
 	;	-------------------
 	;	Get the Screen size
 	;	-------------------
-		$pushAll r8,r9,r10,r11,rcx,rdx
-  		mov rbx,rsp															; Grab the stack pointer
-  		and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes
-		sub RSP,32															; Create Shadow Stack
-		cld																	; Clear Direction Flag
-			mov rcx,qword[StdOutHandle]
-			mov rdx,Console_Screen_Buffer_Info
-			Call GetConsoleScreenBufferInfo
-		mov rsp,rbx
-		$popAll rdx,rcx,r11,r10,r9,r8
+; Moved to _DISPLAY_ATTRIBUTE (which is the only place this is called from
+;		$pushAll r8,r9,r10,r11,rcx,rdx
+;  		mov rbx,rsp															; Grab the stack pointer
+;  		and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes
+;		sub RSP,32															; Create Shadow Stack
+;		cld																	; Clear Direction Flag
+;			mov rcx,qword[StdOutHandle]
+;			mov rdx,Console_Screen_Buffer_Info
+;			Call GetConsoleScreenBufferInfo
+;		mov rsp,rbx
+;		$popAll rdx,rcx,r11,r10,r9,r8
 
 	;	------------
 	;	Clear Screen

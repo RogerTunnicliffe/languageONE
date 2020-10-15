@@ -1,8 +1,9 @@
+	%assign debug 0
 	%include '../include/LMACROS.CPY'
 	%include '../include/IMACROS.CPY'
 ;***%include '../include/CONSTANTS.INC' 	
 ;***The XTABLES.bind interferes with the bind symbol in here
-	%line 3 w_WWW.LIB
+	%line 4 w_WWW.LIB
 
 ;	=================================================
 ;	GLOBAL ROUTINES/VARIABLES defined in this library

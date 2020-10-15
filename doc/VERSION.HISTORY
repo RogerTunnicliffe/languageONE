@@ -18,7 +18,7 @@
 ;		lcurses.Menu
 ;		lcurses.Call
 ;		
-;		a) Modified STDIO.LIB to return RETURN/FUNCTIONKEYS/ALT/ARROWS/ESCAPE/BACKSPACE/NULL
+;		a) Modified STDIO.LIB/w_STDIO.LIB to return RETURN/FUNCTIONKEYS/ALT/ARROWS/ESCAPE/BACKSPACE/NULL
 ;		b) RETURN/FUNCTIONKEYS/ALT/ARROWS/ESCAPE/BACKSPACE/NULL available thru CONSTANTS.INC	
 ;		c) Renamed the following fields for clarity
 ;			c_LeftMiddle	-> c_MiddleLeft
@@ -34,6 +34,10 @@
 ;			been enhanced to run an interactive shell
 ;			The RUN macro counts the number of paramaters and calls _RUN_INTERACTIVE if passed 1
 ;			parameter and _RUN_BATCH if passed 2 parameters.
+;
+;	4] - Deprecated the REPEAT <label> statement as this is easily done with
+;			REPEAT.WHILE 1 = 1
+;			The exitRepeat flag is now set by the EXIT.REPEAT macro
 
 ;	LANGUAGEONE V2.12
 

@@ -4,6 +4,8 @@
 %define   c_M_NoOfRecords	16
 %include 'include/LCURSES.PKG'
 
+%include 'include/LMENUS.PKG'
+
 ;	Refer to VERSION.HISTORY for...well...version history
 
 ;	BEGIN.SYNONYMS **************************************
@@ -56,7 +58,7 @@
 %include 'include/BEGIN.FILES'	
 
 ;	------------------------------
-;	Define the LCURSES MENU tables
+;	Define the LMENUS MENU tables
 ;	------------------------------
 ;	Defines the geometry of a menu
 	begin.record c_AM_RecordLen,AM_Record
@@ -65,7 +67,7 @@
 		insertnumber	AM_EndRow,		00,'99'								; Ending Row
 		insertnumber	AM_EndCol,		00,'99'								; Ending Column
 	end.record AM_Record
-	insertnumber AM_Idx,				00,'9'								; the index returned by LCURSES.PKG
+	insertnumber AM_Idx,				00,'9'								; the index returned by LMENUS.PKG
 	
 ;	Defines the menu items
 	begin.record c_M_RecordLen,M_Record
@@ -73,7 +75,7 @@
 		insertnumber	M_Target,		00,'99999999'						; the target
 		insertword		M_Entry,		55,''								; and the text
 	end.record M_Record
-	insertnumber M_Idx,					00,'99'								; the index returned by LCURSES.PKG
+	insertnumber M_Idx,					00,'99'								; the index returned by LMENUS.PKG
 
 	;	M_TYPE
 	;	S - A Subroutine in this program
@@ -93,7 +95,7 @@
 %include 'include/BEGIN.TABLES'	
 
 ;	------------------------------
-;	Insert the LCURSES MENU tables
+;	Insert the LMENUS MENU tables
 ;	------------------------------
 	inserttable AM_Table,c_AM_RecordLen*c_AM_NoOfRecords					; Allows for 8 menus
 	inserttable M_Table,c_M_RecordLen*c_AM_NoOfRecords*c_M_NoOfRecords		; Allows fo r8 menus with 16 entries
@@ -124,7 +126,7 @@
 BEGIN.SUB A_1_Initial
 
 ;	----------------------------
-;	Bind the LCURSES MENU tables
+;	Bind the LMENUS MENU tables
 ;	----------------------------
 	tables.bind AM_Table,AM_Record,8
 	tables.bind M_Table,M_Record,8,16
@@ -139,10 +141,10 @@ BEGIN.SUB A_1_Initial
 	integers.eq AM_Idx,1
 	tables.rput AM_Table,AM_Idx
 
-	lcurses.MenuItems (AM_Idx,01,"M",2,"Goto Sub Menu 2")
-	lcurses.MenuItems (AM_Idx,02,"M",3,"Goto Sub Menu 3")
-	lcurses.MenuItems (AM_Idx,03,"M",4,"Goto Sub Menu 4")
-	lcurses.MenuItems (AM_Idx,04," ",0,"")
+	lmenus.MenuItems (AM_Idx,01,"M",2,"Goto Sub Menu 2")
+	lmenus.MenuItems (AM_Idx,02,"M",3,"Goto Sub Menu 3")
+	lmenus.MenuItems (AM_Idx,03,"M",4,"Goto Sub Menu 4")
+	lmenus.MenuItems (AM_Idx,04," ",0,"")
 
 ;	---------
 ;	2nd MENU
@@ -154,10 +156,10 @@ BEGIN.SUB A_1_Initial
 	integers.eq AM_Idx,2
 	tables.rput AM_Table,AM_Idx
 
-	lcurses.MenuItems (AM_Idx,01,"M",5,"Goto Sub Menu 5")
-	lcurses.MenuItems (AM_Idx,02,"S",B_1_2_Blank,"Blank Subroutine")
-	lcurses.MenuItems (AM_Idx,03,"S",B_1_2_Blank,"Blank Subroutine")
-	lcurses.MenuItems (AM_Idx,04," ",0,"")
+	lmenus.MenuItems (AM_Idx,01,"M",5,"Goto Sub Menu 5")
+	lmenus.MenuItems (AM_Idx,02,"S",B_1_2_Blank,"Blank Subroutine")
+	lmenus.MenuItems (AM_Idx,03,"S",B_1_2_Blank,"Blank Subroutine")
+	lmenus.MenuItems (AM_Idx,04," ",0,"")
 	
 ;	---------
 ;	3rd MENU
@@ -169,11 +171,11 @@ BEGIN.SUB A_1_Initial
 	integers.eq AM_Idx,3
 	tables.rput AM_Table,AM_Idx
 
-	lcurses.MenuItems (AM_Idx,01,"S",B_1_2_Blank,"Blank Subroutine")
-	lcurses.MenuItems (AM_Idx,02,"S",B_1_2_Blank,"Blank Subroutine")
-	lcurses.MenuItems (AM_Idx,03,"S",B_1_2_Blank,"Blank Subroutine")
-	lcurses.MenuItems (AM_Idx,04,"S",B_1_2_Blank,"Blank Subroutine")
-	lcurses.MenuItems (AM_Idx,05," ",0,"")
+	lmenus.MenuItems (AM_Idx,01,"S",B_1_2_Blank,"Blank Subroutine")
+	lmenus.MenuItems (AM_Idx,02,"S",B_1_2_Blank,"Blank Subroutine")
+	lmenus.MenuItems (AM_Idx,03,"S",B_1_2_Blank,"Blank Subroutine")
+	lmenus.MenuItems (AM_Idx,04,"S",B_1_2_Blank,"Blank Subroutine")
+	lmenus.MenuItems (AM_Idx,05," ",0,"")
 
 ;	---------
 ;	4th MENU
@@ -185,12 +187,12 @@ BEGIN.SUB A_1_Initial
 	integers.eq AM_Idx,4
 	tables.rput AM_Table,AM_Idx
 
-	lcurses.MenuItems (AM_Idx,01,"S",B_1_2_Blank,"Blank Subroutine")
-	lcurses.MenuItems (AM_Idx,02,"S",B_1_2_Blank,"Blank Subroutine")
-	lcurses.MenuItems (AM_Idx,03,"S",B_1_2_Blank,"Blank Subroutine")
-	lcurses.MenuItems (AM_Idx,04,"S",B_1_2_Blank,"Blank Subroutine")
-	lcurses.MenuItems (AM_Idx,05,"S",B_1_2_Blank,"Blank Subroutine")
-	lcurses.MenuItems (AM_Idx,06," ",0,"")
+	lmenus.MenuItems (AM_Idx,01,"S",B_1_2_Blank,"Blank Subroutine")
+	lmenus.MenuItems (AM_Idx,02,"S",B_1_2_Blank,"Blank Subroutine")
+	lmenus.MenuItems (AM_Idx,03,"S",B_1_2_Blank,"Blank Subroutine")
+	lmenus.MenuItems (AM_Idx,04,"S",B_1_2_Blank,"Blank Subroutine")
+	lmenus.MenuItems (AM_Idx,05,"S",B_1_2_Blank,"Blank Subroutine")
+	lmenus.MenuItems (AM_Idx,06," ",0,"")
 
 
 ;	---------
@@ -203,10 +205,10 @@ BEGIN.SUB A_1_Initial
 	integers.eq AM_Idx,5
 	tables.rput AM_Table,AM_Idx
 
-	lcurses.MenuItems (AM_Idx,01,"M",6,"Goto Sub Menu 6")
-	lcurses.MenuItems (AM_Idx,02,"S",B_1_2_Blank,"Blank Subroutine")
-	lcurses.MenuItems (AM_Idx,03,"S",B_1_2_Blank,"Blank Subroutine")
-	lcurses.MenuItems (AM_Idx,04," ",0,"")
+	lmenus.MenuItems (AM_Idx,01,"M",6,"Goto Sub Menu 6")
+	lmenus.MenuItems (AM_Idx,02,"S",B_1_2_Blank,"Blank Subroutine")
+	lmenus.MenuItems (AM_Idx,03,"S",B_1_2_Blank,"Blank Subroutine")
+	lmenus.MenuItems (AM_Idx,04," ",0,"")
 
 ;	---------
 ;	6th MENU
@@ -218,10 +220,10 @@ BEGIN.SUB A_1_Initial
 	integers.eq AM_Idx,6
 	tables.rput AM_Table,AM_Idx
 
-	lcurses.MenuItems (AM_Idx,01,"S",B_1_2_Blank,"Blank Subroutine")
-	lcurses.MenuItems (AM_Idx,02,"S",B_1_2_Blank,"Blank Subroutine")
-	lcurses.MenuItems (AM_Idx,03,"S",B_1_2_Blank,"Blank Subroutine")
-	lcurses.MenuItems (AM_Idx,04," ",0,"")
+	lmenus.MenuItems (AM_Idx,01,"S",B_1_2_Blank,"Blank Subroutine")
+	lmenus.MenuItems (AM_Idx,02,"S",B_1_2_Blank,"Blank Subroutine")
+	lmenus.MenuItems (AM_Idx,03,"S",B_1_2_Blank,"Blank Subroutine")
+	lmenus.MenuItems (AM_Idx,04," ",0,"")
 
 ;	--------------
 ;	Setup the loop
@@ -262,7 +264,7 @@ BEGIN.SUB B_1_Process
 		;	We are where we want to be
 		;	--------------------------
 			Arrays.Get MenuNo,(depth,AM_Idx)
-			lcurses.Menu (AM_Idx,c_TRUE)
+			lmenus.Menu (AM_Idx,c_TRUE)
 			if RETURN_CODE = RETURN
 			;	--------------------
 			;	Menu option selected
@@ -285,7 +287,7 @@ BEGIN.SUB B_1_Process
 		;	We are displaying the menu and moving deeper
 		;	--------------------------------------------
 			Arrays.Get MenuNo,(depth,AM_Idx)			
-			lcurses.Menu (AM_Idx,c_FALSE)
+			lmenus.Menu (AM_Idx,c_FALSE)
 			depth = depth + 1
 
 		end.if

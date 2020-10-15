@@ -1,7 +1,8 @@
+	%assign debug 0
 	%include '../include/LMACROS.CPY'
 	%include '../include/IMACROS.CPY'
 	%include '../include/CONSTANTS.INC'
-	%line 4 w_XTABLES.LIB
+	%line 5 w_XTABLES.LIB
 
 ;	=================================================
 ;	GLOBAL ROUTINES/VARIABLES defined in this library

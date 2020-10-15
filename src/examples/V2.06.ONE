@@ -218,21 +218,21 @@ END.SUB C_1_POST
 ;-------------------------------------------------------------------------------
 BEGIN.SUB D_1_RollDice
 
-	repeat _01
+	repeat.while 1 = 1
 		#.random(1,n_Dice1)
 		@.and(n_Dice1,0x07)
 		.if  n_Dice1 > 0 | .and n_Dice1 < 7 | .end
-			exitRepeat = c_TRUE
+			exit.Repeat
 		end.if
-	end.repeat _01
+	end.repeat
 	
-	repeat _02
+	repeat.while 1 = 1
 		#.random(1,n_Dice2)
 		@.and(n_Dice2,0x07)
 		.if  n_Dice2 > 0 | .and n_Dice2 < 7 | .end
-			exitRepeat = c_TRUE
+			exit.Repeat
 		end.if
-	end.repeat _02
+	end.repeat
 
 ;if z = 0
 ;	z = 1
@@ -270,17 +270,17 @@ BEGIN.SUB D_1_FindMoves
 ;	Grab the board
 ;	--------------
 	J = 0 | I = I + 10
-	repeat _03
+	repeat.while 1 = 1
 		J = J + 1
 		if J > 26 
-			exitRepeat = c_TRUE
+			exit.Repeat
 		else
 			TblNoOff[J]		= {w_Response,I,1}
 			I = I + 2
 			TblColour[J]	= {w_Response,I,1}
 			I = I + 2
 		end.if
-	end.repeat _03 		
+	end.repeat 		
 
 ;	----
 ;	Move
@@ -291,10 +291,10 @@ BEGIN.SUB D_1_FindMoves
 ;	Load the board
 ;	--------------
 	J = 0 | I = 1
-	repeat _04
+	repeat.while 1 = 1
 		J = J + 1
 		if J > 26
-			exitRepeat = c_TRUE
+			exit.Repeat
 		else
 			{w_Response,I} = TblNoOff[J]
 			I = I + 1
@@ -305,7 +305,7 @@ BEGIN.SUB D_1_FindMoves
 			{w_Response,I} = ","
 			I = I + 1
 		end.if
-	end.repeat _04 		
+	end.repeat 		
 
 	RETURN_CODE = 108
 	
@@ -353,7 +353,7 @@ BEGIN.SUB D_1_1_Move
 	else		
 		repeat.for I,2,19
 			if TblColour[I] = c_Black
-				exitRepeat = c_TRUE
+				exit.Repeat
 			end.if
 		end.repeat
 		if I > 19
@@ -750,7 +750,7 @@ BEGIN.SUB D_1_1_3_BearingOff
 						TblColour[n_To] = c_Black						
 						TblNoOff[n_To] = TblNoOff[n_To] + 1
 					end.if
-					exitRepeat = c_TRUE
+					exit.Repeat
 				end.if
 			end.repeat
 		end.if
@@ -777,7 +777,7 @@ BEGIN.SUB D_1_1_3_BearingOff
 						TblColour[n_To] = c_Black						
 						TblNoOff[n_To] = TblNoOff[n_To] + 1
 					end.if
-					exitRepeat = c_TRUE					
+					exit.Repeat					
 				end.if
 			end.repeat
 		end.if
@@ -823,14 +823,14 @@ BEGIN.SUB D_1_1_3_BearingOff
 					if TblNoOff[n_From] !< n_Ctr
 						TblNoOff[n_From] = TblNoOff[n_From] - n_Ctr
 						TblNoOff[n_To] = TblNoOff[n_To] + n_Ctr
-						exitRepeat = c_TRUE
+						exit.Repeat
 					else
 						TblNoOff[n_To] = TblNoOff[n_To] + TblNoOff[n_From]
 						n_Ctr = n_Ctr - TblNoOff[n_From]
 						TblNoOff[n_From] = 0
 						TblColour[n_From] = 0
 						if n_Ctr = 0
-							exitRepeat = c_TRUE
+							exit.Repeat
 						end.if
 					end.if
 				end.if
@@ -1207,7 +1207,7 @@ BEGIN.SUB D_1_1_4_3_1_3or4
 			.or TblNoOff[ [J + [K * n_Dice1]] ] < 2			;	or only 1 white
 			.end
 			else 											; else
-				exitRepeat = c_TRUE							;	there are more than 1 and we cannot proceed
+				exit.Repeat									;	there are more than 1 and we cannot proceed
 			end.if
 		end.repeat
 		
@@ -1298,7 +1298,7 @@ BEGIN.SUB E_1_1_Stack
 					mDocumentMove(mve1FromStatus,mve1ToStatus1,mve1ToStatus2,mve1NoOff,mve1From,mve1To)
 					
 					RETURN_CODE = c_TRUE
-					exitRepeat = c_TRUE
+					exit.Repeat
 
 				end.if
 					
@@ -1741,7 +1741,7 @@ BEGIN.SUB Y_2_DisplayTable
 		.if mve1NoOff = 0
 		.and mve2NoOff = 0
 		.end
-			exitRepeat = c_TRUE
+			exit.Repeat
 		else
 			$Call Y_2_1_DisplayTableRecord
 		end.if

@@ -1743,24 +1743,25 @@
 ;=======================================================================
 ;       	Macros for looping (REPEAT)
 ;=======================================================================
-%imacro REPEAT 1
-	;========== *********
-	%if debug = 1
-		mov qword[STOP],0
-	%endif
-	;========== *********
-  %PUSH REPEAT.NAME
-
-	;	So that we can use an exit.sub and restore our 
-	;	saveRegisters position
-		push qword[SX]
-	
-		mov qword[exitRepeat],c_FALSE
-%$START.REPEAT:
-		cmp qword[exitRepeat],c_TRUE
-			je %$END.REPEAT
-	
-%endmacro
+;***********Can be replaced with REPEAT.WHILE 1 = 1
+;%imacro REPEAT 1
+;	;========== *********
+;	%if debug = 1
+;		mov qword[STOP],0
+;	%endif
+;	;========== *********
+;  %PUSH REPEAT.NAME
+;
+;	;	So that we can use an exit.sub and restore our 
+;	;	saveRegisters position
+;		push qword[SX]
+;	
+;		mov qword[exitRepeat],c_FALSE
+;%$START.REPEAT:
+;		cmp qword[exitRepeat],c_TRUE
+;			je %$END.REPEAT
+;	
+;%endmacro
 
 ;=======================================================================
 ;       	Macros for looping (REPEAT.IF)
@@ -1901,17 +1902,18 @@
 ;=======================================================================
 ;       	Macros for looping (EXIT.REPEAT)
 ;=======================================================================
-%imacro EXIT.REPEAT 1
+%imacro EXIT.REPEAT 0
 			
 		;	Jump to the end of the loop
-			jmp %1_EXIT	
+		;	jmp %1_EXIT
+	integers.eq exitRepeat,c_TRUE	
 								
 %endmacro
 
 ;=======================================================================
 ;       	Macros for looping (END.REPEAT)
 ;=======================================================================
-%imacro END.REPEAT 0-1
+%imacro END.REPEAT 0
 	;========== *********
 	%if debug = 1
 		mov qword[STOP],0
@@ -1923,12 +1925,12 @@
 	%$END.REPEAT:															; Within the Context Stack
 		mov qword[exitRepeat],c_FALSE
 
-	%ifctx REPEAT.NAME
-		%1_EXIT:
-		pop qword[SX]
-	%else	
+;	%ifctx REPEAT.NAME
+;		%1_EXIT:
+;		pop qword[SX]
+;	%else	
 		sub qword[SX],40
-	%endif
+;	%endif
 			
 	%POP																	; End the Context Stack		
 %endmacro
@@ -3016,7 +3018,6 @@
 		mov qword[STOP],0
 	%endif
 	;========== *********
-	
 		;	Function and table address
 			mov r_Function,%1												; Function
 
@@ -3056,7 +3057,7 @@
 	%endif	
 
 			Call _WWW
-	
+
 %endmacro	
 
 ;=======================================================================

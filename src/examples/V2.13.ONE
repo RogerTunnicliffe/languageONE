@@ -3,6 +3,8 @@
 %define   c_AM_NoOfRecords	08
 %define   c_M_NoOfRecords	16
 %include 'include/LCURSES.PKG'
+
+%include 'include/LMENUS.PKG'
 	
 ;	Refer to VERSION.HISTORY for...well...version history
 
@@ -55,7 +57,7 @@
 %include 'include/BEGIN.FILES'	
 
 ;	------------------------------
-;	Define the LCURSES MENU tables
+;	Define the LMENUS MENU tables
 ;	------------------------------
 ;	Defines the geometry of a menu
 	begin.record c_AM_RecordLen,AM_Record
@@ -64,7 +66,7 @@
 		insertnumber	AM_EndRow,		00,'99'								; Ending Row
 		insertnumber	AM_EndCol,		00,'99'								; Ending Column
 	end.record AM_Record
-	insertnumber AM_Idx,				00,'9'								; the index returned by LCURSES.PKG
+	insertnumber AM_Idx,				00,'9'								; the index returned by LMENUS.PKG
 	
 ;	Defines the menu items
 	begin.record c_M_RecordLen,M_Record
@@ -72,7 +74,7 @@
 		insertnumber	M_Target,		00,'99999999'						; the target
 		insertword		M_Entry,		55,''								; and the text
 	end.record M_Record
-	insertnumber M_Idx,					00,'99'								; the index returned by LCURSES.PKG
+	insertnumber M_Idx,					00,'99'								; the index returned by LMENUS.PKG
 
 	;	M_TYPE
 	;	S - A Subroutine in this program
@@ -94,13 +96,17 @@ insertfile c_LF,RSP1_FILE,'pipe'
 %include 'include/BEGIN.TABLES'
 
 ;	------------------------------
-;	Insert the LCURSES MENU tables
+;	Insert the LMENUS MENU tables
 ;	------------------------------
 	inserttable AM_Table,c_AM_RecordLen*c_AM_NoOfRecords					; Allows for 8 menus
 	inserttable M_Table,c_M_RecordLen*c_AM_NoOfRecords*c_M_NoOfRecords		; Allows fo r8 menus with 16 entries
 
 %include 'include/END.TABLES'
 
+%imacro junk 0
+xor rax,rax
+xor rbx,tbx
+%endmacro
 ;=======================================================================
 ;		PROGRAM INSTRUCTIONS
 ;		Mainline
@@ -122,7 +128,7 @@ insertfile c_LF,RSP1_FILE,'pipe'
 BEGIN.SUB A_1_Initial
 
 ;	----------------------------
-;	Bind the LCURSES MENU tables
+;	Bind the LMENUS MENU tables
 ;	----------------------------
 	tables.bind AM_Table,AM_Record,8
 	tables.bind M_Table,M_Record,8,16
@@ -164,7 +170,7 @@ BEGIN.SUB B_1_Process
 	AM_Idx = 1																; Using Menu 1
 	repeat.while RETURN_CODE != ESCAPE										; LOOP until ESCAPE
 
-   		lcurses.Menu (AM_Idx,c_TRUE)										; Process Menu 1													
+   		lmenus.Menu (AM_Idx,c_TRUE)											; Process Menu 1													
   	
     	if RETURN_CODE = RETURN												; IF menu item selected
 
@@ -175,7 +181,7 @@ BEGIN.SUB B_1_Process
 			;	--------
 				when = "M"													; When it's a Submenu									
 					AM_Idx = M_Target										; set the menu no
-					lcurses.Menu (AM_Idx,c_TRUE)							; Process the menu
+					lmenus.Menu (AM_Idx,c_TRUE)								; Process the menu
 					RETURN_CODE = ESCAPE									; and setup exit
 				wend														; END
 
@@ -183,7 +189,7 @@ BEGIN.SUB B_1_Process
 			;	SUBROUTINE
 			;	----------
 				when = "S"													; When it's a subroutine call
-					lcurses.Call (M_Target)									; process the call
+					lmenus.Call (M_Target)									; process the call
 					RETURN_CODE = ESCAPE									; and setup exit
 				wend														; END
 
@@ -234,15 +240,15 @@ BEGIN.SUB B_1_1_Initial
 	integers.eq AM_Idx,1
 	tables.rput AM_Table,AM_Idx
 
-	lcurses.MenuItems (AM_Idx,01,"S",B_1_2_Subroutine,"B_1_2_Subroutine")
-	lcurses.MenuItems (AM_Idx,02,"S",B_1_3_Subroutine,"B_1_3_Subroutine")
-	lcurses.MenuItems (AM_Idx,03,"M",2,"A Sub Menu")
-	lcurses.MenuItems (AM_Idx,04,"X",0,"An External Terminal Program")
-	lcurses.MenuItems (AM_Idx,05,"X",0,"Menu Option 5")
-	lcurses.MenuItems (AM_Idx,06,"X",0,"Menu Option 6")
-	lcurses.MenuItems (AM_Idx,07,"X",0,"Menu Option 7")
-	lcurses.MenuItems (AM_Idx,08,"X",0,"Menu Option 8")
-	lcurses.MenuItems (AM_Idx,09," ",0,"")
+	lmenus.MenuItems (AM_Idx,01,"S",B_1_2_Subroutine,"B_1_2_Subroutine")
+	lmenus.MenuItems (AM_Idx,02,"S",B_1_3_Subroutine,"B_1_3_Subroutine")
+	lmenus.MenuItems (AM_Idx,03,"M",2,"A Sub Menu")
+	lmenus.MenuItems (AM_Idx,04,"X",0,"An External Terminal Program")
+	lmenus.MenuItems (AM_Idx,05,"X",0,"Menu Option 5")
+	lmenus.MenuItems (AM_Idx,06,"X",0,"Menu Option 6")
+	lmenus.MenuItems (AM_Idx,07,"X",0,"Menu Option 7")
+	lmenus.MenuItems (AM_Idx,08,"X",0,"Menu Option 8")
+	lmenus.MenuItems (AM_Idx,09," ",0,"")
 
 ;	---------
 ;	2nd MENU
@@ -254,15 +260,15 @@ BEGIN.SUB B_1_1_Initial
 	integers.eq AM_Idx,2
 	tables.rput AM_Table,AM_Idx
 	
-	lcurses.MenuItems (AM_Idx,01,"X",0,"Menu Option 1")
-	lcurses.MenuItems (AM_Idx,02,"X",0,"Menu Option 2")
-	lcurses.MenuItems (AM_Idx,03,"X",0,"Menu Option 3")
-	lcurses.MenuItems (AM_Idx,04,"X",0,"Menu Option 4")
-	lcurses.MenuItems (AM_Idx,05,"X",0,"Menu Option 5")
-	lcurses.MenuItems (AM_Idx,06,"X",0,"Menu Option 6")
-	lcurses.MenuItems (AM_Idx,07,"X",0,"Menu Option 7")
-	lcurses.MenuItems (AM_Idx,08,"X",0,"Menu Option 8")
-	lcurses.MenuItems (AM_Idx,09," ",0,"")
+	lmenus.MenuItems (AM_Idx,01,"X",0,"Menu Option 1")
+	lmenus.MenuItems (AM_Idx,02,"X",0,"Menu Option 2")
+	lmenus.MenuItems (AM_Idx,03,"X",0,"Menu Option 3")
+	lmenus.MenuItems (AM_Idx,04,"X",0,"Menu Option 4")
+	lmenus.MenuItems (AM_Idx,05,"X",0,"Menu Option 5")
+	lmenus.MenuItems (AM_Idx,06,"X",0,"Menu Option 6")
+	lmenus.MenuItems (AM_Idx,07,"X",0,"Menu Option 7")
+	lmenus.MenuItems (AM_Idx,08,"X",0,"Menu Option 8")
+	lmenus.MenuItems (AM_Idx,09," ",0,"")
 	
 END.SUB B_1_1_Initial
 
@@ -372,8 +378,8 @@ BEGIN.SUB C_1_Process
 	endLoop = c_FALSE														; Head on into the LOOP
 	repeat.while endLoop,!=,c_TRUE
 
-		lcurses.Menu (AM_Idx,c_TRUE)										; Do the menus
-			
+		lmenus.Menu (AM_Idx,c_TRUE)											; Do the menus
+				
 		if RETURN_CODE _IN {ARROWLEFT,ARROWRIGHT}							; If left or right arrow
 
 			if RETURN_CODE = ARROWLEFT										; For left arrow
@@ -453,15 +459,15 @@ BEGIN.SUB C_1_1_Initial
 	integers.eq AM_Idx,3
 	tables.rput AM_Table,AM_Idx
 	
-	lcurses.MenuItems (AM_Idx,01,"X",0,"New")
-	lcurses.MenuItems (AM_Idx,02,"X",0,"Open...")
-	lcurses.MenuItems (AM_Idx,03,"X",0,"Save")
-	lcurses.MenuItems (AM_Idx,04,"X",0,"Save As...")
-	lcurses.MenuItems (AM_Idx,05,"-",0,"")
-	lcurses.MenuItems (AM_Idx,06,"X",0,"Print")
-	lcurses.MenuItems (AM_Idx,07,"-",0,"")
-	lcurses.MenuItems (AM_Idx,08,"X",0,"Exit")
-	lcurses.MenuItems (AM_Idx,09," ",0,"")
+	lmenus.MenuItems (AM_Idx,01,"X",0,"New")
+	lmenus.MenuItems (AM_Idx,02,"X",0,"Open...")
+	lmenus.MenuItems (AM_Idx,03,"X",0,"Save")
+	lmenus.MenuItems (AM_Idx,04,"X",0,"Save As...")
+	lmenus.MenuItems (AM_Idx,05,"-",0,"")
+	lmenus.MenuItems (AM_Idx,06,"X",0,"Print")
+	lmenus.MenuItems (AM_Idx,07,"-",0,"")
+	lmenus.MenuItems (AM_Idx,08,"X",0,"Exit")
+	lmenus.MenuItems (AM_Idx,09," ",0,"")
 
 ;	---------
 ;	EDIT MENU
@@ -473,11 +479,11 @@ BEGIN.SUB C_1_1_Initial
 	integers.eq AM_Idx,4
 	tables.rput AM_Table,AM_Idx
 	
-	lcurses.MenuItems (AM_Idx,01,"X",0,"Cut")
-	lcurses.MenuItems (AM_Idx,02,"X",0,"Copy")
-	lcurses.MenuItems (AM_Idx,03,"X",0,"Paste")
-	lcurses.MenuItems (AM_Idx,04,"X",0,"Clear")
-	lcurses.MenuItems (AM_Idx,05," ",0,"")	
+	lmenus.MenuItems (AM_Idx,01,"X",0,"Cut")
+	lmenus.MenuItems (AM_Idx,02,"X",0,"Copy")
+	lmenus.MenuItems (AM_Idx,03,"X",0,"Paste")
+	lmenus.MenuItems (AM_Idx,04,"X",0,"Clear")
+	lmenus.MenuItems (AM_Idx,05," ",0,"")	
 
 ;	-----------
 ;	SEARCH MENU
@@ -489,10 +495,10 @@ BEGIN.SUB C_1_1_Initial
 	integers.eq AM_Idx,5
 	tables.rput AM_Table,AM_Idx
 	
-	lcurses.MenuItems (AM_Idx,01,"X",0,"Find")
-	lcurses.MenuItems (AM_Idx,02,"X",0,"Repeat Last Find")
-	lcurses.MenuItems (AM_Idx,03,"X",0,"Change")
-	lcurses.MenuItems (AM_Idx,04," ",0,"")	
+	lmenus.MenuItems (AM_Idx,01,"X",0,"Find")
+	lmenus.MenuItems (AM_Idx,02,"X",0,"Repeat Last Find")
+	lmenus.MenuItems (AM_Idx,03,"X",0,"Change")
+	lmenus.MenuItems (AM_Idx,04," ",0,"")	
 	
 END.SUB C_1_1_Initial
 
@@ -539,6 +545,7 @@ BEGIN.SUB D_1_Process
 	display.at 08,02,"  END            :-Move cursor to the end of the field"
 	display.at 09,02,"  BACKSPACE      :-Delete previous character"
 	display.at 10,02,"  INSERT         :-Insert a space at the cursor position"
+	display.at 11,02,"  FUNCTION KEYS  :-Report a Function Key"
 
 
 	display c_WhiteFG														; rest the FG to white 	
@@ -557,28 +564,34 @@ BEGIN.SUB D_1_Process
 		begin.test fieldNo
 			when = 1 
 				display.at 13,32,firstName									; Only xterm will show a cursor without this
-				lcurses.AcceptAt 13,32,firstName							; Get the firstname 	
+				lcurses.AcceptAt 13,32,firstName							; Get the firstname 
+				$Call D_1_1_FunctionKey										; Check for function Keys
 			wend
 			when = 2
 				display.at 14,32,lastName									; Only xterm will show a cursor without this
 				lcurses.AcceptAt 14,32,lastName								; Get the lastname
+				$Call D_1_1_FunctionKey										; Check for function Keys
 			wend
 			when = 3
 				display.at 15,32,addressLine1								; Only xterm will show a cursor without this
 				lcurses.AcceptAt 15,32,addressLine1							; get the 1st address line
+				$Call D_1_1_FunctionKey										; Check for function Keys
 			wend
 			when = 4
 				display.at 16,32,addressLine2								; Only xterm will show a cursor without this
 				lcurses.AcceptAt 16,32,addressLine2							; get the 2nd address line
+				$Call D_1_1_FunctionKey										; Check for function Keys
 			wend
 			when = 5
 				display.at 17,32,addressLine3								; Only xterm will show a cursor without this
 				lcurses.AcceptAt 17,32,addressLine3							; get the 3rd address line
+				$Call D_1_1_FunctionKey										; Check for function Keys
 			wend
 			when = 6
 				display.at 18,32,postcodeX									; Only xterm will show a cursor without this
 				lcurses.AcceptAt 18,32,postcodeX							; get the postcode
 				postcode9 = postcodeX
+				$Call D_1_1_FunctionKey										; Check for function Keys
 			wend
 		end.test
 
@@ -615,10 +628,22 @@ BEGIN.SUB D_1_Process
 	display.at 17,23, "	   Hit any key to continue"							; display text
 	accept.at 18,38, w_Response												; and get a response
 
-
-
-
 END.SUB D_1_Process
+
+;-----------------------------------------------------------------------
+;   Check for Function Keys
+;-----------------------------------------------------------------------
+BEGIN.SUB D_1_1_FunctionKey
+
+	.if RETURN_CODE  > 0
+	.and RETURN_CODE < 13
+	.end
+		cursor 24,02
+		display "You Have pressed Function Key ",RETURN_CODE
+	end.if
+	
+END.SUB D_1_1_FunctionKey
+
 
 ;=======================================================================
 ;		Finalise  
