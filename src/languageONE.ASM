@@ -1688,11 +1688,11 @@ END.SUB C_3_1_1_CheckMatrix
 ;-----------------------------------------------------------------------
 BEGIN.SUB C_3_1_3_RecurseThruLine
 
-	repeat .01																; Start of Loop
+	repeat.while 1,=,1																; Start of Loop
 
 		integers.add n_CharPos,1											; Move along 1 character
 		if n_CharPos,>,PR_CommandLength										; and exit if we are at the end
-			EXIT.REPEAT .01													; EXIT
+			EXIT.REPEAT														; EXIT
 		end.if																; END	
 
 		mCheckQuotes (n_CharPos)											; Check for quotes
@@ -1724,7 +1724,7 @@ BEGIN.SUB C_3_1_3_RecurseThruLine
 
 		end.if																; END
 
-	end.repeat .01															; END
+	end.repeat																; END
 
 END.SUB C_3_1_3_RecurseThruLine
 ;	EXIT
@@ -3052,17 +3052,17 @@ BEGIN.SUB C_3_4_addCommas
 				if {PR_Line,I,1},_IN,{' ',x_Tab}							; If we have a space/tab
 					Words.copy ',',{PR_Line,I,1}							;   replace it with a comma
 
-					repeat .02												; and skip over any more spaces/tabs
+					repeat.while 1,=,1										; and skip over any more spaces/tabs
 						integers.add I,1
 						if I,>,PR_CommandLength
-							integers.eq exitRepeat,c_TRUE
+							exit.Repeat
 						end.if
 
 						if {PR_Line,I,1},_NIN,{' ',x_Tab}
 							integers.sub I,1
 							integers.eq exitRepeat,c_TRUE
 						end.if
-					end.repeat .02
+					end.repeat
 
 				end.if
 			end.if

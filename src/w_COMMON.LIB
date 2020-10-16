@@ -643,7 +643,6 @@ _DATE_EXIT:
 ;		returns a date and Days from the Linux epoch	
 ;		Linux epoch starts at =	Thursday, 1 January 1970 @ 00:00:00
 ;-----------------------------------------------------------------------
-global _GETDATE
 _GETDATE:
 
 		$pushAll r8,r9,r10,r11,rax,rcx,rdx
@@ -970,9 +969,69 @@ _ALPHATODATE_EXIT:
 ;		RUN and WAIT
 ;=======================================================================
 ;-----------------------------------------------------------------------
-;		RUN_BATCH
+;		RUN_INTERACTIVE
 ;-----------------------------------------------------------------------
 _RUN_INTERACTIVE:
+
+			mov r14,r9														; Save Path
+			mov qword[ERROR_CODE],0											; Clear Error Code
+
+		;	---------------------------------
+		;	Clear StartupInfo and ProcessInfo			
+		;	---------------------------------
+			mov rdi,StartupInfo
+			xor rax,rax
+			mov rcx,13
+		rep stosq
+			mov dword[cb],104
+
+			mov rdi,ProcessInformation
+			xor rax,rax
+			mov rcx,3
+		rep stosq
+				
+		;	--------------
+		;	CREATE PROCESS
+		;	--------------
+  		mov rbx,rsp															; Grab the stack pointer
+  		and rsp,0xFFFFFFFFFFFFFFF0											; Align it to 16bytes
+		;	CreateProcess( NULL," c:\Users\roger\...\V2.13 ",NULL,NULL,TRUE,0,0,0,&si,&pi); 
+			push ProcessInformation											; lpProcessInformation
+			push StartupInfo												; lpStartupInfo
+			push 0															; lpCurrentDirectory
+			push 0															; lpEnvironment
+			push 0x10  			; Create New Window							; dwCreationFlags
+			push 0															; bInheritHandles
+		sub rsp,32															; Create Shadow Stack
+		cld																	; Clear Direction Flag
+			xor rcx,rcx														; Take progname from path
+			mov rdx,r14														; Path/Program
+			xor r8,r8														; lpSecurityAttributes
+			xor r9,r9														; lpThreadAttributes
+			Call CreateProcessA
+		mov rsp,rbx
+			cmp rax,1
+				jne .err
+		
+	.If3:	cmp rax,1
+				je .Else3
+				Call GetLastError
+				mov qword[WIN_ReturnCode],rax
+				Call _SYSERROR
+	.Else3:
+				push qword[hProcess]										; Populate Child PID	
+				pop  qword[CHILD_PID]
+	.EndIf3:	
+			jmp .Exit
+
+		;	-----------------------------	
+	.err:	;	ERROR MESSAGE
+		;	-----------------------------						
+			Call GetLastError
+			mov qword[WIN_ReturnCode],rax
+			Call _SYSERROR
+
+	.Exit:
 _RUN_INTERACTIVE_EXIT:
 		ret
 ;-----------------------------------------------------------------------

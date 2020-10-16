@@ -9,14 +9,17 @@
 ;	1] - Enhancements for Windows debugging
 ;		 Coding and exporting Global symbols
 ;	
-;	2] - Developed LCURSES.PKG - written in raw languageONE - contains the following routines
+;	2] - Developed LCURSES.PKG and LMENUS.PKG - written in raw languageONE - contains the following routines
 ;
-;		lcurses.HLine
-;		lcurses.VLine
-;		lcurses.Box
-;		lcurses.MenuItems
-;		lcurses.Menu
-;		lcurses.Call
+;        LCURSES
+;		     lcurses.HLine
+;		     lcurses.VLine
+;		     lcurses.Box
+;		     lcurses.MenuItems
+;       LMENUS
+;            lmenus.MenuLoad
+;		     lmenus.Menu
+;		     lmenus.Call
 ;		
 ;		a) Modified STDIO.LIB/w_STDIO.LIB to return RETURN/FUNCTIONKEYS/ALT/ARROWS/ESCAPE/BACKSPACE/NULL
 ;		b) RETURN/FUNCTIONKEYS/ALT/ARROWS/ESCAPE/BACKSPACE/NULL available thru CONSTANTS.INC	

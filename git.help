@@ -75,8 +75,9 @@ To add a remote repository to GIT
 	git remote add languageONE https://github.com/RogerTunnicliffe/languageONE.git
 
 To store in the REMOTE repository
-	git push languageONE (Will send to remote-I think) After its all setup
+	git push https://github.com/RogerTunnicliffe/languageONE.git
+	(Will send to remote-I think) After its all setup
 
 But for us when the remote is just a backup.
 Git's push --force is destructive because it unconditionally overwrites the remote repository with whatever you have locally
-	git push --force languageONE
+	git push --force https://github.com/RogerTunnicliffe/languageONE.git 
