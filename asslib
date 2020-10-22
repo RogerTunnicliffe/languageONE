@@ -1,5 +1,5 @@
 cd src
-../l.assemble ARRAYS.LIB
+../l.assemble COMMON.LIB
 mv *.o ../lib
 cd ../lib
 ar -r languageONE.l *.o

@@ -2,6 +2,20 @@
 ;	here.
 ;	--------------------------------------------------------------------
 
+;	LANGUAGEONE V2.14
+
+;	NEW
+;	---
+;	1] - Moded languageONE.ASM/E_1_Compile
+;		 This now allows any unqualified text moves to be compiled (not just equal length fields)
+
+;	MODIFIED
+;	--------
+;	1] - Corrected error in languageONE.ASM/E_1_Compile
+;		 was missing the 3rd token if hits End Of Line 
+
+
+
 ;	LANGUAGEONE V2.13
 
 ;	NEW

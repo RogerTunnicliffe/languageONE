@@ -1365,6 +1365,9 @@ begin.sub C_2ndPass
 
 		xtables.rget ProgramTable,n_LineCtr									; Grab a record
 		Words.uppercase PR_Line,w_UBuffer									; Grab an uppercase copy
+if n_LineCtr,=,85
+	integers.eq I,1
+end.if
 		
 	;	--------------------------
 	;	DETECT AND FLAG PROCEDURES
@@ -3876,15 +3879,18 @@ BEGIN.SUB E_1_Compile
 		insertnumber	n_Started,		0
 		insertnumber	n_StartPoint,	0
 		insertnumber 	n_tokenNo,		0
+		insertnumber	n_Len,			0,'999999'
+		insertnumber	n_Len1,			0,'999999'
+		insertnumber	n_Len2,			0,'999999'
 	[section .text]
 
 ;	----------
 ;	Initialise
-;	----------
+;	----------T
 	integers.eq n_tokenNo,0													; Initialise work fields
 	integers.eq n_Started,0													; Initialise fields
 	
-	words.pad spaces(1),TK_Token
+	words.pad 	spaces(1),TK_Token
 	integers.eq TK_Length,0
 	tables.rput TokenTable,1
 	tables.rput TokenTable,2
@@ -3900,13 +3906,16 @@ BEGIN.SUB E_1_Compile
 ;		end.if
 		
 		if {PR_Line,I,1},_IN,{' ',x_Tab,x_LF,','}							; Have we hit a delimiter
-			if n_Started,=,c_TRUE											; If we have already started a token
-				integers.eq n_Started,c_FALSE								; set the start flag to false
+
+			if  n_Started,=,c_TRUE											; If we have already started a token
+				integers.eq   n_Started,c_FALSE								; set the start flag to false
 				integers.calc TK_Length,=,I,-,J								; calculate the length
-				words.pad {PR_Line,J,TK_Length},TK_Token					; copy it to token field
-				tables.rput TokenTable,n_tokenNo							; and save it
+				words.pad     {PR_Line,J,TK_Length},TK_Token				; copy it to token field
+				tables.rput   TokenTable,n_tokenNo							; and save it
 			end.if															; END
+
 		else																; ELSE
+
 			if {PR_Line,I,1},_IN,{'{','}'}									; if the word is qualified
 				exit.sub E_1_Compile										; we are out
 			else															; ELSE
@@ -3922,9 +3931,17 @@ BEGIN.SUB E_1_Compile
 					integers.eq n_Started,c_TRUE							; set the start token flag to true
 					integers.eq J,I											; save the start location
 				end.if														; END
-			end.if															; END	
+			end.if															; END
+	
 		end.if																; END
 	end.repeat																; END loop	
+
+	if  n_Started,=,c_TRUE													; If we have already started a token
+	;	Here if you hit End Of Line
+		integers.calc TK_Length,=,I,-,J										; calculate the length
+		words.pad     {PR_Line,J,TK_Length},TK_Token						; copy it to token field
+		tables.rput   TokenTable,3											; and save it
+	end.if																	; END
 
 ;	----------------------------------
 ;	Only looking for words.copy or pad
@@ -3943,23 +3960,27 @@ BEGIN.SUB E_1_Compile
 	tables.rget TokenTable,3												; Grab the 3rd Token	
 	words.pad TK_Token,w_Temp30												; copy it to w_Temp30 for DataName search
 	Call X_5_SearchByName													; make the call
-	if DataNameTable_STATUS,=,0												; Cannot work with literals
-		integers.eq I,DN_Length												; and store the length
+	if  DataNameTable_STATUS,=,0											; Cannot work with literals
+		integers.eq n_Len2,DN_Length										; and store the length
 	
 		tables.rget TokenTable,2											; Grab the 2nd Token	
 		words.pad TK_Token,w_Temp30											; copy it to w_Temp30 for DataName search
 		Call X_5_SearchByName												; make the call
-		if DataNameTable_STATUS,=,0											; Cannot work with literals		
-			if DN_Length,!=,I												; If the length are not equal
-				exit.sub E_1_Compile										;	then exit
-			end.if															; END
+		if  DataNameTable_STATUS,=,0										; Cannot work with literals		
+			integers.eq n_Len1,DN_Length									; and store the length
 		else																; ELSE
-			exit.sub E_1_Compile											; exit
+			exit.sub E_1_Compile											; EXIT
 		end.if																; END
 	else																	; ELSE
-		exit.sub E_1_Compile												; exit
-	end.if																	; END./l.link V0.01			
+		exit.sub E_1_Compile												; EXIT
+	end.if																	; END			
 
+	if n_Len1,!<,n_Len2
+		integers.eq n_Len,n_Len2
+	else
+		integers.eq n_Len,n_Len1
+	end.if
+	 
 ;	-------------------------
 ;	Comment the original Line
 ;	-------------------------
@@ -3988,16 +4009,56 @@ BEGIN.SUB E_1_Compile
 ;	Setup the length
 ;	----------------		
 	words.pad "mov rcx,",{PR_Line,n_StartPoint}								; Enter the assembler code for RCX
-	words.copy DN_Length,{PR_Line,I}										; Insert the Length
+	words.copy n_Len,{PR_Line,I}											; Insert the Length
 	integers.calc J,=,I,+,6													; Calculate line length
 	files.write out_File,{PR_Line,1,J}										; and write it out
 
-;	-----------------
-;	Code for the Call 
-;	-----------------	
-	words.pad "Call _MOVESTR",{PR_Line,n_StartPoint}						; Enter the assembler code for the Call
 ;***The caller will write this one out	
-;	files.write out_File,{PR_Line,1,PR_CommandLength}						; and write it out
+	words.pad "Call _MOVSTR",{PR_Line,n_StartPoint}						; Enter the assembler code for the Call
+
+;	-----------------
+;	PAD or Not 
+;	-----------------	
+	tables.rget TokenTable,1
+	words.uppercase TK_Token
+	if TK_Token,=,"WORDS.COPY"
+	;	-----------------
+	;	Code for the Call 
+	;	-----------------	
+
+	else
+		if n_Len2,>,n_Len1
+			files.write out_File,{PR_Line,1,J}								; and write it out
+
+		;	---------------------------
+		;	Setup the destination field
+		;	---------------------------	
+			words.pad "mov RDI,",{PR_Line,n_StartPoint}								; Enter the assembler code for RDI 
+			tables.rget TokenTable,3												; Grab the 3rd Token	
+			words.copy {TK_Token,1,TK_Length},{PR_Line,I}							; Insert the destination field
+			integers.calc J,=,I,+,TK_Length,+,1										; Calculate line length
+			files.write out_File,{PR_Line,1,J}										; and write it out
+
+			words.pad "add RDI,",{PR_Line,n_StartPoint}								; Enter the assembler code for RDI
+			integers.calc I,=,n_StartPoint,+,8 
+			words.copy n_Len1,{PR_Line,I}
+			integers.calc J,=,I,+,6													; Calculate line length
+			files.write out_File,{PR_Line,1,J}										; and write it out
+
+			words.pad "mov RCX,",{PR_Line,n_StartPoint}								; Enter the assembler code for RDI
+			words.copy n_Len2,{PR_Line,I}
+			integers.calc J,=,I,+,6													; Calculate line length
+			files.write out_File,{PR_Line,1,J}										; and write it out
+
+			words.pad "sub RCX,",{PR_Line,n_StartPoint}								; Enter the assembler code for RDI
+			words.copy n_Len1,{PR_Line,I}
+			integers.calc J,=,I,+,6													; Calculate line length
+			files.write out_File,{PR_Line,1,J}										; and write it out
+
+			words.pad "Call _PADSTR",{PR_Line,n_StartPoint}						; Enter the assembler code for the Call
+		;***The caller will write this one out	
+		end.if
+	end.if
 	
 END.SUB E_1_Compile
 

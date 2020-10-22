@@ -24,7 +24,8 @@
 	global _ENDPROGRAM
 	global  No_Assist
 	global _CMPSTR
-	global _MOVESTR
+	global _MOVSTR
+	global _PADSTR
 	
 ;	------
 ;	Fields
@@ -1322,7 +1323,7 @@ _CMPSTR_EXIT:
 ;-----------------------------------------------------------------------
 ;		STRING MOVE
 ;-----------------------------------------------------------------------
-_MOVESTR:
+_MOVSTR:
 
 ;	----------
 ;	QUAD WORDS
@@ -1374,13 +1375,72 @@ _MOVESTR:
 ;	-----	
 	.byte:
 		cmp rcx,1
-			jl _MOVESTR_EXIT
+			jl _MOVSTR_EXIT
 			
 		mov ah,byte[rsi]
 		mov byte[rdi],ah
 
 
-_MOVESTR_EXIT:
+_MOVSTR_EXIT:
+	ret
+
+;-----------------------------------------------------------------------
+;		STRING PAD
+;-----------------------------------------------------------------------
+_PADSTR:;***************** V2.14 Tuning Modifications ******************
+
+	mov rax,0x2020202020202020
+
+;	----------
+;	QUAD WORDS
+;	----------
+	.quad:
+		cmp rcx,8
+			jl .double
+			
+		mov qword[rdi],rax
+		
+		add rdi,8
+		sub rcx,8
+		jmp .quad
+
+;	------------
+;	DOUBLE WORDS
+;	------------		
+	.double:
+		cmp rcx,4
+			jl .word
+
+		mov dword[rdi],eax
+			
+		add rdi,4
+		sub rcx,4
+		jmp .double
+		
+;	-----
+;	WORDS
+;	-----			
+	.word:
+		cmp rcx,2
+			jl .byte
+
+		mov word[rdi],ax
+			
+		add rdi,2
+		sub rcx,2
+		jmp .word
+		
+;	-----
+;	BYTES
+;	-----	
+	.byte:
+		cmp rcx,1
+			jl _PADSTR_EXIT
+			
+		mov byte[rdi],ah
+
+
+_PADSTR_EXIT:
 	ret
 
 ;-----------------------------------------------------------------------

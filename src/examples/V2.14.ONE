@@ -36,12 +36,6 @@
 ;		MATRIX
 ;-----------------------------------------------------------------------
 %include 'include/BEGIN.MATRIX'
-
-  ; Common Counters
-	INSERTNUMBER I,					0,'999999'
-	INSERTNUMBER J,					0,'999999'
-	INSERTNUMBER K,					0,'999999'
-	
 %include 'include/END.MATRIX'
 
 ;-----------------------------------------------------------------------
@@ -80,11 +74,42 @@
 ;		INITIALISATION
 ;=======================================================================
 BEGIN.SUB A_1_Initial
+
+[section .data]
+	insertword w_Word1,				0005,'ROGER'
+	insertword w_Word2,				0026,'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+[section .text]
+
+	w_Word1 = "ROGER"
+	words.copy w_Word2,w_Word1
+	display.line w_Word1
+
+	w_Word1 = "ROGER"
+	words.pad w_Word2,w_Word1
+	display.line w_Word1
+
+	w_Word1 = "ROGER"
+	w_Word1 = w_Word2
+	display.line w_Word1
+
+	w_Word1 = "ROGER"
+	w_Word2 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	words.copy w_Word1,w_Word2
+	display.line w_Word2
+
+	w_Word2 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	words.pad w_Word1,w_Word2
+	display.line w_Word2
+
+	w_Word2 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	w_Word2 = w_Word1
+	display.line w_Word2
+
 END.SUB A_1_Initial
 
-;=======================================================================
+;-----------------------------------------------------------------------
 ;		Process
-;=======================================================================
+;-----------------------------------------------------------------------
 BEGIN.SUB B_1_Process
 END.SUB B_1_Process
 

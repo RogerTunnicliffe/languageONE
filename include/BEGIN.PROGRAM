@@ -20,7 +20,8 @@
 	extern _ENDPROGRAM
 	extern  No_Assist
 	extern _CMPSTR
-	extern _MOVESTR
+	extern _MOVSTR
+	extern _PADSTR
 	
 ;->	Fields
 	extern RETURN_CODE
